@@ -3,13 +3,14 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.4.2';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.4.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.4.2';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.4.2';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.2';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.5.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.0';
+import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.0';
 
-const VERSION = 'v0.4.2';
+const VERSION = 'v0.5.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -49,6 +50,13 @@ const L = {
   bounds: { minX: -7.2, maxX: 7.2, minZ: -6.5, maxZ: 10.6 },
   elevator: [-7.0, -0.6], exit: [7.0, 2.6], start: [-2.2, -3.6],
 };
+// 樓層：同一個世界的不同區域（2F 在 x-40、頂樓在 x+40），搭電梯就是瞬移；1F 照常運轉
+const FLOORS = {
+  f1: { name: '1F 辦公室', icon: '🏢', ox: 0, bounds: L.bounds, cam: [-4.8, 4.8, -4.4, 9.0] },
+  f2: { name: '2F 我的辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 4.5 }, cam: [-44.8, -35.2, -4.4, 2.0] },
+  rf: { name: 'RF 頂樓遊樂園', icon: '🎡', ox: 40, bounds: { minX: 32.8, maxX: 47.2, minZ: -6.5, maxZ: 7.0 }, cam: [35.2, 44.8, -4.4, 4.6] },
+};
+const camFocusOf = (p) => { const c = FLOORS[state.floor].cam; return V(THREE.MathUtils.clamp(p.x, c[0], c[1]), 0, THREE.MathUtils.clamp(p.z, c[2], c[3])); };
 const foodShop = (x, upX) => ({
   source: [x, 9.9], srcRot: Math.PI, pickup: [x, 9.05], counter: [x, 6.8], rot: Math.PI, drop: [x, 7.85], cash: [x + 1.6, 7.85],
   queue: [[x, 5.75], [x, 5.05], [x, 4.35], [x + 0.7, 4.35], [x + 1.4, 4.35]], upPad: [upX, 8.9], unlockPad: [x, 7.85],
@@ -189,14 +197,14 @@ function runLater() { for (let i = later.length - 1; i >= 0; i--) if (state.t >=
 // ---------- 狀態 ----------
 const state = {
   money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0,
-  earned: 0, q: 0, year: 1, yearBonus: 1, finaleDone: false, rushUntil: 0,
+  earned: 0, q: 0, year: 1, yearBonus: 1, finaleDone: false, rushUntil: 0, floor: 'f1',
   gear: { cart: 0, scooter: 0, magnet: 0 }, decor: [],
   stats: { coffee: 0, doc: 0, drink: 0, beef: 0, chicken: 0, fish: 0, calls: 0, drafts: 0, vip: 0 },
 };
 // 收入倍率：裝潢滿意度（每顆星 +5% 小費）× 新辦公室年度加成 × 午餐尖峰
 const stars = () => state.decor.length;
 const rushOn = () => state.t < state.rushUntil;
-const incomeMult = () => (1 + 0.05 * stars()) * state.yearBonus * (rushOn() ? 2 : 1);
+const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * state.yearBonus * (rushOn() ? 2 : 1);   // 舒適度：2F 每買一件家具 +2%
 let kinds, player;
 const carriers = [];
 const shops = {};
@@ -539,6 +547,7 @@ function celebrate(pos, title, sub, stars, color) {
 const SHOP_COLOR = { coffee: '#e0663a', printer: '#3f8fe0', vending: '#ff4f5e', beef: '#d9483b', chicken: '#e8902a', fish: '#2f7fc4' };
 const UNLOCK_SUB = { printer: '同事開始排隊印文件了', vending: '去搬飲料箱幫販賣機補貨', beef: '去冷藏櫃搬牛肉便當補貨', chicken: '雞肉飯開賣！', fish: '魚排飯開賣！' };
 function setupPads() {
+  setupRoofPads();
   for (const s of Object.values(shops)) {
     const at = () => V((s.d.machine || s.d.counter)[0], 0, (s.d.machine || s.d.counter)[1]);
     if (s.def.unlock) addPad({
@@ -789,7 +798,7 @@ function updatePlayer(dt) {
   updateActor(a, dt, state.t);
 }
 function collide(p, r = 0.28) {
-  const b = L.bounds;
+  const b = FLOORS[state.floor].bounds;
   p.x = THREE.MathUtils.clamp(p.x, b.minX, b.maxX); p.z = THREE.MathUtils.clamp(p.z, b.minZ, b.maxZ);
   for (const c of colliders) {
     const cx = THREE.MathUtils.clamp(p.x, c.minX, c.maxX), cz = THREE.MathUtils.clamp(p.z, c.minZ, c.maxZ);
@@ -808,9 +817,10 @@ function updateGuide() {
   let at = null, text = '';
   const open = Object.values(shops).filter(s => s.unlocked);
   const cashShop = open.filter(s => s.cash.length).sort((a, b) => dist(a.d.cash) - dist(b.d.cash))[0];
-  const padReady = pads.filter(p => p.shown && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
+  const padReady = pads.filter(p => p.shown && (p.floor || 'f1') === state.floor && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
   const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
-  if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = [k.x, k.z]; text = '👊 快去揍 Kevin，叫他滾！'; }   // 最優先
+  if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = state.floor === 'f1' ? [k.x, k.z] : elevAt(); text = state.floor === 'f1' ? '👊 快去揍 Kevin，叫他滾！' : '👊 Kevin 在 1F 鬧事！快搭電梯下去'; }   // 最優先
+  else if (state.floor !== 'f1') [at, text] = floorGuide();
   else if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
@@ -1052,6 +1062,7 @@ function updateEvents() {
   if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
   if (rushOn()) chips += `<span class="rush">🍱 午餐尖峰 ×2　${Math.ceil(state.rushUntil - state.t)} 秒</span>`;
   if (stars()) chips += `<span>★${stars()} 小費 +${stars() * 5}%</span>`;
+  if (comfort()) chips += `<span>🛋 舒適度 +${comfort() * 2}%</span>`;
   if (state.yearBonus > 1) chips += `<span>🏢 第 ${state.year} 年 ×${state.yearBonus.toFixed(2)}</span>`;
   if (chips !== chipsEl._h) { chipsEl.innerHTML = chips; chipsEl._h = chips; }
 }
@@ -1114,7 +1125,7 @@ function startFinale() {
 function showFinaleCard() {
   const S = state.stats, el = document.getElementById('finale');
   document.getElementById('finMvp').textContent = JIE ? '年度 MVP：老鳥 阿傑' : `年度 MVP：${RANKS[state.rank].title} 小葵`;
-  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip]];
+  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip], ['🎡 遊樂設施', S.rides || 0]];
   document.getElementById('finStats').innerHTML = rows.map(([k, v]) => `<div>${k}<b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('');
   const nb = 1 + state.year * 0.25;
   document.getElementById('finMove').textContent = `搬到新辦公室（第 ${state.year + 1} 年）`;
@@ -1132,6 +1143,7 @@ function endFinale() {
 }
 document.getElementById('finStay').onclick = endFinale;
 document.getElementById('finMove').onclick = () => {
+  noSave = true;
   // 新年度：存下年度與加成，其他歸零，重新載入
   try {
     localStorage.setItem(YEAR_KEY, JSON.stringify({ year: state.year + 1, bonus: 1 + state.year * 0.25 }));
@@ -1141,18 +1153,223 @@ document.getElementById('finMove').onclick = () => {
 };
 
 // ======================================================================
+// 樓層：電梯、頂樓遊樂園、2F 我的辦公室（第 2 年開放；阿傑老鳥一開始就能去）
+// ======================================================================
+const floorOpen = () => state.year >= 2 || JIE;
+const elevAt = (f = state.floor) => [FLOORS[f].ox - 6.4, -0.6];
+const elevEl = document.getElementById('elev'), elevList = document.getElementById('elevList'), fadeEl = document.getElementById('fade');
+let elevOpen = false, elevClosedHere = false;
+document.getElementById('elevX').onclick = () => { elevEl.classList.remove('on'); elevOpen = false; elevClosedHere = true; };
+function renderElevator() {
+  elevList.innerHTML = Object.entries(FLOORS).map(([id, f]) => {
+    const here = id === state.floor, locked = id !== 'f1' && !floorOpen();
+    return `<button data-f="${id}" ${here || locked ? 'disabled' : ''}><b>${f.icon} ${f.name}</b><small>${here ? '你在這層' : locked ? '🔒 第 2 年開放' : '前往 →'}</small></button>`;
+  }).join('');
+  elevList.querySelectorAll('button[data-f]').forEach(b => b.onclick = (e) => { e.stopPropagation(); audioInit(); goFloor(b.dataset.f); });
+}
+function updateElevator() {
+  const near = nearAt(player.actor, elevAt(), 0.75);
+  if (near && !elevOpen && !elevClosedHere) { elevOpen = true; renderElevator(); elevEl.classList.add('on'); }
+  if (!near) { elevClosedHere = false; if (elevOpen) { elevOpen = false; elevEl.classList.remove('on'); } }
+}
+function goFloor(id) {
+  if (id === state.floor || (id !== 'f1' && !floorOpen())) return;
+  elevEl.classList.remove('on'); elevOpen = false; elevClosedHere = true;
+  fadeEl.classList.add('on'); sfx.answer();
+  setTimeout(() => {   // 畫面淡出的那一下瞬移（只是畫面效果，用真實時間沒關係）
+    state.floor = id;
+    const [x, z] = elevAt(id); player.actor.root.position.set(x + 0.5, 0, z); vel.set(0, 0);
+    player.actor.root.rotation.y = Math.PI / 2;
+    cam.target.copy(camFocusOf(player.actor.root.position));
+    fadeEl.classList.remove('on');
+    toast(`${FLOORS[id].icon} ${FLOORS[id].name}`);
+  }, 230);
+}
+function floorGuide() {
+  if (state.floor === 'f2') return [[FLOORS.f2.ox + ROOM.zone[0], ROOM.zone[1]], '🛋 站到家具型錄，佈置你的辦公室'];
+  const rs = Object.values(roof.rides), cashR = rs.filter(r => r.cash.length).sort((a, b) => b.cash.length - a.cash.length)[0];
+  const pad = pads.filter(p => p.shown && p.floor === 'rf' && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
+  if (cashR && (cashR.cash.length > 5 || !pad)) return [rw(cashR.def.cash), '去收門票錢！'];
+  if (pad) return [pad.at, `站上格子：${pad.kind === 'upgrade' ? '升級' : '蓋'}「${pad.title()}」`];
+  if (!rs.some(r => r.unlocked)) return [null, '存到錢就來蓋第一個遊樂設施'];
+  return [null, '同事上來玩，玩完會付門票錢'];
+}
+
+// ---------- 頂樓遊樂園 ----------
+const OXR = FLOORS.rf.ox, rw = ([x, z]) => [OXR + x, z];
+const roof = { rides: {}, visitors: [], spawnT: 0, n: 0 };
+function setupRoof() {
+  buildRoof(OXR);
+  for (const R of RIDES) roof.rides[R.id] = { def: R, unlocked: false, lv: 0, look: null, state: 'idle', t: 0, run: 0, wait: 0, riders: [], queue: [], cash: [], badge: null, collectT: 0 };
+}
+function setupRoofPads() {
+  for (const r of Object.values(roof.rides)) {
+    const R = r.def;
+    addPad({ kind: 'unlock', floor: 'rf', at: rw(R.at), price: () => R.unlock, title: () => `${R.icon} ${R.name}`, cond: () => floorOpen(), done: () => r.unlocked,
+      complete: () => { openRide(r, true); celebrate(V(OXR + R.at[0], 0, R.at[1]), `開幕！${R.icon} ${R.name}`, `一次坐 ${R.levels[0].cap} 人　門票 $${R.levels[0].ticket}`, 1, '#ff5d8f'); } });
+    addPad({ kind: 'upgrade', floor: 'rf', at: rw(R.upPad), price: () => R.levels[Math.min(2, r.lv + 1)].cost, title: () => R.levels[Math.min(2, r.lv + 1)].title, cond: () => r.unlocked, done: () => r.lv >= 2,
+      complete: () => { finishRide(r); r.lv++; setRideLook(r, true); const Lv = R.levels[r.lv]; celebrate(V(OXR + R.at[0], 0, R.at[1]), Lv.title, `一次坐 ${Lv.cap} 人　門票 $${Lv.ticket}`, r.lv + 1, '#ff5d8f'); } });
+  }
+}
+function openRide(r, fancy) {
+  r.unlocked = true; const R = r.def, [x, z] = rw(R.at);
+  if (R.id === 'wheel') aabb(x, z, 1.4, 0.6); else if (R.id === 'train') aabb(x, z, 2.3, 1.3); else aabb(x, z, 1.3, 1.3);
+  zoneMark(...rw(R.cash), 1.2, 1.0, '#7dff9a');
+  setRideLook(r, fancy);
+}
+function setRideLook(r, fancy) {
+  const R = r.def, [x, z] = rw(R.at);
+  const look = rideLook(R.id, r.lv); look.g.position.set(x, 0, z); swapIn(r.look?.g, look.g, fancy); r.look = look;
+  if (r.badge) scene.remove(r.badge);
+  r.badge = levelBadge(R.levels[r.lv].title, r.lv, 3); r.badge.position.set(x, 0, z + (R.id === 'wheel' ? 1.0 : 0)); r.badge.userData.y = R.id === 'wheel' ? 4.7 : R.id === 'horse' ? 2.4 : 1.8; scene.add(r.badge);
+}
+const rideCashSlot = (r, i) => { const [x, z] = rw(r.def.cash); return V(x + ((i % 2) - 0.5) * 0.34, 0.03 + Math.floor(i / 4) * 0.045, z + ((i >> 1) % 2 - 0.5) * 0.2); };
+const queueSlot = (r, i) => { const q = r.def.queue; if (i < q.length) return rw(q[i]); const l = q[q.length - 1]; return rw([l[0] + (i - q.length + 1) * 0.6, l[1] + 0.3]); };
+function spawnVisitor() {
+  const open = Object.values(roof.rides).filter(r => r.unlocked); if (!open.length) return;
+  const r = open.sort((a, b) => a.queue.length / a.def.levels[a.lv].cap - b.queue.length / b.def.levels[b.lv].cap)[0];
+  const a = makeActor(roof.n++ % 2 ? kinds.npcF : kinds.npcM, 0.95);
+  const [ex, ez] = elevAt('rf'); a.root.position.set(ex + 0.3, 0, ez + (Math.random() - 0.5) * 0.6); scene.add(a.root);
+  const v = { actor: a, ride: r, mode: 'queue' }; r.queue.push(v); roof.visitors.push(v);
+}
+// 一趟結束：乘客下來、付門票、回電梯
+function finishRide(r) {
+  if (!r.riders.length) { r.state = 'idle'; r.t = 0; r.run = 0; return; }
+  const Lv = r.def.levels[r.lv], [ex, ez] = rw(r.def.entry);
+  const total = Math.round(Lv.ticket * r.riders.length * incomeMult());
+  r.riders.forEach((v, i) => {
+    const root = v.actor.root; scene.attach(root); root.scale.setScalar(0.95); root.rotation.set(0, Math.PI / 2, 0);
+    root.position.set(ex + (i % 3) * 0.35, 0, ez + Math.floor(i / 3) * 0.35); v.mode = 'leave';
+  });
+  state.stats.rides = (state.stats.rides || 0) + r.riders.length;
+  const bills = Math.min(10, Math.max(1, Math.round(total / 20))), from = V(ex, 0.8, ez);
+  for (let i = 0; i < bills; i++) after(i * 0.05, () => {
+    if (r.cash.length >= 60) { r.cash[r.cash.length - 1].userData.v += total / bills; return; }
+    const b = makeBill(); b.position.copy(from); b.userData.v = total / bills; r.cash.push(b); track(b, () => rideCashSlot(r, r.cash.indexOf(b)));
+  });
+  floatText(V(...[rw(r.def.cash)[0], 1.1, rw(r.def.cash)[1]]), '+$' + total, '#22a447');
+  r.riders = []; r.state = 'idle'; r.t = 0; r.run = 0; r.wait = 0;
+}
+function updateRoof(dt) {
+  const open = Object.values(roof.rides).filter(r => r.unlocked);
+  if (open.length && !design.finale) {
+    const cap = open.reduce((n, r) => n + r.def.levels[r.lv].cap, 0);
+    roof.spawnT += dt;
+    if (roof.spawnT > Math.max(0.9, 4.2 / Math.sqrt(cap)) && roof.visitors.length < 6 + cap * 1.5) { roof.spawnT = 0; spawnVisitor(); }
+  }
+  for (const r of open) {
+    const Lv = r.def.levels[r.lv];
+    // 排隊往前走
+    r.queue.forEach((v, i) => { const [x, z] = queueSlot(r, i); v.at = walkTo(v.actor, x, z, CFG.crewSpeed * 1.3, dt); if (v.at) turnTo(v.actor, Math.atan2(r.def.entry[0] + OXR - x, r.def.entry[1] - z), dt); });
+    if (r.state === 'idle') {
+      const ready = r.queue.filter(v => v.at).length;
+      if (ready) r.wait += dt;
+      if (ready && (ready >= Lv.cap || r.wait > 2.4)) {   // 上車：坐滿或等 2.4 秒就開
+        const n = Math.min(Lv.cap, ready, r.look.seats.length);
+        for (let i = 0; i < n; i++) {
+          const v = r.queue.shift(), seat = r.look.seats[i], root = v.actor.root;
+          seat.add(root); root.position.set(0, 0, 0); root.rotation.set(0, 0, 0); root.scale.setScalar(r.def.id === 'cups' ? 0.6 : 0.55);
+          v.actor.speed = 0; v.mode = 'ride'; r.riders.push(v);
+        }
+        r.state = 'run'; r.t = 0; sfx.build();
+      }
+    } else {
+      r.t += dt; r.run = clamp01(Math.min(r.t / 0.8, (Lv.dur - r.t) / 0.8));
+      if (r.t >= Lv.dur) finishRide(r);
+    }
+    r.look.tick(dt, r.run, state.t);
+    // 收門票錢（磁鐵照樣有用）
+    r.collectT += dt;
+    const mag = [0.75, 2.6, 99][state.gear.magnet];
+    if (state.floor === 'rf' && r.cash.length && r.collectT > CFG.moveEvery && nearAt(player.actor, rw(r.def.cash), Math.min(mag, 6))) {
+      r.collectT = 0;
+      for (let k = 0; k < 2 && r.cash.length; k++) { const b = r.cash.pop(), v = b.userData.v; retarget(b, () => player.actor.root.position.clone().setY(0.7), () => addMoney(v)); }
+      sfx.coin();
+    }
+  }
+  // 玩完的同事回電梯
+  for (let i = roof.visitors.length - 1; i >= 0; i--) {
+    const v = roof.visitors[i];
+    if (v.mode === 'leave') { const [x, z] = elevAt('rf'); if (walkTo(v.actor, x - 0.3, z, CFG.crewSpeed * 1.4, dt)) { scene.remove(v.actor.root); roof.visitors.splice(i, 1); continue; } }
+    if (v.mode !== 'ride') updateActor(v.actor, dt, state.t); else { v.actor.speed = 0; updateActor(v.actor, dt, state.t); }
+  }
+}
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+// ---------- 2F 我的辦公室 ----------
+const OXO = FLOORS.f2.ox;
+const room = { owned: {}, sel: {}, objs: {}, shell: null, pet: null };
+const comfort = () => Object.entries(room.owned).reduce((n, [slot, arr]) => n + arr.filter(i => FURN.find(f => f.slot === slot).opts[i].price > 0).length, 0);
+function setupRoom() {
+  buildOffice(OXO); room.shell = roomShell(OXO);
+  try { const d = JSON.parse(localStorage.getItem(ROOM_KEY)); if (d) { room.owned = d.owned || {}; room.sel = d.sel || {}; } } catch {}
+  const t = canvasTex(1024, 160, (g, W, H) => { g.fillStyle = '#ff7a45'; roundRect(g, 4, 4, W - 8, H - 8, 70); g.fill(); g.fillStyle = '#fff'; g.font = `900 92px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`🛋 ${ME.name}的辦公室`, W / 2, H / 2 + 6); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 0.78), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); sign.rotation.x = -Math.PI / 2; sign.position.set(OXO + 1.2, 0.012, 3.6); scene.add(sign);
+  zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 1.0, '#ffb47a');
+  aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.4, 0.65);
+  for (const f of FURN) { room.owned[f.slot] = [...new Set([0, ...(room.owned[f.slot] || [])])]; applySlot(f.slot, false); }
+}
+function applySlot(slot, fancy) {
+  const f = FURN.find(x => x.slot === slot), i = room.sel[slot] || 0, o = f.opts[i];
+  if (room.objs[slot]) { scene.remove(room.objs[slot]); room.objs[slot] = null; }
+  if (slot === 'pet') room.pet = null;
+  if (o.tex) setRoomTex(slot === 'floor' ? room.shell.floor : room.shell.back, slot, o.tex);
+  else if (o.make) { const g = o.make(OXO); g.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(g); room.objs[slot] = g; if (fancy) popIn(g); if (o.pet) room.pet = g; }
+}
+function buyFurn(slot, i) {
+  const f = FURN.find(x => x.slot === slot), o = f.opts[i], owned = room.owned[slot].includes(i);
+  if (!owned) { if (state.money < o.price) return; state.money -= o.price; bumpMoney(); room.owned[slot].push(i); sfx.upgrade(); }
+  else sfx.pick();
+  room.sel[slot] = i; applySlot(slot, true);
+  const obj = room.objs[slot], at = obj ? obj.position : V(OXO, 0, -2);
+  if (!owned) { confetti(V(at.x, 1.2, at.z), 40); floatText(V(at.x, 1.6, at.z), `舒適度 +2%`, '#ff7a45', 0.8); }
+  roomKey = ''; save();
+}
+const roomEl = document.getElementById('room'), roomList = document.getElementById('roomList');
+let roomOpen = false, roomClosedHere = false, roomKey = '';
+document.getElementById('roomX').onclick = () => { roomEl.classList.remove('on'); roomOpen = false; roomClosedHere = true; };
+function renderRoom() {
+  const key = JSON.stringify(room.sel) + JSON.stringify(room.owned) + '|' + Math.floor(state.money / 100);
+  if (key === roomKey) return; roomKey = key;
+  document.getElementById('roomComfort').textContent = `舒適度 +${comfort() * 2}%`;
+  roomList.innerHTML = FURN.map(f => `<div class="sec">${f.name}</div><div class="opts">` + f.opts.map((o, i) => {
+    const own = room.owned[f.slot].includes(i), on = (room.sel[f.slot] || 0) === i;
+    return `<button data-s="${f.slot}" data-i="${i}" class="${on ? 'on' : own ? 'own' : ''}" ${!own && state.money < o.price ? 'disabled' : ''}>${o.name}<small>${on ? '使用中' : own ? '換這個' : '$' + o.price.toLocaleString()}</small></button>`;
+  }).join('') + '</div>').join('');
+  roomList.querySelectorAll('button[data-s]').forEach(b => b.onclick = (e) => { e.stopPropagation(); audioInit(); buyFurn(b.dataset.s, +b.dataset.i); renderRoom(); });
+}
+function updateRoom() {
+  if (state.floor !== 'f2') { if (roomOpen) { roomOpen = false; roomEl.classList.remove('on'); } return; }
+  const near = nearAt(player.actor, [OXO + ROOM.zone[0], ROOM.zone[1]], 0.85);
+  if (near && !roomOpen && !roomClosedHere) { roomOpen = true; roomKey = ''; roomEl.classList.add('on'); }
+  if (!near) { roomClosedHere = false; if (roomOpen) { roomOpen = false; roomEl.classList.remove('on'); } }
+  if (roomOpen) renderRoom();
+}
+// 寵物：在地毯附近晃來晃去
+function updatePet(dt) {
+  const p = room.pet; if (!p) return;
+  p.userData.t = (p.userData.t || 0) + dt;
+  const t = p.userData.t, x = OXO - 2.4 + Math.sin(t * 0.4) * 1.6, z = -3.2 + Math.sin(t * 0.27) * 1.0;
+  const dx = x - p.position.x, dz = z - p.position.z; if (Math.hypot(dx, dz) > 1e-4) p.rotation.y = Math.atan2(dx, dz);
+  p.position.set(x, Math.abs(Math.sin(t * 6)) * 0.05, z);
+}
+
+// ======================================================================
 // 存檔（瀏覽器本機）：每 5 秒、離開頁面時存
 // ======================================================================
 const SAVE_KEY = 'office-apocalypse-save-v1' + (JIE ? '-jie' : ''), YEAR_KEY = 'office-apocalypse-year' + (JIE ? '-jie' : '');   // 阿傑模式另存一份
-let saveT = 0;
+const ROOM_KEY = 'office-apocalypse-room' + (JIE ? '-jie' : '');   // 2F 家具：搬新辦公室也跟著走，不跟年度一起清
+let saveT = 0, noSave = false;   // 搬家／重來時關掉存檔，免得離開頁面時又把舊進度寫回去
 function save() {
-  if (!player || design.finale || !state.started) return;   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
+  if (!player || design.finale || !state.started || noSave) return;   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
     v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
     gear: state.gear, decor: state.decor, stats: state.stats,
     shops: Object.fromEntries(Object.values(shops).map(s => [s.type, { unlocked: s.unlocked, lv: s.lv }])),
     phone: { unlocked: phone.unlocked, lv: phone.lv }, hires: Object.keys(hires),
+    roof: Object.fromEntries(Object.values(roof.rides).map(r => [r.def.id, { u: r.unlocked, lv: r.lv }])),
   };
+  try { localStorage.setItem(ROOM_KEY, JSON.stringify({ owned: room.owned, sel: room.sel })); } catch {}
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
 }
 function loadYear() {
@@ -1170,6 +1387,7 @@ function loadSave() {
   }
   if (d.phone?.unlocked) { openPhone(); if (d.phone.lv) { phone.lv = d.phone.lv; setPhoneLook(phone.lv, false); } }
   for (const id of d.hires || []) { const h = HIRES.find(x => x.id === id); if (h) hire(h, true); }
+  for (const r of Object.values(roof.rides)) { const o = d.roof?.[r.def.id]; if (o?.u) { r.lv = o.lv || 0; openRide(r, false); } }
   if (state.q >= 1) openKiosk(false);
   state.decor.forEach(id => placeDecor(DECOR.find(x => x.id === id), false));
   return true;
@@ -1185,10 +1403,11 @@ function update(dt) {
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
-  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); }
+  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateRoom(); }
+  updateRoof(dt); updatePet(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
-  for (const b of [...Object.values(shops).map(s => s.badge), phone.badge]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
+  for (const b of [...Object.values(shops).map(s => s.badge), phone.badge, ...Object.values(roof.rides).map(r => r.badge)]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
 let last = performance.now();
 function frame(now) {
@@ -1198,7 +1417,7 @@ function frame(now) {
   try {
     if (state.started) update(dt);
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
-    updateCamera(camFocus || V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
+    updateCamera(camFocus || camFocusOf(p), dt);
     render();
   } catch (err) { console.error(err); }
 }
@@ -1225,9 +1444,10 @@ const G = window.G = {
   tick(dt) {
     if (state.started) update(dt);
     const p = player.actor.root.position;
-    updateCamera(G.camAt ? V(G.camAt[0], 0, G.camAt[1]) : camFocus || V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
+    updateCamera(G.camAt ? V(G.camAt[0], 0, G.camAt[1]) : camFocus || camFocusOf(p), dt);
     render();
   },
+  goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin })[n](); }, get kevin() { return kevin; },
 };   // 除錯用
 (async () => {
@@ -1237,12 +1457,13 @@ const G = window.G = {
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }
-  if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
+  if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year', 'office-apocalypse-room']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
   loadYear();
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
   const TH = [null, { wood: 0xffc9b8, cafe: 0xe4dcff, part: 0xff8a5c }, { wood: 0xcfe8ff, cafe: 0xfff0c2, part: 0x7b5cff }, { wood: 0xd8ffd0, cafe: 0xffd9ec, part: 0x2f7fc4 }][(state.year - 1) % 4];
   if (TH) { ENV.work.material.color.setHex(TH.wood); ENV.cafe.material.color.setHex(TH.cafe); mat(0x3fb6a8).color.setHex(TH.part); }
   for (const t of ['coffee', 'printer', 'vending', 'beef', 'chicken', 'fish']) makeShop(t);
+  setupRoof(); setupRoom();
   const a = addJog(makeActor(kinds[ME.icon], 1), kinds[ME.icon + 'Jog']);
   a.root.position.set(L.start[0], 0, L.start[1]); a.root.rotation.y = Math.PI; scene.add(a.root);
   player = { actor: a, carry: [], type: null, carryMax: rankCarry(0), moveT: 0 };
@@ -1263,7 +1484,7 @@ const G = window.G = {
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
   btn.disabled = false; btn.textContent = loaded ? '繼續上班' : state.year > 1 ? `第 ${state.year} 年開工` : '開始上班';
   const reset = document.getElementById('reset');
-  if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); } catch {} location.reload(); } }; }
+  if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); localStorage.removeItem(ROOM_KEY); } catch {} location.reload(); } }; }
   btn.onclick = () => {
     audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
     if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}`, 0, '#2fb27a');

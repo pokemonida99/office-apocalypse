@@ -12,7 +12,7 @@ export function install() {
   const PHONE = [5.4, -4.2];
   B.decide = () => {
     const p = G.player;
-    const pad = G.pads.filter(q => q.shown && G.state.money >= q.price() - q.paid).sort((a, b) => a.price() - b.price())[0];
+    const pad = G.pads.filter(q => q.shown && !q.floor && G.state.money >= q.price() - q.paid).sort((a, b) => a.price() - b.price())[0];   // bot 只玩 1F
     if (B.mode === 'fill') {
       const s = B.shop;
       B.idle = s.tray.length ? 0 : (B.idle || 0) + 1 / 30;

@@ -96,6 +96,26 @@
   #cover button { font: inherit; font-size: 21px; font-weight: 900; padding: 13px 44px; border: 0; border-radius: 30px; background: #ff5d3a; color: #fff; box-shadow: 0 6px 0 #b8381c; cursor: pointer; }
   #cover button:disabled { background: #c9a98f; box-shadow: 0 6px 0 #9c7d66; }
   #cover small { font-size: 12px; opacity: .6; }
+  /* 電梯面板、家具型錄、換樓層淡出 */
+  #elev, #room { position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); width: min(360px, 94vw); background: #fffdf7; border-radius: 20px; box-shadow: 0 10px 30px #0004; padding: 10px 12px 12px; opacity: 0; pointer-events: none; transition: all .2s; z-index: 4; }
+  #elev.on, #room.on { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+  #elev h3, #room h3 { margin: 2px 4px 8px; font-size: 17px; color: #2c3e57; display: flex; justify-content: space-between; align-items: center; }
+  #elev h3 button, #room h3 button { border: 0; background: #eee; border-radius: 12px; width: 28px; height: 28px; font-weight: 900; }
+  #elevList { display: flex; flex-direction: column; gap: 8px; }
+  #elevList button { font: inherit; border: 0; border-radius: 16px; padding: 11px 14px; background: #ff7a45; color: #fff; box-shadow: 0 4px 0 #c4501f; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+  #elevList button small { font-size: 12px; font-weight: 800; opacity: .9; }
+  #elevList button:disabled { background: #e8dfd2; color: #8a7a66; box-shadow: none; }
+  #room { max-height: 56vh; overflow: auto; touch-action: pan-y; }
+  #room h3 small { font-size: 12px; color: #ff7a45; margin-left: 4px; }
+  #room .sec { font-size: 12px; font-weight: 900; color: #8a6a4c; margin: 8px 4px 4px; }
+  #room .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  #room .opts button { font: inherit; font-size: 13px; font-weight: 900; border: 0; border-radius: 12px; padding: 6px 9px; background: #36c35d; color: #fff; box-shadow: 0 3px 0 #1f8a3c; display: flex; flex-direction: column; align-items: center; min-width: 72px; }
+  #room .opts button small { font-size: 11px; opacity: .9; }
+  #room .opts button.own { background: #fff; color: #2c3e57; box-shadow: 0 0 0 2px #e4d6c2; }
+  #room .opts button.on { background: #ffd34d; color: #7a5a00; box-shadow: 0 0 0 3px #ff7a45; }
+  #room .opts button:disabled { background: #d9d1c4; box-shadow: none; }
+  #fade { position: fixed; inset: 0; background: #fff3e0; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 7; }
+  #fade.on { opacity: 1; }
   /* 開場：小葵的對話框 */
   #talk { position: fixed; inset: 0; z-index: 4; display: none; align-items: flex-end; justify-content: center; padding: 0 12px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent 55%, #2c3e5755); }
   #talk.on { display: flex; }
@@ -133,6 +153,9 @@
   <div id="chips"></div>
   <button id="swapHud"></button>
 </div>
+<div id="elev"><h3><span>🛗 搭電梯</span><button id="elevX">✕</button></h3><div id="elevList"></div></div>
+<div id="room"><h3><span>🛋 家具型錄 <small id="roomComfort"></small></span><button id="roomX">✕</button></h3><div id="roomList"></div></div>
+<div id="fade"></div>
 <div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
 <div id="finale"><div class="card">
   <h2>🎉 尾牙 🎉</h2><div class="mvp" id="finMvp"></div>
@@ -186,6 +209,6 @@
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.4.2"></script>
+<script type="module" src="js/main.js?v=0.5.0"></script>
 </body>
 </html>
