@@ -1,13 +1,13 @@
-// 上班啟示錄 v0.2：新人小葵在辦公室打雜升級
-// 咖啡機／印表機：做貨 → 背去櫃台 → 同事排隊付錢；電話總機：站著接電話賺錢
-// 每台設施 5 級（Lv5＝產線），小葵靠經驗升職（背更多、走更快），還能請阿傑、小米、Vivi 來幫忙
+// 上班啟示錄 v0.3：新人小葵在辦公室打雜升級
+// 咖啡機／印表機：做貨 → 背去櫃台 → 同事排隊付錢；販賣機、員工餐廳（牛／雞／魚）：搬進貨去補貨 → 同事來買
+// 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.2.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.2.0';
-import { STATIONS, LOOKS, ITEM_H, makeItem, makeBill, buildBelt, levelBadge } from './stations.js?v=0.2.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.2.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.3.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.3.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.3.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.3.0';
 
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.3.0';
 
 // ---------- 數值 ----------
 const CFG = {
@@ -15,11 +15,13 @@ const CFG = {
   helperSpeed: 1.9,
   moveEvery: 0.065,      // 拿／放一個的間隔
   serveEvery: 0.24,
-  answerEvery: 0.3,      // 接一通電話的間隔
+  answerEvery: 0.3,      // 小葵接一通電話的間隔
+  miAnswerEvery: 0.55,   // 小米接一通的間隔
   queueMax: 6,
   spawnEvery: 1.3,
   beltSpeed: 1.8,
-  stackCols: 10,         // 櫃台一疊最多幾個，超過另起一疊
+  draftTime: 24,         // 阿傑畫一張稿要幾秒
+  draftPay: 500,         // 交稿一次多少錢
 };
 // 小葵升職表：累積經驗、職稱；每升一級背的數量＋2、走路快一點
 const RANKS = [
@@ -30,10 +32,15 @@ const rankCarry = (r) => 6 + r * 2;
 const rankSpeed = (r) => 2.35 + r * 0.09;
 
 // ---------- 場景配置（x 往右、z 往鏡頭） ----------
+// 北邊：咖啡機、印表機、電話總機；東邊：販賣機；中間：請人格子、設計部；南邊：員工餐廳三攤
 const L = {
-  bounds: { minX: -7.2, maxX: 7.2, minZ: -6.5, maxZ: 6.4 },
-  elevator: [-7.0, 5.2], exit: [7.0, 5.2], start: [-2.2, -3.6],
+  bounds: { minX: -7.2, maxX: 7.2, minZ: -6.5, maxZ: 10.6 },
+  elevator: [-7.0, -0.6], exit: [7.0, 2.6], start: [-2.2, -3.6],
 };
+const foodShop = (x, upX) => ({
+  source: [x, 9.9], srcRot: Math.PI, pickup: [x, 9.05], counter: [x, 6.8], rot: Math.PI, drop: [x, 7.85], cash: [x + 1.6, 7.85],
+  queue: [[x, 5.75], [x, 5.05], [x, 4.35], [x + 0.7, 4.35], [x + 1.4, 4.35]], upPad: [upX, 8.9], unlockPad: [x, 7.85],
+});
 const SHOPS_DEF = {
   coffee: {
     machine: [-5.4, -5.7], counter: [-4.0, -2.4], drop: [-4.0, -3.4], cash: [-2.4, -3.4],
@@ -43,18 +50,27 @@ const SHOPS_DEF = {
   printer: {
     machine: [0.0, -5.7], counter: [1.4, -2.4], drop: [1.4, -3.4], cash: [3.0, -3.4],
     queue: [[1.4, -1.5], [1.4, -0.8], [1.4, -0.1], [1.4, 0.6], [1.4, 1.3], [2.1, 1.3], [2.8, 1.3], [3.5, 1.3], [4.2, 1.3]],
-    belt: [[-1.1, -5.4], [-1.1, -2.4], [0.2, -2.4]], upPad: [1.7, -5.5], unlockPad: [0.0, -4.15],
+    belt: [[-1.1, -5.4], [-1.1, -2.4], [0.2, -2.4]], upPad: [1.7, -5.5], unlockPad: [0.0, -4.15], need: () => shops.coffee.lv >= 1,
   },
+  vending: {
+    source: [6.9, -2.7], srcRot: -Math.PI / 2, pickup: [6.0, -2.7], counter: [6.95, 0.0], rot: -Math.PI / 2, drop: [6.0, -1.15], cash: [6.0, 1.2],
+    queue: [[5.9, 0.0], [5.2, 0.0], [4.5, 0.0], [3.8, 0.0]], upPad: [4.4, -1.7], unlockPad: [6.0, -1.15], need: () => shops.printer.unlocked,
+  },
+  beef: { ...foodShop(-4.2, -6.0), need: () => shops.vending.unlocked },
+  chicken: { ...foodShop(0, -1.8), need: () => shops.beef.unlocked },
+  fish: { ...foodShop(4.2, 2.4), need: () => shops.chicken.unlocked },
 };
 const PHONE_DEF = { desk: [5.4, -5.6], zone: [5.4, -4.2], upPad: [3.7, -5.5], unlockPad: [5.4, -4.2] };
+const DESK_AT = [-6.0, 3.3];
 const HIRES = [
-  { id: 'worker', name: '工讀生', price: 250, at: [-3.6, 3.6], need: () => shops.coffee.lv >= 1, kind: 'npcF' },
-  { id: 'jie', name: '阿傑', price: 1200, at: [-1.2, 3.6], need: () => shops.printer.unlocked, kind: 'jie' },
-  { id: 'mi', name: '小米', price: 2500, at: [1.2, 3.6], need: () => phone.unlocked, kind: 'mi' },
-  { id: 'vivi', name: 'Vivi 老闆', price: 9000, at: [3.6, 3.6], need: () => shops.coffee.lv >= 3 && shops.printer.unlocked && phone.unlocked, kind: 'vivi' },
+  { id: 'worker', name: '工讀生（咖啡）', price: 250, at: [-2.4, 3.0], need: () => shops.coffee.lv >= 1, kind: 'npcF', home: 'coffee', cap: 0xffc83d },
+  { id: 'worker2', name: '工讀生（影印）', price: 900, at: [-0.6, 3.0], need: () => shops.printer.unlocked, kind: 'npcM', home: 'printer', cap: 0x3fa7ff },
+  { id: 'jie', name: '阿傑（設計部）', price: 1800, at: DESK_AT, need: () => shops.printer.lv >= 1, kind: 'jie' },
+  { id: 'mi', name: '小米', price: 2500, at: [1.2, 3.0], need: () => phone.unlocked, kind: 'mi' },
+  { id: 'vivi', name: 'Vivi 老闆', price: 9000, at: [3.0, 3.0], need: () => phone.unlocked && shops.vending.unlocked, kind: 'vivi' },
 ];
 
-// ---------- 環境：暖色調辦公室 ----------
+// ---------- 環境：溫暖的辦公室 ----------
 function planks(base, line, w = 256) {
   return canvasTex(w, w, (g, W, H) => {
     g.fillStyle = base; g.fillRect(0, 0, W, H);
@@ -63,43 +79,55 @@ function planks(base, line, w = 256) {
   });
 }
 const colliders = [];
-const aabb = (x, z, hw, hd) => colliders.push({ minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd });
+const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd }; colliders.push(c); return c; };
 {
   // 大地板：奶油色地磚
   const tile = canvasTex(256, 256, (g) => { g.fillStyle = '#f6e7cf'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#efdcbd'; g.fillRect(0, 0, 128, 128); g.fillRect(128, 128, 128, 128); g.strokeStyle = '#e4cba6'; g.lineWidth = 3; g.strokeRect(0, 0, 256, 256); });
   tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(20, 20);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshStandardMaterial({ map: tile, roughness: 0.8 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ map: tile, roughness: 0.8 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
   // 工作區：暖木地板
   const wood = planks('#dd9a5a', '#b9733c'); wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.repeat.set(4, 1.6);
   const work = new THREE.Mesh(new THREE.PlaneGeometry(15, 4.7), new THREE.MeshStandardMaterial({ map: wood, roughness: 0.7 }));
   work.rotation.x = -Math.PI / 2; work.position.set(0, 0.004, -4.4); work.receiveShadow = true; scene.add(work);
-  // 後牆＋結霜窗＋冷氣
+  // 員工餐廳：薄荷綠格子地磚
+  const cafe = canvasTex(128, 128, (g) => { g.fillStyle = '#d8f0e3'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c3e6d3'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); });
+  cafe.wrapS = cafe.wrapT = THREE.RepeatWrapping; cafe.repeat.set(15, 6);
+  const cf = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.2), new THREE.MeshStandardMaterial({ map: cafe, roughness: 0.8 }));
+  cf.rotation.x = -Math.PI / 2; cf.position.set(0, 0.004, 7.9); cf.receiveShadow = true; scene.add(cf);
+  // 地上漆的「員工餐廳」字樣（不擋畫面）
+  const cafeTxt = canvasTex(512, 96, (g, W, H) => { g.fillStyle = '#2fb27a'; roundRect(g, 4, 4, W - 8, H - 8, 40); g.fill(); g.fillStyle = '#fff'; g.font = `900 58px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍱 員工餐廳', W / 2, H / 2 + 3); });
+  const cs = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.8), new THREE.MeshBasicMaterial({ map: cafeTxt, transparent: true, depthWrite: false }));
+  cs.rotation.x = -Math.PI / 2; cs.position.set(0, 0.01, 10.55); scene.add(cs);
+  // 後牆＋晴天窗景（城市大樓）
   rbox(15.4, 3.0, 0.3, 0xfff1dd, 0, 1.5, -7.0);
-  const frost = canvasTex(256, 256, (g, W, H) => {
-    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#8ec5ff'); gr.addColorStop(1, '#e3f2ff');
+  const sky = canvasTex(256, 192, (g, W, H) => {
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#7cc4ff'); gr.addColorStop(1, '#d6efff');
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    g.fillStyle = '#ffffffdd'; for (let i = 0; i < 80; i++) { g.beginPath(); g.arc(Math.random() * W, Math.random() * H, 1 + Math.random() * 3.5, 0, 7); g.fill(); }
-    g.fillStyle = '#fff'; g.fillRect(0, H - 30, W, 30);
+    g.fillStyle = '#ffffffee'; for (const [x, y, r] of [[50, 40, 18], [70, 36, 22], [92, 42, 16], [180, 60, 16], [198, 55, 20]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    const cols = ['#9fb6cf', '#b7c9dc', '#8ea7c2', '#c5d4e3'];
+    for (let i = 0; i < 9; i++) { const w = 22 + (i * 13) % 16, h = 50 + (i * 37) % 70, x = i * 30 - 6; g.fillStyle = cols[i % 4]; g.fillRect(x, H - h, w, h); g.fillStyle = '#ffffffaa'; for (let r = 0; r < h / 14 - 1; r++) for (let c = 0; c < 2; c++) g.fillRect(x + 4 + c * 10, H - h + 6 + r * 14, 5, 7); }
   });
   for (const x of [-5.4, -2.7, 0, 2.7, 5.4]) {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.5), new THREE.MeshBasicMaterial({ map: frost, toneMapped: false }));
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.5), new THREE.MeshBasicMaterial({ map: sky, toneMapped: false }));
     w.position.set(x, 1.7, -6.84); scene.add(w);
     rbox(2.15, 0.12, 0.14, 0xffffff, x, 0.93, -6.8); rbox(0.08, 1.55, 0.1, 0xffffff, x, 1.7, -6.8);
   }
-  for (const x of [-4.05, 1.35]) { rbox(1.4, 0.4, 0.35, 0xffffff, x, 2.6, -6.7); box(1.2, 0.04, 0.02, 0x9aa3ad, x, 2.45, -6.52); }
+  // 牆上的時鐘和公告欄
+  { const c = cyl(0.32, 0.32, 0.06, 0xffffff, 0, 2.62, -6.82); c.rotation.x = Math.PI / 2; box(0.03, 0.2, 0.02, 0x2c3e57, 0, 2.66, -6.78); box(0.15, 0.03, 0.02, 0x2c3e57, 0.06, 2.62, -6.78); }
+  rbox(1.0, 0.6, 0.05, 0xc9915b, 4.05, 2.4, -6.82);
+  [0xffe08a, 0x9be7ff, 0xff9ad5].forEach((c, i) => box(0.24, 0.24, 0.02, c, 3.75 + i * 0.3, 2.42 + (i % 2) * 0.08, -6.78).rotation.z = (i - 1) * 0.15);
   // 側牆隔板（青綠色）、電梯
-  for (let z = -6.3; z <= 6.3; z += 1.3) {
+  for (let z = -6.3; z <= 10.3; z += 1.3) {
     if (Math.abs(z - L.elevator[1]) > 0.9) rbox(0.14, 0.75, 1.24, 0x3fb6a8, -7.6, 0.375, z);
     if (Math.abs(z - L.exit[1]) > 0.9) rbox(0.14, 0.75, 1.24, 0x3fb6a8, 7.6, 0.375, z);
   }
   rbox(0.2, 1.8, 1.4, 0xc7ccd3, -7.65, 0.9, L.elevator[1], scene, { metalness: 0.6, roughness: 0.3 });
   box(0.22, 1.7, 0.03, 0x8a929c, -7.62, 0.87, L.elevator[1]);
   const up = labelSprite('▲ 電梯', { bg: '#ff7a45', size: 0.28 }); up.position.set(-7.4, 2.05, L.elevator[1]); scene.add(up);
-  // 植物、沙發、辦公桌（裝飾，放在路線外）
+  // 植物（放在路線外）
   const plant = (x, z, s = 1) => { cyl(0.22 * s, 0.17 * s, 0.34 * s, 0xff8a5c, x, 0.17 * s, z); for (let i = 0; i < 5; i++) { const l = sphere(0.22 * s, 0x47b35a, x + Math.cos(i * 1.3) * 0.13 * s, (0.5 + (i % 2) * 0.18) * s, z + Math.sin(i * 1.3) * 0.13 * s, scene, { roughness: 0.9 }); l.scale.y = 1.25; } };
-  [[-7.0, -6.3], [7.0, -6.3], [-7.0, 3.0], [7.0, 3.0], [-3.0, -6.4], [3.4, -6.4]].forEach(([x, z]) => plant(x, z));
-  for (const [x, c] of [[-0.6, 0xff7a6b], [1.0, 0x5fb0ff]]) { rbox(1.4, 0.38, 0.6, c, x, 0.19, 6.0); rbox(1.4, 0.45, 0.16, c, x, 0.45, 6.25); }
+  [[-7.0, -6.3], [7.0, -6.3], [-3.0, -6.4], [3.4, -6.4], [-7.0, 10.2], [7.0, 10.2], [-2.1, 10.3], [2.1, 10.3], [7.0, 4.4]].forEach(([x, z]) => plant(x, z));
   // 排隊紅地毯＋金色紅龍柱
   const runner = (pts) => {
     for (let i = 0; i < pts.length - 1; i++) {
@@ -109,24 +137,13 @@ const aabb = (x, z, hw, hd) => colliders.push({ minX: x - hw, maxX: x + hw, minZ
     }
   };
   for (const d of Object.values(SHOPS_DEF)) {
-    runner([d.queue[0], d.queue[4], d.queue[8]]);
-    for (const [x, z] of [d.queue[1], d.queue[3]]) for (const s of [-0.45, 0.45]) { cyl(0.04, 0.04, 0.6, 0xe0b040, x + s, 0.3, z, scene, { metalness: 0.8, roughness: 0.3 }); sphere(0.06, 0xe0b040, x + s, 0.62, z, scene, { metalness: 0.8, roughness: 0.3 }); }
+    const q = d.queue; runner(q.length > 5 ? [q[0], q[4], q[q.length - 1]] : q.length === 5 ? [q[0], q[2], q[4]] : [q[0], q[q.length - 1]]);
+    for (const [x, z] of [q[1], q[q.length > 5 ? 3 : 2]]) for (const s of [-0.45, 0.45]) {
+      const horiz = Math.abs(q[1][1] - q[0][1]) < 0.01;   // 往旁邊排的隊伍，柱子放上下
+      const px = horiz ? x : x + s, pz = horiz ? z + s : z;
+      cyl(0.04, 0.04, 0.6, 0xe0b040, px, 0.3, pz, scene, { metalness: 0.8, roughness: 0.3 }); sphere(0.06, 0xe0b040, px, 0.62, pz, scene, { metalness: 0.8, roughness: 0.3 });
+    }
   }
-}
-
-// 冷氣吹出來的小雪花
-const snow = (() => {
-  const N = 300, pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 15; pos[i * 3 + 1] = Math.random() * 3.4; pos[i * 3 + 2] = -6.8 + Math.random() * 13.5; }
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const dot = canvasTex(32, 32, (g) => { const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, '#fff'); r.addColorStop(1, '#fff0'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); });
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.08, map: dot, transparent: true, depthWrite: false, color: 0xe8f4ff }));
-  scene.add(pts); return { pts, pos, N };
-})();
-function updateSnow(dt, t) {
-  const p = snow.pos;
-  for (let i = 0; i < snow.N; i++) { p[i * 3 + 1] -= dt * (0.22 + (i % 5) * 0.05); p[i * 3] += Math.sin(t * 0.8 + i) * dt * 0.08; if (p[i * 3 + 1] < 0) p[i * 3 + 1] = 3.4; }
-  snow.pts.geometry.attributes.position.needsUpdate = true;
 }
 
 // 地上的白框：站這裡拿／放
@@ -157,45 +174,58 @@ function after(sec, fn) { later.push({ at: state.t + sec, fn }); }
 function runLater() { for (let i = later.length - 1; i >= 0; i--) if (state.t >= later[i].at) { const f = later[i].fn; later.splice(i, 1); f(); } }
 
 // ---------- 狀態 ----------
-const state = { money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0, mult: 1 };
+const state = { money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0 };
 let kinds, player;
 const carriers = [];
 const shops = {};
 const phone = { lv: 0, unlocked: false, lines: [], look: null, answerT: 0, def: PHONE_DEF };
 const hires = {};
+const maxLv = (s) => s.def.levels.length - 1;
+const isLine = (s) => !!s.def.levels[s.lv].line;
+const shopOf = (item) => Object.values(shops).find(s => s.item === item);
 
-// ---------- 咖啡／影印站 ----------
+// ---------- 店：做貨／進貨 → 櫃台（攤位、販賣機）→ 排隊的同事 ----------
 function makeShop(type) {
   const d = SHOPS_DEF[type], def = STATIONS[type];
-  const s = { type, d, def, item: def.item, lv: 0, unlocked: !def.unlock, tray: [], stack: [], cash: [], queue: [], crowd: [], timer: 0, serveT: 0, spawnT: 0, spawnN: 0, beltItems: [], belt: null, look: null, badge: null, pile: V(d.machine[0], 0, d.machine[1] + 0.9), pickup: [d.machine[0], d.machine[1] + 1.55] };
+  const src = d.machine || d.source;
+  const pickup = d.pickup || [src[0], src[1] + 1.55];
+  const pile = d.machine ? V(src[0], 0, src[1] + 0.9) : V(src[0] + (pickup[0] - src[0]) * 0.5, 0, src[1] + (pickup[1] - src[1]) * 0.5);
+  const s = { type, d, def, item: def.item, lv: 0, unlocked: !def.unlock, src, pickup, pile, tray: [], stack: [], cash: [], queue: [], crowd: [], timer: 0, serveT: 0, spawnT: 0, spawnN: 0, beltItems: [], belt: null, look: null, stall: null, badge: null };
   shops[type] = s;
-  if (s.unlocked) openShop(s);
+  if (s.unlocked) openShop(s, false);
   return s;
 }
-function openShop(s) {
+// 攤位等級：補貨類跟著店的等級；咖啡吧、影印區在 Lv3 掛燈泡、Lv5 鑲金邊
+const stallLv = (s) => s.def.restock ? s.lv : Math.min(2, Math.floor(s.lv / 2));
+function openShop(s, fancy = true) {
   s.unlocked = true;
-  const [cx, cz] = s.d.counter;
-  // 櫃台：暖木＋奶油色檯面
-  const c = new THREE.Group(); c.position.set(cx, 0, cz); scene.add(c);
-  rbox(2.4, 0.78, 0.72, s.type === 'coffee' ? 0xe08a4a : 0x5aa7e6, 0, 0.39, 0, c);
-  rbox(2.55, 0.08, 0.85, 0xfff4e2, 0, 0.82, 0, c);
-  const sign = labelSprite(s.type === 'coffee' ? '☕ 咖啡吧' : '📄 影印區', { bg: s.type === 'coffee' ? '#e0663a' : '#3f8fe0', size: 0.3 });
-  sign.position.set(0.6, 1.25, 0); c.add(sign);
-  popIn(c);
-  s.counterG = c; aabb(cx, cz, 1.25, 0.42);
   s.zones = [zoneMark(s.pickup[0], s.pickup[1]), zoneMark(s.d.drop[0], s.d.drop[1]), zoneMark(s.d.cash[0], s.d.cash[1], 1.0, 1.0, '#7dff9a')];
-  aabb(s.d.machine[0], s.d.machine[1], 0.8, 0.5);
-  setLook(s, 0, false);
+  const [cx, cz] = s.d.counter, side = Math.abs(Math.sin(s.d.rot || 0)) > 0.5;
+  s.counterBox = aabb(cx, cz, side ? 0.42 : 1.4, side ? 1.5 : 0.42);
+  if (s.d.machine) aabb(s.src[0], s.src[1], 0.8, 0.5);
+  else { s.look = sourceLook(s.item); s.look.g.position.set(s.src[0], 0, s.src[1]); s.look.g.rotation.y = s.d.srcRot || 0; scene.add(s.look.g); aabb(s.src[0], s.src[1], 0.6, 0.6); if (fancy) popIn(s.look.g); }
+  setLook(s, 0, fancy);
 }
 // 換外觀（升級時舊的縮掉、新的彈出來）
+function swapIn(old, neu, fancy) {
+  if (old) { let k = 1; const shrink = () => { k -= 0.12; old.scale.setScalar(Math.max(0.01, k)); if (k > 0) after(0.016, shrink); else scene.remove(old); }; shrink(); }
+  scene.add(neu); if (fancy) popIn(neu, 1, 2.6);
+}
 function setLook(s, lv, fancy = true) {
-  const [mx, mz] = s.d.machine;
-  if (s.look) { const old = s.look.g; let k = 1; const shrink = () => { k -= 0.12; old.scale.setScalar(Math.max(0.01, k)); if (k > 0) requestAnimationFrame(shrink); else scene.remove(old); }; shrink(); }
-  const look = LOOKS[s.type](lv, { puff, sparkle });
-  look.g.position.set(mx, 0, mz); scene.add(look.g); s.look = look;
-  if (fancy) popIn(look.g, 1, 2.6);
+  const fx = { puff, sparkle };
+  if (s.d.machine) {   // 咖啡機、印表機：機器本身會變
+    const look = LOOKS[s.type](lv, fx);
+    look.g.position.set(s.src[0], 0, s.src[1]); swapIn(s.look?.g, look.g, fancy); s.look = look;
+  }
+  const sl = stallLv(s);
+  if (!s.stall || s.stallLvShown !== sl) {   // 攤位／販賣機
+    const st = s.type === 'vending' ? vendingLook(sl, fx) : stallLook(s.type, sl, fx);
+    st.g.position.set(s.d.counter[0], 0, s.d.counter[1]); st.g.rotation.y = s.d.rot || 0;
+    swapIn(s.stall?.g, st.g, fancy || !!s.stall); s.stall = st; s.stallLvShown = sl;
+  }
   if (s.badge) scene.remove(s.badge);
-  s.badge = levelBadge(s.def.levels[lv].title, lv); s.badge.position.set(mx, 2.2 + (lv >= 3 ? 0.3 : 0), mz); scene.add(s.badge);
+  // 名牌：咖啡機、印表機掛在機器上；補貨類掛在進貨箱上（攤位上面已經有招牌）
+  s.badge = levelBadge(s.def.levels[lv].title, lv, s.def.levels.length); s.badge.position.set(s.src[0], 0, s.src[1]); s.badge.userData.y = s.d.machine ? 2.2 + (lv >= 3 ? 0.3 : 0) : 2.15; scene.add(s.badge);
   if (s.def.levels[lv].line && !s.belt) {
     s.belt = buildBelt(s.d.belt); popIn(s.belt.g);
     // 產線一開，出貨口堆著的貨直接倒上輸送帶
@@ -203,20 +233,19 @@ function setLook(s, lv, fancy = true) {
   }
 }
 
-const counterSlot = (s, i) => {
-  const col = Math.floor(i / CFG.stackCols), row = i % CFG.stackCols, h = ITEM_H[s.item];
-  return V(s.d.counter[0] - 0.85 + col * 0.32, 0.86 + h / 2 + row * h, s.d.counter[1]);
-};
+// 櫃台上第 i 個貨的世界座標（販賣機的藏在機器裡）
+const counterSlot = (s, i) => { s.stall.g.updateMatrixWorld(); return s.stall.g.localToWorld(s.stall.slot(i, ITEM_H[s.item])); };
 const cashSlot = (s, i) => V(s.d.cash[0] + ((i % 2) - 0.5) * 0.34, 0.03 + Math.floor(i / 4) * 0.045, s.d.cash[1] + ((i >> 1) % 2 - 0.5) * 0.2);
 
 function produce(s, dt) {
   if (!s.unlocked) return;
-  const L = s.def.levels[s.lv];
+  const Lv = s.def.levels[s.lv];
   s.look.tick(dt, state.t, s.look.g.position);
+  s.stall.tick(dt, state.t, s.stall.g.position);
   s.timer += dt;
-  if (L.line) {
+  if (Lv.line) {
     // 產線：直接做到輸送帶上，送到櫃台
-    if (s.timer >= L.brew && s.stack.length + s.beltItems.length < 40) {
+    if (s.timer >= Lv.brew && s.stack.length + s.beltItems.length < 40) {
       s.timer = 0;
       const m = makeItem(s.item); m.position.copy(s.look.g.position).add(s.look.out);
       s.beltItems.push({ m, d: 0 }); squash(s.look.g, 0.06);
@@ -225,11 +254,12 @@ function produce(s, dt) {
     for (let i = s.beltItems.length - 1; i >= 0; i--) {
       const b = s.beltItems[i]; b.d += dt * CFG.beltSpeed;
       if (b.d < s.belt.total) b.m.position.lerp(s.belt.at(b.d), 1 - Math.exp(-dt * 20));
-      else { s.beltItems.splice(i, 1); const n = s.stack.length; s.stack.push(b.m); track(b.m, () => counterSlot(s, s.stack.indexOf(b.m))); }
+      else { s.beltItems.splice(i, 1); s.stack.push(b.m); track(b.m, () => counterSlot(s, s.stack.indexOf(b.m))); }
     }
-  } else if (s.timer >= L.brew && s.tray.length < L.tray) {
+  } else if (s.timer >= Lv.brew && s.tray.length < Lv.tray) {
     s.timer = 0;
-    const m = makeItem(s.item); m.position.copy(s.look.g.position).add(s.look.out);
+    const m = makeItem(s.item);
+    s.look.g.updateMatrixWorld(); m.position.copy(s.look.g.localToWorld(s.look.out.clone()));
     s.tray.push(m); squash(s.look.g, 0.05);
     track(m, () => V(s.pile.x, ITEM_H[s.item] / 2 + 0.01 + s.tray.indexOf(m) * ITEM_H[s.item], s.pile.z));
   }
@@ -237,27 +267,21 @@ function produce(s, dt) {
 
 // ---------- 排隊的同事 ----------
 function spawnCustomer(s) {
-  const a = makeActor((s.spawnN + (s.type === 'printer' ? 1 : 0)) % 2 ? kinds.npcF : kinds.npcM, 0.95);
+  const a = makeActor((s.spawnN + s.type.length) % 2 ? kinds.npcF : kinds.npcM, 0.95);
   a.root.position.set(L.elevator[0] + 0.4, 0, L.elevator[1] + (Math.random() - 0.5) * 0.6); a.root.rotation.y = Math.PI / 2;
   scene.add(a.root);
-  const lvl = s.lv;
-  const want = s.spawnN < 3 ? [2, 3, 1][s.spawnN] : 1 + Math.floor(Math.random() * (3 + Math.min(lvl, 3)));   // 升級後同事一次要更多
+  const many = s.def.restock ? 2 : 3 + Math.min(s.lv, 3);   // 升級後同事一次要更多；便當、飲料一次買少一點
+  const want = s.spawnN < 3 ? [2, 3, 1][s.spawnN] : 1 + Math.floor(Math.random() * many);
   s.spawnN++;
   const c = { actor: a, want, got: [], mode: 'queue', bubble: null, bubbleN: -1, shop: s };
   s.crowd.push(c); s.queue.push(c);
 }
-function bubbleTex(type, n) {
+function bubbleTex(item, n) {
   return canvasTex(256, 150, (g, W) => {
     g.fillStyle = '#fff'; roundRect(g, 8, 8, W - 16, 104, 34); g.fill();
     g.beginPath(); g.moveTo(W / 2 - 18, 108); g.lineTo(W / 2, 140); g.lineTo(W / 2 + 18, 108); g.fill();
-    if (type === 'coffee') {
-      g.fillStyle = '#d9773b'; g.beginPath(); g.moveTo(52, 36); g.lineTo(100, 36); g.lineTo(94, 90); g.lineTo(58, 90); g.closePath(); g.fill();
-      g.fillStyle = '#5a3a2a'; roundRect(g, 46, 28, 60, 12, 5); g.fill(); g.fillStyle = '#fffaf0'; g.fillRect(58, 54, 37, 14);
-    } else {
-      g.fillStyle = '#e8eef6'; g.fillRect(50, 30, 52, 64); g.fillStyle = '#3fa7ff'; g.fillRect(50, 52, 52, 14);
-      g.fillStyle = '#9aa8b8'; for (let i = 0; i < 3; i++) g.fillRect(58, 36 + i * 5, 36, 2);
-    }
-    g.fillStyle = '#2c3e57'; g.font = `900 62px ${FONT}`; g.textBaseline = 'middle'; g.fillText('×' + n, 116, 62);
+    g.textBaseline = 'middle'; g.font = `66px ${FONT}`; g.fillText(ICON[item], 34, 64);
+    g.fillStyle = '#2c3e57'; g.font = `900 62px ${FONT}`; g.fillText('×' + n, 116, 62);
   });
 }
 const handSlot = (c, i) => { const r = c.actor.root, h = r.rotation.y; return V(r.position.x + Math.sin(h) * 0.24, 0.5 + i * ITEM_H[c.shop.item], r.position.z + Math.cos(h) * 0.24); };
@@ -267,7 +291,9 @@ function updateCustomers(s, dt) {
   s.queue.forEach((c, i) => {
     const slot = Q[Math.min(i, Q.length - 1)];
     const arrived = walkTo(c.actor, slot[0], slot[1], CFG.crewSpeed, dt);
-    if (arrived) turnTo(c.actor, i === 0 ? Math.PI : Math.atan2(Q[Math.max(0, i - 1)][0] - slot[0], Q[Math.max(0, i - 1)][1] - slot[1]), dt);
+    // 排第一個面向櫃台，其他人面向前一個人
+    const look = i === 0 ? s.d.counter : Q[Math.max(0, i - 1)];
+    if (arrived) turnTo(c.actor, Math.atan2(look[0] - slot[0], look[1] - slot[1]), dt);
     c.ready = arrived && i === 0;
   });
   for (let i = s.crowd.length - 1; i >= 0; i--) {
@@ -277,7 +303,7 @@ function updateCustomers(s, dt) {
     }
     const need = c.want - c.got.length, show = c.mode === 'queue' && s.queue[0] === c && need > 0;
     if (show && c.bubbleN !== need) {
-      if (!c.bubble) { c.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true })); c.bubble.scale.set(0.66, 0.39, 1); c.bubble.renderOrder = 9; scene.add(c.bubble); popIn(c.bubble, 1); c.bubble.userData.base = 1; }
+      if (!c.bubble) { c.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true })); c.bubble.scale.set(0.66, 0.39, 1); c.bubble.renderOrder = 9; scene.add(c.bubble); popIn(c.bubble, 1); }
       c.bubble.material.map?.dispose(); c.bubble.material.map = bubbleTex(s.item, need); c.bubble.material.needsUpdate = true; c.bubbleN = need;
     }
     if (c.bubble) {
@@ -296,11 +322,11 @@ function updateCustomers(s, dt) {
     if (f.got.length === f.want) pay(s, f);
   }
   s.spawnT += dt;
-  if (s.spawnT >= CFG.spawnEvery && s.queue.length < CFG.queueMax) { s.spawnT = 0; spawnCustomer(s); }
+  if (s.spawnT >= CFG.spawnEvery && s.queue.length < (s.def.restock ? 4 : CFG.queueMax)) { s.spawnT = 0; spawnCustomer(s); }
 }
 function pay(s, c) {
   s.queue.shift(); c.mode = 'leave'; state.served++;
-  const total = Math.round(c.want * s.def.levels[s.lv].price * state.mult);
+  const total = Math.round(c.want * s.def.levels[s.lv].price);
   const bills = Math.min(12, Math.max(1, Math.round(total / 10)));
   const from = c.actor.root.position.clone().setY(0.8);
   for (let i = 0; i < bills; i++) after(i * 0.06, () => {
@@ -339,7 +365,7 @@ function setPhoneLook(lv, fancy = true) {
     phone.lines.push({ ringing: keep?.ringing || false, t: keep ? keep.t : 1 + Math.random() * 2, bub });
   }
   if (phone.badge) scene.remove(phone.badge);
-  phone.badge = levelBadge(STATIONS.phone.levels[lv].title, lv); phone.badge.position.set(x, 2.1, z); scene.add(phone.badge);
+  phone.badge = levelBadge(STATIONS.phone.levels[lv].title, lv); phone.badge.position.set(x, 0, z); phone.badge.userData.y = 2.1; scene.add(phone.badge);
 }
 function updatePhone(dt) {
   if (!phone.unlocked) return;
@@ -358,16 +384,55 @@ function updatePhone(dt) {
   phone.answerT += dt;
   const near = (a) => Math.hypot(a.root.position.x - PHONE_DEF.zone[0], a.root.position.z - PHONE_DEF.zone[1]) < 0.9;
   const kuiOn = player && near(player.actor), miOn = hires.mi && near(hires.mi.actor);
-  const every = kuiOn ? CFG.answerEvery : (miOn ? 0.55 : Infinity);
+  const every = kuiOn ? CFG.answerEvery : (miOn ? CFG.miAnswerEvery : Infinity);
   if (phone.answerT >= every) {
     const ln = phone.lines.find(l => l.ringing);
     if (ln) {
       phone.answerT = 0; ln.ringing = false; ln.t = P.ringEvery * (0.6 + Math.random() * 0.8);
-      const val = Math.round(P.price * state.mult);
-      addMoney(val, ln.bub.position.clone());
-      floatText(ln.bub.position.clone().setY(1.5), '+$' + val, '#7b5cff', 0.8);
+      addMoney(P.price);
+      floatText(ln.bub.position.clone().setY(1.5), '+$' + P.price, '#7b5cff', 0.8);
       sfx.answer(); if (kuiOn) gainXp(1);
     }
+  }
+}
+
+// ---------- 阿傑的設計部：慢慢畫，交稿一次 +$500 ----------
+const design = { on: false, t: 0, look: null, bar: null };
+function openDesk() {
+  design.on = true;
+  design.look = deskLook(); design.look.g.position.set(DESK_AT[0], 0, DESK_AT[1]); scene.add(design.look.g); popIn(design.look.g);
+  aabb(DESK_AT[0], DESK_AT[1], 0.85, 0.42);
+  // 進度條（畫架上方）
+  const c = document.createElement('canvas'); c.width = 256; c.height = 48;
+  design.barCtx = c.getContext('2d'); design.barTex = new THREE.CanvasTexture(c); design.barTex.colorSpace = THREE.SRGBColorSpace;
+  design.bar = new THREE.Sprite(new THREE.SpriteMaterial({ map: design.barTex, transparent: true, depthTest: false })); design.bar.scale.set(1.0, 0.19, 1); design.bar.renderOrder = 9;
+  design.bar.position.set(DESK_AT[0] - 1.15, 2.05, DESK_AT[1] + 0.25); scene.add(design.bar);
+}
+function drawBar(p) {
+  const g = design.barCtx; g.clearRect(0, 0, 256, 48);
+  g.fillStyle = '#2c3e57dd'; roundRect(g, 2, 6, 252, 36, 18); g.fill();
+  g.fillStyle = '#b46bff'; roundRect(g, 8, 12, 240 * p, 24, 12); g.fill();
+  g.fillStyle = '#fff'; g.font = `900 20px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`畫稿中 ${Math.floor(p * 100)}%`, 128, 25);
+  design.barTex.needsUpdate = true;
+}
+function updateDesign(dt) {
+  if (!design.on) return;
+  const jie = hires.jie, a = jie.actor, spot = [DESK_AT[0], DESK_AT[1] - 0.7];
+  const atDesk = walkTo(a, spot[0], spot[1], 1.3, dt);
+  if (!atDesk) return;
+  turnTo(a, 0, dt);
+  a.model.rotation.z = Math.sin(state.t * 6) * 0.04;   // 畫畫時身體左右晃
+  design.t += dt;
+  const p = Math.min(1, design.t / CFG.draftTime);
+  design.look.paint(p);
+  if (Math.floor(p * 50) !== design.lastBar) { design.lastBar = Math.floor(p * 50); drawBar(p); }
+  if (p >= 1) {   // 交稿！
+    design.t = 0;
+    const pos = V(DESK_AT[0] - 1.15, 1.2, DESK_AT[1] + 0.25);
+    addMoney(CFG.draftPay);
+    floatText(pos.clone().setY(2.3), '交稿！+$' + CFG.draftPay, '#b46bff', 1.3);
+    confetti(pos, 40, 0.7); sfx.build(); squash(design.look.g, 0.08);
+    if (Math.random() < 0.5) floatText(a.root.position.clone().setY(1.7), ['客戶說讚！', '一次過稿！', '這版可以！'][Math.floor(Math.random() * 3)], '#2c3e57', 0.7);
   }
 }
 
@@ -382,8 +447,8 @@ function padTex(p) {
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#fff'; g.strokeStyle = '#0005'; g.lineWidth = 8;
     g.font = `900 30px ${FONT}`; const top = up ? '⬆ 升級' : hire ? '♥ 請人' : '＋ 解鎖'; g.strokeText(top, W / 2, 56); g.fillText(top, W / 2, 56);
-    g.font = `900 66px ${FONT}`; const pr = '$' + p.price(); g.strokeText(pr, W / 2, H / 2 + 4); g.fillText(pr, W / 2, H / 2 + 4);
-    g.font = `900 30px ${FONT}`; const nm = p.title(); g.strokeText(nm, W / 2, H - 58); g.fillText(nm, W / 2, H - 58);
+    g.font = `900 ${p.price() >= 10000 ? 56 : 66}px ${FONT}`; const pr = '$' + p.price(); g.strokeText(pr, W / 2, H / 2 + 4); g.fillText(pr, W / 2, H / 2 + 4);
+    const nm = p.title(); g.font = `900 ${nm.length > 6 ? 24 : 30}px ${FONT}`; g.strokeText(nm, W / 2, H - 58); g.fillText(nm, W / 2, H - 58);
   });
 }
 function addPad(p) {
@@ -427,27 +492,30 @@ function celebrate(pos, title, sub, stars, color) {
   for (let i = 0; i < 10; i++) after(i * 0.06, () => sparkle(V(pos.x + (Math.random() - 0.5) * 2, 0.5 + Math.random() * 1.8, pos.z + (Math.random() - 0.5) * 1.4), 0xffe08a, 0.4));
   banner(title, sub, stars, color); sfx.upgrade();
 }
+const SHOP_COLOR = { coffee: '#e0663a', printer: '#3f8fe0', vending: '#ff4f5e', beef: '#d9483b', chicken: '#e8902a', fish: '#2f7fc4' };
+const UNLOCK_SUB = { printer: '同事開始排隊印文件了', vending: '去搬飲料箱幫販賣機補貨', beef: '去冷藏櫃搬牛肉便當補貨', chicken: '雞肉飯開賣！', fish: '魚排飯開賣！' };
 function setupPads() {
   for (const s of Object.values(shops)) {
+    const at = () => V((s.d.machine || s.d.counter)[0], 0, (s.d.machine || s.d.counter)[1]);
     if (s.def.unlock) addPad({
       kind: 'unlock', at: s.d.unlockPad, price: () => s.def.unlock, title: () => s.def.name,
-      cond: () => s.type !== 'printer' || shops.coffee.lv >= 1, done: () => s.unlocked,
-      complete: () => { openShop(s); celebrate(V(s.d.machine[0], 0, s.d.machine[1]), '解鎖！' + (s.type === 'printer' ? '影印區' : s.def.name), '同事開始排隊印文件了', 1, '#3f8fe0'); },
+      cond: s.d.need || (() => true), done: () => s.unlocked,
+      complete: () => { openShop(s); celebrate(at(), '解鎖！' + s.def.name, UNLOCK_SUB[s.type] || '', 1, SHOP_COLOR[s.type]); },
     });
     addPad({
-      kind: 'upgrade', at: s.d.upPad, price: () => s.def.levels[Math.min(4, s.lv + 1)].cost, title: () => s.def.levels[Math.min(4, s.lv + 1)].title,
-      cond: () => s.unlocked, done: () => s.lv >= 4,
+      kind: 'upgrade', at: s.d.upPad, price: () => s.def.levels[Math.min(maxLv(s), s.lv + 1)].cost, title: () => s.def.levels[Math.min(maxLv(s), s.lv + 1)].title,
+      cond: () => s.unlocked, done: () => s.lv >= maxLv(s),
       complete: () => {
         const a = s.def.levels[s.lv], b = s.def.levels[s.lv + 1]; s.lv++; setLook(s, s.lv);
-        const sub = b.line ? '產線啟動！做好直接送上櫃台' : `速度 +${Math.round((a.brew / b.brew - 1) * 100)}%　售價 $${a.price}→$${b.price}`;
-        celebrate(V(s.d.machine[0], 0, s.d.machine[1]), b.title, sub, s.lv + 1, s.type === 'coffee' ? '#e0663a' : '#3f8fe0');
+        const sub = b.line ? '產線啟動！做好直接送上櫃台' : `${s.def.restock ? '到貨' : '速度'} +${Math.round((a.brew / b.brew - 1) * 100)}%　售價 $${a.price}→$${b.price}`;
+        celebrate(at(), b.title, sub, s.lv + 1, SHOP_COLOR[s.type]);
       },
     });
   }
   addPad({
     kind: 'unlock', at: PHONE_DEF.unlockPad, price: () => STATIONS.phone.unlock, title: () => '電話總機',
     cond: () => shops.printer.unlocked, done: () => phone.unlocked,
-    complete: () => { openPhone(); celebrate(V(PHONE_DEF.desk[0], 0, PHONE_DEF.desk[1]), '解鎖！電話總機', '站到紫色框裡接電話', 1, '#7b5cff'); },
+    complete: () => { openPhone(); celebrate(V(PHONE_DEF.desk[0], 0, PHONE_DEF.desk[1]), '解鎖！電話總機', '站到紫色框裡接電話，一通 $' + STATIONS.phone.levels[0].price, 1, '#7b5cff'); },
   });
   addPad({
     kind: 'upgrade', at: PHONE_DEF.upPad, price: () => STATIONS.phone.levels[Math.min(4, phone.lv + 1)].cost, title: () => STATIONS.phone.levels[Math.min(4, phone.lv + 1)].title,
@@ -461,42 +529,51 @@ function setupPads() {
 }
 
 // ---------- 夥伴 ----------
+const HIRE_SUB = {
+  worker: '幫忙搬咖啡', worker2: '幫忙搬文件',
+  jie: `坐在設計部慢慢畫，交一次稿 +$${CFG.draftPay}`, mi: '坐鎮電話總機，一通 $100 起',
+  vivi: '老闆來巡視了！（效果：大家被加油了，就這樣）',
+};
 function hire(h) {
   const k = kinds[h.kind] || kinds.npcF;
-  const a = makeActor(k, h.id === 'worker' ? 0.88 : 0.98);
+  const a = makeActor(k, h.id.startsWith('worker') ? 0.88 : 0.98);
   if (h.id === 'jie' && kinds.jieJog) addJog(a, kinds.jieJog);
-  a.root.position.set(h.at[0], 0, h.at[1]); scene.add(a.root); popIn(a.root, a.root.scale.x);
-  if (h.id === 'worker') {   // 黃色鴨舌帽
-    const cap = sphere(0.2, 0xffc83d, 0, 0.86, 0, a.root); cap.scale.set(1.05, 0.55, 1.05);
-    const brim = cyl(0.12, 0.12, 0.02, 0xffc83d, 0, 0.86, 0.16, a.root); brim.scale.set(1, 1, 0.7);
+  a.root.position.set(h.at[0], 0, h.at[1] - (h.id === 'jie' ? 0.7 : 0));   // 阿傑直接坐到桌子後面
+  scene.add(a.root); popIn(a.root, a.root.scale.x);
+  if (h.cap) {   // 工讀生戴鴨舌帽（咖啡黃、影印藍）
+    const cap = sphere(0.2, h.cap, 0, 0.86, 0, a.root); cap.scale.set(1.05, 0.55, 1.05);
+    const brim = cyl(0.12, 0.12, 0.02, h.cap, 0, 0.86, 0.16, a.root); brim.scale.set(1, 1, 0.7);
   }
-  const name = labelSprite(h.name, { bg: h.id === 'vivi' ? '#ff4fa3' : h.id === 'mi' ? '#7b5cff' : '#2c3e57', size: 0.2 });
+  const name = labelSprite(h.name.replace(/（.*）/, ''), { bg: h.id === 'vivi' ? '#ff4fa3' : h.id === 'mi' ? '#7b5cff' : h.id === 'jie' ? '#b46bff' : '#2c3e57', size: 0.2 });
   name.position.y = 1.35; a.root.add(name);
-  const helper = { id: h.id, actor: a, carry: [], type: null, carryMax: h.id === 'jie' ? 8 : 5, moveT: 0, mode: 'fetch', home: h.id === 'jie' ? 'printer' : 'coffee' };
+  const helper = { id: h.id, actor: a, carry: [], type: null, carryMax: 5, moveT: 0, mode: 'fetch', home: h.home };
   hires[h.id] = helper;
-  if (h.id === 'worker' || h.id === 'jie') carriers.push(helper);
-  if (h.id === 'vivi') state.mult = 1.5;
+  if (h.home) carriers.push(helper);
+  if (h.id === 'jie') openDesk();
   pillar(a.root.position, 0xff9ad5, 0.6, 4); confetti(V(a.root.position.x, 1.2, a.root.position.z), 50); sfx.build();
-  banner(h.name + ' 加入！', { worker: '幫忙搬咖啡', jie: '幫忙搬文件', mi: '坐鎮電話總機', vivi: '老闆加碼：所有收入 ×1.5' }[h.id], 0, '#ff4fa3');
+  banner(h.name.replace(/（.*）/, '') + ' 加入！', HIRE_SUB[h.id], 0, h.id === 'jie' ? '#b46bff' : '#ff4fa3');
 }
+// Vivi 老闆的台詞：純搞笑
+const VIVI_LINES = ['大家加油！', '我很看好你喔～', '今天也要開心上班！', '辛苦了辛苦了', '這個不錯喔', '我先去開會囉', '♥', '加薪？再說再說'];
 function updateHires(dt) {
   for (const h of Object.values(hires)) {
     const a = h.actor;
     if (h.id === 'mi') { walkTo(a, PHONE_DEF.zone[0] + 0.25, PHONE_DEF.zone[1], 1.4, dt) && turnTo(a, Math.PI, dt); }
-    else if (h.id === 'vivi') {   // 老闆巡視：在三個點之間走，偶爾幫大家加油
-      const pts = [[-1.0, -1.2], [-2.0, 1.0], [3.0, 0.2], [0.4, -3.2]];
+    else if (h.id === 'jie') updateDesign(dt);
+    else if (h.id === 'vivi') {   // 老闆巡視：走來走去幫大家加油（沒有實際效果）
+      const pts = [[-1.0, -1.2], [-2.0, 3.8], [2.6, 5.0], [3.0, 0.2], [0.4, -3.2], [-5.0, 4.6]];
       h.wp = h.wp ?? 0; h.wait = (h.wait ?? 0) - dt;
-      if (h.wait <= 0 && walkTo(a, pts[h.wp][0], pts[h.wp][1], 1.0, dt)) { h.wp = (h.wp + 1) % pts.length; h.wait = 2.5; if (Math.random() < 0.6) floatText(a.root.position.clone().setY(1.6), ['加油！', '做得好！', '加薪！', '♥'][Math.floor(Math.random() * 4)], '#ff4fa3', 0.8); }
+      if (h.wait <= 0 && walkTo(a, pts[h.wp][0], pts[h.wp][1], 1.0, dt)) { h.wp = (h.wp + 1) % pts.length; h.wait = 2.5; floatText(a.root.position.clone().setY(1.6), VIVI_LINES[Math.floor(Math.random() * VIVI_LINES.length)], '#ff4fa3', 0.8); }
       else if (h.wait > 0) a.speed = 0;
     } else hauler(h, dt);
     updateActor(a, dt, state.t);
   }
 }
-// 搬運工：去出貨口拿滿 → 送櫃台；自己的站變產線就去幫另一站
+// 搬運工：去出貨口拿滿 → 送櫃台；自己的站變產線就去幫別站
 function hauler(h, dt) {
   const a = h.actor;
-  const pick = () => { const own = shops[h.home]; if (own.unlocked && !own.def.levels[own.lv].line) return own; return Object.values(shops).find(s => s.unlocked && !s.def.levels[s.lv].line); };
-  const s = h.type ? shops[h.type === 'coffee' ? 'coffee' : 'printer'] : pick();
+  const pick = () => { const own = shops[h.home]; if (own.unlocked && !isLine(own)) return own; return Object.values(shops).find(s => s.unlocked && !isLine(s) && s.d.machine); };
+  const s = h.type ? shopOf(h.type) : pick();
   if (!s) { a.speed = 0; return; }
   if (h.mode === 'fetch') {
     const full = h.carry.length >= h.carryMax || (h.carry.length && !s.tray.length);
@@ -516,7 +593,7 @@ function carry(c, dt) {
   if (c.moveT < CFG.moveEvery) return;
   for (const s of Object.values(shops)) {
     if (!s.unlocked) continue;
-    if (!s.def.levels[s.lv].line && nearAt(c.actor, s.pickup, 0.8) && s.tray.length && c.carry.length < c.carryMax && (!c.type || c.type === s.item)) {
+    if (!isLine(s) && nearAt(c.actor, s.pickup, 0.8) && s.tray.length && c.carry.length < c.carryMax && (!c.type || c.type === s.item)) {
       c.moveT = 0; c.type = s.item;
       const m = s.tray.pop(), i = c.carry.length; c.carry.push(m); retarget(m, () => backSlot(c, i));
       if (c === player) sfx.pick();
@@ -524,7 +601,7 @@ function carry(c, dt) {
     }
     if (nearAt(c.actor, s.d.drop, 0.85) && c.carry.length && c.type === s.item) {
       c.moveT = 0;
-      const m = c.carry.pop(), i = s.stack.length; s.stack.push(m); retarget(m, () => counterSlot(s, s.stack.indexOf(m)));
+      const m = c.carry.pop(); s.stack.push(m); retarget(m, () => counterSlot(s, s.stack.indexOf(m)));
       if (!c.carry.length) c.type = null;
       if (c === player) { sfx.drop(); gainXp(1); }
       return;
@@ -616,6 +693,7 @@ function collide(p, r = 0.28) {
 const arrow = new THREE.Group(); scene.add(arrow);
 { const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 24), new THREE.MeshStandardMaterial({ color: 0xff5d3a, emissive: 0x7a1e00, roughness: 0.4 })); cone.rotation.x = Math.PI; arrow.add(cone); }
 const hintEl = document.getElementById('hint'); let hintText = '';
+const PICK_TEXT = { coffee: '去咖啡機拿咖啡', doc: '去印表機拿文件', drink: '去搬飲料箱', beef: '去搬牛肉便當', chicken: '去搬雞肉便當', fish: '去搬魚排便當' };
 function updateGuide() {
   const pos = player.actor.root.position, dist = ([x, z]) => Math.hypot(pos.x - x, pos.z - z);
   let at = null, text = '';
@@ -623,13 +701,14 @@ function updateGuide() {
   const cashShop = open.filter(s => s.cash.length).sort((a, b) => dist(a.d.cash) - dist(b.d.cash))[0];
   const padReady = pads.filter(p => p.shown && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
   const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
-  if (player.carry.length) { const s = shops[player.type === 'coffee' ? 'coffee' : 'printer']; at = [s.d.counter[0] - 0.8, s.d.counter[1]]; text = player.type === 'coffee' ? '把咖啡送到咖啡吧' : '把文件送到影印區'; }
+  if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
   else if (ringing && phone.lines.filter(l => l.ringing).length >= 2) { at = PHONE_DEF.zone; text = '電話響了！去接電話'; }
   else {
-    const s = open.filter(s => !s.def.levels[s.lv].line).sort((a, b) => b.tray.length - a.tray.length)[0];
-    if (s) { at = [s.pile.x, s.pile.z]; text = s.item === 'coffee' ? '去咖啡機拿咖啡' : '去印表機拿文件'; }
+    // 櫃台快沒貨的優先補
+    const s = open.filter(s => !isLine(s) && s.tray.length).sort((a, b) => (a.stack.length - b.stack.length) || (b.tray.length - a.tray.length))[0];
+    if (s) { at = [s.pile.x, s.pile.z]; text = PICK_TEXT[s.item]; }
     else if (phone.unlocked) { at = PHONE_DEF.zone; text = '去接電話'; }
   }
   arrow.visible = !!at;
@@ -658,8 +737,8 @@ function update(dt) {
   state.t += dt; runLater();
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt); updatePlayer(dt); updateHires(dt); updatePads(dt);
-  updateItems(dt); updateFx(dt); updateGuide(); updateSnow(dt, state.t); updateHud(dt);
-  for (const s of Object.values(shops)) if (s.badge) s.badge.position.y = (s.lv >= 3 ? 2.5 : 2.2) + Math.sin(state.t * 2) * 0.04;
+  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt);
+  for (const b of [...Object.values(shops).map(s => s.badge), phone.badge]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
 let last = performance.now();
 function frame(now) {
@@ -668,7 +747,7 @@ function frame(now) {
   try {
     if (state.started) update(dt);
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
-    updateCamera(V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 3.6)), dt);
+    updateCamera(V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
     render();
   } catch (err) { console.error(err); }
 }
@@ -685,7 +764,12 @@ function frame(now) {
 })();
 
 // ---------- 開始 ----------
-const G = window.G = { renderer, post, state, shops, phone, pads, hires, carriers, CFG, force: null, speedUp: 1, get player() { return player; }, give(n) { state.money += n; }, cam, look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); }, step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); } };   // 除錯用
+const G = window.G = {
+  renderer, post, state, shops, phone, pads, hires, carriers, colliders, design, CFG, L, force: null, speedUp: 1,
+  get player() { return player; }, give(n) { state.money += n; }, cam,
+  look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); },
+  step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); },
+};   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
   try {
@@ -693,7 +777,7 @@ const G = window.G = { renderer, post, state, shops, phone, pads, hires, carrier
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }
-  makeShop('coffee'); makeShop('printer');
+  for (const t of ['coffee', 'printer', 'vending', 'beef', 'chicken', 'fish']) makeShop(t);
   const a = addJog(makeActor(kinds.kui, 1), kinds.kuiJog);
   a.root.position.set(L.start[0], 0, L.start[1]); a.root.rotation.y = Math.PI; scene.add(a.root);
   player = { actor: a, carry: [], type: null, carryMax: rankCarry(0), moveT: 0 };

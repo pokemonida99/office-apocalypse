@@ -1,6 +1,6 @@
-// 設施：咖啡機、印表機、電話總機。每一級外觀不同、數值不同，Lv5 是產線
+// 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.2.0';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.3.0';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -24,12 +24,41 @@ export const STATIONS = {
     ],
   },
   phone: {
-    name: '電話總機', unlock: 900, levels: [
-      { title: '一線電話', lines: 1, ringEvery: 3.2, price: 20, cost: 0 },
-      { title: '雙線總機', lines: 2, ringEvery: 2.9, price: 30, cost: 1200 },
-      { title: '四線總機', lines: 4, ringEvery: 2.6, price: 45, cost: 3000 },
-      { title: '六線總機', lines: 6, ringEvery: 2.3, price: 65, cost: 7000 },
-      { title: '八線客服中心', lines: 8, ringEvery: 2.0, price: 90, cost: 14000 },
+    name: '電話總機', unlock: 1500, levels: [
+      { title: '一線電話', lines: 1, ringEvery: 3.4, price: 100, cost: 0 },
+      { title: '雙線總機', lines: 2, ringEvery: 3.1, price: 120, cost: 2500 },
+      { title: '四線總機', lines: 4, ringEvery: 2.8, price: 150, cost: 6000 },
+      { title: '六線總機', lines: 6, ringEvery: 2.5, price: 190, cost: 12000 },
+      { title: '八線客服中心', lines: 8, ringEvery: 2.2, price: 240, cost: 22000 },
+    ],
+  },
+  // 補貨類：進貨箱自己會到貨（brew），搬到攤位／販賣機補貨，同事來買。升級改的是攤位的樣子
+  vending: {
+    name: '販賣機', item: 'drink', unlock: 900, restock: true, levels: [
+      { title: '小販賣機', brew: 1.3, tray: 8, price: 20, cost: 0 },
+      { title: '雙門販賣機', brew: 0.9, tray: 12, price: 30, cost: 2200 },
+      { title: '發光販賣機牆', brew: 0.6, tray: 16, price: 45, cost: 6500 },
+    ],
+  },
+  beef: {
+    name: '牛肉飯', item: 'beef', unlock: 2500, restock: true, levels: [
+      { title: '牛肉飯小攤', brew: 2.0, tray: 6, price: 60, cost: 0 },
+      { title: '牛肉飯攤', brew: 1.4, tray: 10, price: 85, cost: 4500 },
+      { title: '豪華牛肉飯', brew: 0.95, tray: 14, price: 120, cost: 11000 },
+    ],
+  },
+  chicken: {
+    name: '雞肉飯', item: 'chicken', unlock: 4500, restock: true, levels: [
+      { title: '雞肉飯小攤', brew: 2.0, tray: 6, price: 70, cost: 0 },
+      { title: '雞肉飯攤', brew: 1.4, tray: 10, price: 100, cost: 7000 },
+      { title: '豪華雞肉飯', brew: 0.95, tray: 14, price: 140, cost: 15000 },
+    ],
+  },
+  fish: {
+    name: '魚排飯', item: 'fish', unlock: 7000, restock: true, levels: [
+      { title: '魚排飯小攤', brew: 2.0, tray: 6, price: 80, cost: 0 },
+      { title: '魚排飯攤', brew: 1.4, tray: 10, price: 115, cost: 9500 },
+      { title: '豪華魚排飯', brew: 0.95, tray: 14, price: 160, cost: 19000 },
     ],
   },
 };
@@ -40,15 +69,31 @@ const G = {
   ream: new THREE.BoxGeometry(0.26, 0.075, 0.19), band: new THREE.BoxGeometry(0.265, 0.077, 0.06),
   bill: new THREE.BoxGeometry(0.3, 0.04, 0.17), billBand: new THREE.BoxGeometry(0.08, 0.042, 0.172),
 };
-export const ITEM_H = { coffee: 0.13, doc: 0.08 };
+export const ITEM_H = { coffee: 0.13, doc: 0.08, drink: 0.15, beef: 0.1, chicken: 0.1, fish: 0.1 };
+export const ICON = { coffee: '☕', doc: '📄', drink: '🥤', beef: '🐮', chicken: '🐔', fish: '🐟' };
+const BENTO = { beef: [0xe0473a, '🐮'], chicken: [0xffb42e, '🐔'], fish: [0x3f9be0, '🐟'] };
+const iconTex = {};
+const getIcon = (e) => iconTex[e] ||= canvasTex(64, 64, (g, W) => { g.font = `48px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, W / 2, W / 2 + 3); });
+G.can = new THREE.CylinderGeometry(0.07, 0.07, 0.15, 16); G.canTop = new THREE.CylinderGeometry(0.06, 0.07, 0.02, 16);
+G.bento = new THREE.BoxGeometry(0.26, 0.07, 0.2); G.lidB = new THREE.BoxGeometry(0.27, 0.03, 0.21); G.icon = new THREE.PlaneGeometry(0.15, 0.15);
+const CAN_COLORS = [0xff5d73, 0x36c35d, 0x3fa7ff, 0xffb42e];
+let canN = 0;
 export function makeItem(type) {
   const g = new THREE.Group();
   if (type === 'coffee') {
     const c = new THREE.Mesh(G.cup, mat(0xfffaf0)), s = new THREE.Mesh(G.sleeve, mat(0xd9773b)), l = new THREE.Mesh(G.lid, mat(0x5a3a2a));
     s.position.y = -0.005; l.position.y = 0.085; g.add(c, s, l);
-  } else {
+  } else if (type === 'doc') {
     const r = new THREE.Mesh(G.ream, mat(0xffffff)), b = new THREE.Mesh(G.band, mat(0x3fa7ff));
     g.add(r, b);
+  } else if (type === 'drink') {   // 飲料罐：四種顏色輪流
+    const c = new THREE.Mesh(G.can, mat(CAN_COLORS[canN++ % 4], { roughness: 0.35 })), t = new THREE.Mesh(G.canTop, mat(0xd8dde3, { metalness: 0.7, roughness: 0.3 }));
+    t.position.y = 0.085; g.add(c, t);
+  } else {   // 便當：彩色蓋子＋牛／雞／魚圖示
+    const [col, e] = BENTO[type];
+    const b = new THREE.Mesh(G.bento, mat(0xfff6e6)), l = new THREE.Mesh(G.lidB, mat(col));
+    l.position.y = 0.045; g.add(b, l);
+    const ic = new THREE.Mesh(G.icon, new THREE.MeshBasicMaterial({ map: getIcon(e), transparent: true })); ic.rotation.x = -Math.PI / 2; ic.position.y = 0.062; g.add(ic);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   scene.add(g); return g;
@@ -214,14 +259,138 @@ export function buildBelt(path, height = 0.5) {
 }
 
 // 設施頭上的名牌：名稱＋星星
-export function levelBadge(name, lv) {
+export function levelBadge(name, lv, total = 5) {
   const t = canvasTex(512, 160, (g, W, H) => {
     g.fillStyle = '#2c3e57e6'; g.beginPath(); g.roundRect(40, 20, W - 80, 120, 50); g.fill();
     g.fillStyle = '#fff'; g.font = `900 52px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(name, W / 2, 62);
     g.fillStyle = '#ffd34d'; g.font = `900 40px ${FONT}`;
-    g.fillText('★'.repeat(lv + 1) + '☆'.repeat(4 - lv), W / 2, 112);
+    g.fillText('★'.repeat(lv + 1) + '☆'.repeat(Math.max(0, total - 1 - lv)), W / 2, 112);
   });
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
   s.scale.set(1.6, 0.5, 1); s.renderOrder = 8; return s;
+}
+
+// ---------- 可愛攤位（櫃台）：條紋遮雨棚、波浪簾、招牌 ----------
+// 本地座標：客人在 +z（前面），員工在 -z（後面）。回傳 { g, slot(i)（櫃台上第 i 個貨的本地位置）, tick }
+const stripeTex = {};
+function awningTex(a, b) {
+  const k = a + '-' + b;
+  return stripeTex[k] ||= canvasTex(128, 32, (g, W, H) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? b : a; g.fillRect(i * W / 8, 0, W / 8, H); } });
+}
+export const STALL_STYLE = {
+  coffee: { base: 0xe08a4a, top: 0xfff4e2, a: '#e0663a', b: '#fff4e2', sign: '☕ 咖啡吧', signBg: '#e0663a' },
+  printer: { base: 0x5aa7e6, top: 0xf2f8ff, a: '#3f8fe0', b: '#ffffff', sign: '📄 影印區', signBg: '#3f8fe0' },
+  beef: { base: 0xd9483b, top: 0xfff4e2, a: '#e0473a', b: '#fff4e2', sign: '🐮 牛肉飯', signBg: '#d9483b' },
+  chicken: { base: 0xf2a33a, top: 0xfff8e8, a: '#ffb42e', b: '#fff8e8', sign: '🐔 雞肉飯', signBg: '#e8902a' },
+  fish: { base: 0x3f9be0, top: 0xf0f8ff, a: '#3f9be0', b: '#f0f8ff', sign: '🐟 魚排飯', signBg: '#2f7fc4' },
+};
+export function stallLook(type, lv = 0, fx = {}) {
+  const st = STALL_STYLE[type], w = 2.4 + lv * 0.2, g = new THREE.Group();
+  rbox(w, 0.78, 0.72, st.base, 0, 0.39, 0, g);
+  rbox(w + 0.15, 0.08, 0.86, st.top, 0, 0.82, 0, g);
+  box(w * 0.92, 0.1, 0.02, st.top, 0, 0.6, 0.37, g);   // 前面一條飾帶
+  for (let i = 0; i < 5; i++) sphere(0.05, st.top, (i - 2) * w * 0.18, 0.4, 0.37, g);   // 小圓點
+  for (const x of [-w / 2 + 0.06, w / 2 - 0.06]) for (const z of [-0.3, 0.38]) cyl(0.035, 0.035, 1.12, 0xfff4e2, x, 1.42, z, g);
+  // 遮雨棚：條紋布往前斜＋波浪簾
+  const aw = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.05, 1.15), [mat(st.base), mat(st.base), new THREE.MeshStandardMaterial({ map: awningTex(st.a, st.b) }), mat(st.base), mat(st.base), mat(st.base)]);
+  aw.position.set(0, 2.02, 0.08); aw.rotation.x = 0.22; aw.castShadow = true; g.add(aw);
+  const n = Math.round((w + 0.3) / 0.24);
+  for (let i = 0; i < n; i++) {
+    const s = sphere(0.13, i % 2 ? 0xffffff : st.base, -(w + 0.3) / 2 + 0.12 + i * (w + 0.3 - 0.24) / (n - 1), 1.86, 0.66, g);
+    s.scale.set(1, 0.55, 0.35);
+  }
+  const sign = labelSprite(st.sign, { bg: st.signBg, size: 0.34, glow: lv >= 2 }); sign.position.set(0, 2.55, 0); g.add(sign);
+  const lights = [];
+  if (lv >= 1) {   // 小燈泡串＋兩盆花
+    for (let i = 0; i < 9; i++) { const b = sphere(0.04, new THREE.MeshBasicMaterial({ color: [0xffe08a, 0xff9ad5, 0x9be7ff][i % 3], toneMapped: false }), -w / 2 + i * w / 8, 1.78, 0.72, g); lights.push(b); }
+    for (const x of [-w / 2 - 0.25, w / 2 + 0.25]) { cyl(0.16, 0.13, 0.28, 0xff8a5c, x, 0.14, 0.3, g); for (let k = 0; k < 4; k++) sphere(0.12, [0xff6b8b, 0xffd34d, 0x47b35a, 0xb46bff][k], x + Math.cos(k * 1.6) * 0.07, 0.38 + (k % 2) * 0.08, 0.3 + Math.sin(k * 1.6) * 0.07, g); }
+  }
+  if (lv >= 2) {   // 豪華：金邊、星星
+    rbox(w + 0.2, 0.05, 0.9, 0xd9a63a, 0, 0.88, 0, g, gold);
+    rbox(w + 0.2, 0.05, 0.9, 0xd9a63a, 0, 0.03, 0, g, gold);
+  }
+  let st2 = 0;
+  const tick = (dt, t, pos) => {
+    lights.forEach((b, i) => { b.visible = Math.sin(t * 4 + i) > -0.3; });
+    if (lv >= 2 && fx.sparkle) { st2 += dt; if (st2 > 0.4) { st2 = 0; fx.sparkle(V(pos.x + (Math.random() - 0.5) * w, 1 + Math.random() * 1.3, pos.z + (Math.random() - 0.5))); } }
+  };
+  return { g, slot: (i, h) => V(-w / 2 + 0.35 + Math.floor(i / 10) * 0.3, 0.86 + h / 2 + (i % 10) * h, 0), tick, w };
+}
+
+// 販賣機：等級越高台數越多（1→2→3），庫存藏在機器裡
+const vendFront = canvasTex(128, 256, (g, W, H) => {
+  g.fillStyle = '#dff3ff'; g.fillRect(8, 8, W - 16, H * 0.62);
+  const cols = ['#ff5d73', '#36c35d', '#3fa7ff', '#ffb42e'];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { g.fillStyle = cols[(r + c) % 4]; g.fillRect(16 + c * 26, 20 + r * 36, 18, 28); g.fillStyle = '#ffffffaa'; g.fillRect(19 + c * 26, 22 + r * 36, 4, 22); }
+  g.fillStyle = '#2c3e57'; g.fillRect(8, H * 0.7, W - 16, 30); g.fillStyle = '#9aa3ad'; g.fillRect(W - 40, H * 0.72, 22, 24);
+});
+export function vendingLook(lv, fx = {}) {
+  const g = new THREE.Group(), n = lv + 1, colors = [0xff4f5e, 0x3fa7ff, 0x36c35d];
+  const glows = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i - (n - 1) / 2) * 0.95, m = new THREE.Group(); m.position.x = x; g.add(m);
+    rbox(0.85, 1.75, 0.7, colors[i], 0, 0.875, 0, m);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 1.44), new THREE.MeshBasicMaterial({ map: vendFront, toneMapped: false })); f.position.set(0, 1.0, 0.356); m.add(f);
+    if (lv >= 2) { const top = rbox(0.86, 0.16, 0.71, new THREE.MeshBasicMaterial({ color: 0xffe08a, toneMapped: false }), 0, 1.82, 0, m); glows.push(top); }
+  }
+  const sign = labelSprite('🥤 販賣機', { bg: '#ff4f5e', size: 0.3, glow: lv >= 2 }); sign.position.set(0, 2.3, 0); g.add(sign);
+  const tick = (dt, t) => { glows.forEach((m, i) => m.material.color.setHSL((t * 0.2 + i * 0.3) % 1, 0.9, 0.65)); };
+  return { g, slot: () => V(0, 0.9, 0), hidden: true, tick, w: n * 0.95 };
+}
+
+// 進貨箱：飲料一箱箱、食材冷藏櫃（不升級）。out＝新貨冒出來的位置
+export function sourceLook(type) {
+  const g = new THREE.Group();
+  if (type === 'drink') {
+    rbox(1.1, 0.12, 0.9, 0xc9915b, 0, 0.06, 0, g);
+    [0xff5d73, 0x36c35d, 0x3fa7ff, 0xffb42e].forEach((c, i) => rbox(0.48, 0.3, 0.38, c, (i % 2 - 0.5) * 0.5, 0.28 + Math.floor(i / 2) * 0.31, (i % 2) * 0.05, g));
+    const s = labelSprite('🥤 飲料進貨', { bg: '#2c3e57', size: 0.24 }); s.position.set(0, 1.25, 0); g.add(s);
+    return { g, out: V(0, 0.9, 0.3), tick: () => {} };
+  }
+  const col = { beef: 0xe0473a, chicken: 0xffb42e, fish: 0x3f9be0 }[type];
+  rbox(1.15, 1.25, 0.7, 0xf5f7fa, 0, 0.625, 0, g);
+  // 前後都有彩色門板＋圖示（鏡頭看得到背面，不要一整片白）
+  for (const z of [0.35, -0.35]) {
+    rbox(1.0, 0.5, 0.04, col, 0, 0.88, z, g);
+    box(0.08, 0.3, 0.05, 0xd8dde3, 0.4, 0.88, z * 1.12, g, { metalness: 0.7, roughness: 0.3 });
+    const ic = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: getIcon({ beef: '🐮', chicken: '🐔', fish: '🐟' }[type]), transparent: true }));
+    ic.position.set(-0.15, 0.88, z * 1.09); if (z < 0) ic.rotation.y = Math.PI; g.add(ic);
+  }
+  rbox(1.17, 0.1, 0.72, col, 0, 1.28, 0, g);
+  const s = labelSprite({ beef: '🐮 牛肉進貨', chicken: '🐔 雞肉進貨', fish: '🐟 魚肉進貨' }[type], { bg: '#2c3e57', size: 0.24 }); s.position.set(0, 1.6, 0); g.add(s);
+  return { g, out: V(0, 0.8, 0.45), tick: () => {} };
+}
+
+// 阿傑的設計桌：桌子、繪圖板、旁邊畫架（畫面隨進度慢慢畫出來）
+export function deskLook() {
+  const g = new THREE.Group();
+  rbox(1.5, 0.7, 0.75, 0xffffff, 0, 0.35, 0, g);
+  rbox(1.6, 0.06, 0.82, 0x8a6a4c, 0, 0.72, 0, g);
+  rbox(0.6, 0.03, 0.42, 0x2c3e57, 0.1, 0.77, 0.05, g);
+  rbox(0.55, 0.01, 0.37, new THREE.MeshBasicMaterial({ color: 0x9be7ff, toneMapped: false }), 0.1, 0.79, 0.05, g);
+  for (let i = 0; i < 4; i++) box(0.24, 0.02, 0.32, 0xffffff, -0.5, 0.77 + i * 0.022, 0, g).rotation.y = i * 0.15;
+  cyl(0.12, 0.1, 0.18, 0xff8a5c, 0.62, 0.84, -0.2, g); sphere(0.14, 0x47b35a, 0.62, 1.02, -0.2, g);
+  // 畫架（面向鏡頭）
+  const easel = new THREE.Group(); easel.position.set(-1.15, 0, 0.25); g.add(easel);
+  for (const x of [-0.3, 0.3]) { const l = cyl(0.025, 0.025, 1.5, 0x8a6a4c, x, 0.75, 0, easel); l.rotation.z = x > 0 ? -0.08 : 0.08; }
+  const c = document.createElement('canvas'); c.width = 128; c.height = 100;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.56), new THREE.MeshBasicMaterial({ map: tex })); board.position.set(0, 1.12, 0.04); easel.add(board);
+  box(0.78, 0.62, 0.03, 0xfff4e2, 0, 1.12, 0.01, easel);
+  let shown = -1;
+  // 畫面：天空、太陽、山、房子，依進度從左畫到右
+  const paint = (p) => {
+    const k = Math.round(p * 20) / 20; if (k === shown) return; shown = k;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 128, 100);
+    x.save(); x.beginPath(); x.rect(0, 0, 128 * k, 100); x.clip();
+    x.fillStyle = '#9be7ff'; x.fillRect(0, 0, 128, 60); x.fillStyle = '#ffd34d'; x.beginPath(); x.arc(100, 22, 12, 0, 7); x.fill();
+    x.fillStyle = '#47b35a'; x.beginPath(); x.moveTo(0, 70); x.lineTo(40, 30); x.lineTo(80, 70); x.lineTo(128, 40); x.lineTo(128, 100); x.lineTo(0, 100); x.fill();
+    x.fillStyle = '#ff7a45'; x.fillRect(50, 60, 26, 24); x.fillStyle = '#d9483b'; x.beginPath(); x.moveTo(46, 60); x.lineTo(63, 46); x.lineTo(80, 60); x.fill();
+    x.restore(); x.strokeStyle = '#2c3e57'; x.lineWidth = 3; x.beginPath(); x.moveTo(128 * k, 0); x.lineTo(128 * k, 100); if (k > 0 && k < 1) x.stroke();
+    tex.needsUpdate = true;
+  };
+  paint(0);
+  const sign = labelSprite('🎨 設計部', { bg: '#b46bff', size: 0.3 }); sign.position.set(-0.3, 2.0, 0); g.add(sign);
+  return { g, paint };
 }
