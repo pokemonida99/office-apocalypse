@@ -4,7 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="上班啟示錄">
+<meta name="theme-color" content="#f2b98a">
 <title>上班啟示錄</title>
+<link rel="apple-touch-icon" id="iconApple" href="icons/kui-180.png">
+<link rel="icon" id="iconFav" type="image/png" href="icons/kui-192.png">
+<link rel="manifest" id="iconManifest" href="icons/manifest-kui.json">
+<script>
+  // 主畫面圖示：四款可挑，加入主畫面前先換好連結（iPhone 讀 apple-touch-icon、Android 讀 manifest）
+  const ICON_KEY = 'office-apocalypse-icon', ICONS = ['kui', 'mi', 'jie', 'vivi'];
+  function setIcon(k) {
+    document.getElementById('iconApple').href = `icons/${k}-180.png`;
+    document.getElementById('iconFav').href = `icons/${k}-192.png`;
+    document.getElementById('iconManifest').href = `icons/manifest-${k}.json`;
+  }
+  try { const k = localStorage.getItem(ICON_KEY); if (ICONS.includes(k)) setIcon(k); } catch {}
+</script>
 <style>
   * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #f6e3c8; font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; touch-action: none; overscroll-behavior: none; }
@@ -79,6 +94,13 @@
   #cover button { font: inherit; font-size: 21px; font-weight: 900; padding: 13px 44px; border: 0; border-radius: 30px; background: #ff5d3a; color: #fff; box-shadow: 0 6px 0 #b8381c; cursor: pointer; }
   #cover button:disabled { background: #c9a98f; box-shadow: 0 6px 0 #9c7d66; }
   #cover small { font-size: 12px; opacity: .6; }
+  /* 封面：挑主畫面圖示 */
+  #iconBox { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+  #iconBox b { font-size: 13px; }
+  #iconPick { display: flex; gap: 10px; }
+  #cover #iconPick button { width: 54px; height: 54px; padding: 0; border-radius: 14px; background: #fff center/cover; box-shadow: 0 3px 0 #0003; border: 3px solid #fff8; transition: transform .15s; }
+  #cover #iconPick button.on { border-color: #fff; box-shadow: 0 0 0 3px #ff5d3a, 0 3px 0 #0003; transform: scale(1.1); }
+  #iconBox small { max-width: 280px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -105,11 +127,33 @@
   <p>新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
   <button id="start" disabled>載入中…</button>
   <button id="reset">從頭開始</button>
+  <div id="iconBox">
+    <b>挑一個主畫面圖示</b>
+    <div id="iconPick"></div>
+    <small id="iconTip">選好後，iPhone 用 Safari「分享 → 加入主畫面」；Android 用選單「加到主畫面」</small>
+  </div>
   <small id="coverVer"></small>
 </div>
+<script>
+  (() => {
+    const box = document.getElementById('iconPick'), names = { kui: '小葵', mi: '小米', jie: '阿傑', vivi: 'Vivi' };
+    let cur = 'kui'; try { cur = ICONS.includes(localStorage.getItem(ICON_KEY)) ? localStorage.getItem(ICON_KEY) : 'kui'; } catch {}
+    for (const k of ICONS) {
+      const b = document.createElement('button');
+      b.style.backgroundImage = `url(icons/${k}-180.png)`; b.title = names[k]; b.setAttribute('aria-label', `圖示：${names[k]}`);
+      b.className = k === cur ? 'on' : '';
+      b.onclick = () => {
+        setIcon(k); try { localStorage.setItem(ICON_KEY, k); } catch {}
+        for (const o of box.children) o.className = o === b ? 'on' : '';
+        document.getElementById('iconTip').textContent = `已選「${names[k]}」，現在加入主畫面就是這個圖示`;
+      };
+      box.appendChild(b);
+    }
+  })();
+</script>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.4.0"></script>
+<script type="module" src="js/main.js?v=0.4.1"></script>
 </body>
 </html>

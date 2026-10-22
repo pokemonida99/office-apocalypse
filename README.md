@@ -6,6 +6,8 @@
 
 手機直式最順。拖曳畫面移動（電腦可用方向鍵／WASD）。免費、不用登入、沒有儲值或等待時間。
 
+**加到手機主畫面：** 封面可以挑四款圖示（小葵、小米、阿傑、Vivi），選好後 iPhone 用 Safari「分享 → 加入主畫面」，Android 用選單「加到主畫面」。
+
 ![升級總覽](design/v0.2_升級總覽.jpg)
 
 ![員工餐廳](design/v0.3_員工餐廳.jpg)
@@ -38,4 +40,5 @@
 - `js/stations.js` 開頭是設施數值表（速度、售價、升級價格），`js/main.js` 開頭是其他數值與場景配置。
 - 測試頁：`gait.html`（走路動作比較）、`viewer.html`（模型預覽）、`walk.html`（帶隊走路）。
 - 自動玩到滿級（在遊戲頁主控台）：`const b = (await import('./tools/bot.js?' + Date.now())).install(); while (!b.allMax()) b.run(10)`（約 750 遊戲秒全滿、含尾牙與全部採購）；網址加 `?fresh` 會清掉存檔從頭開始
+- 主畫面圖示：GPT 畫的原圖放 work/icons/，`tools/make_icons.sh` 裁成 180／192／512 並產生 `icons/manifest-<角色>.json`。
 - 模型用 gltf-transform 壓縮（meshopt＋webp 1024）；載入時會自動量每個角色不滑步的步伐速度。
