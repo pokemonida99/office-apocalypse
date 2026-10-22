@@ -403,3 +403,36 @@ export function deskLook() {
   const sign = labelSprite('🎨 設計部', { bg: '#b46bff', size: 0.3 }); sign.position.set(-0.3, 2.0, 0); g.add(sign);
   return { g, paint };
 }
+
+// 小米的客服中心辦公室（總機第 4、5 階）：矮玻璃牆圍起來，前面留門。牆只到腰，鏡頭看得到裡面
+export const MI_OFFICE = { x0: 3.15, x1: 7.2, z0: -6.5, z1: -3.6, door: [4.75, 6.05] };
+export function miOfficeLook(lv) {
+  const O = MI_OFFICE, g = new THREE.Group(), lux = lv >= 4;
+  const rail = lux ? 0xd9a63a : 0x7b5cff, opt = lux ? { metalness: 0.9, roughness: 0.3 } : undefined;
+  const cw = O.x1 - O.x0, cd = O.z1 - O.z0, cx = (O.x0 + O.x1) / 2, cz = (O.z0 + O.z1) / 2;
+  const carpet = new THREE.Mesh(new THREE.PlaneGeometry(cw, cd), new THREE.MeshStandardMaterial({ map: canvasTex(256, 192, (c, W, H) => {
+    c.fillStyle = lux ? '#e4ccff' : '#cdbdff'; c.fillRect(0, 0, W, H);
+    c.fillStyle = lux ? '#f6ebff' : '#e2d8ff'; for (let y = 12; y < H; y += 24) for (let x = (y / 24 % 2) * 16 + 8; x < W; x += 32) { c.beginPath(); c.arc(x, y, 4, 0, 7); c.fill(); }
+  }) }));
+  carpet.rotation.x = -Math.PI / 2; carpet.position.set(cx, 0.006, cz); carpet.receiveShadow = true; g.add(carpet);
+  const glass = new THREE.MeshStandardMaterial({ color: 0xcdeeff, transparent: true, opacity: 0.32, roughness: 0.1, depthWrite: false });
+  const wall = (ax, az, bx, bz) => {   // 一段牆：底板＋玻璃＋上框
+    const len = Math.hypot(bx - ax, bz - az), w = new THREE.Group();
+    w.position.set((ax + bx) / 2, 0, (az + bz) / 2); w.rotation.y = -Math.atan2(bz - az, bx - ax); g.add(w);
+    rbox(len, 0.14, 0.08, 0x7b5cff, 0, 0.07, 0, w);
+    const gl = new THREE.Mesh(new THREE.BoxGeometry(len, 0.72, 0.03), glass); gl.position.y = 0.5; w.add(gl);
+    rbox(len + 0.04, 0.06, 0.09, rail, 0, 0.88, 0, w, opt);
+  };
+  wall(O.x0, O.z0, O.x0, O.z1);
+  wall(O.x0, O.z1, O.door[0], O.z1);
+  wall(O.door[1], O.z1, O.x1, O.z1);
+  for (const x of O.door) {   // 門柱＋燈
+    cyl(0.06, 0.06, 1.1, rail, x, 0.55, O.z1, g, opt);
+    sphere(0.12, new THREE.MeshBasicMaterial({ color: lux ? 0xffe08a : 0xd9c8ff, toneMapped: false }), x, 1.18, O.z1, g);
+  }
+  // 門牌貼在左邊玻璃上（平的，不擋視線）
+  const tex = labelSprite(lux ? '👑 小米客服中心' : '📞 小米辦公室', { bg: lux ? '#b8862a' : '#7b5cff' }).material.map;
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.33), new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: !lux }));
+  sign.position.set((O.x0 + O.door[0]) / 2, 0.55, O.z1 + 0.05); g.add(sign);
+  return g;
+}

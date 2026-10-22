@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.4.2';
 import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.4.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.4.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.4.2';
 import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.4.2';
 import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.2';
 
@@ -72,7 +72,7 @@ const SHOPS_DEF = {
   chicken: { ...foodShop(0, -1.8), need: () => shops.beef.unlocked },
   fish: { ...foodShop(4.2, 2.4), need: () => shops.chicken.unlocked },
 };
-const PHONE_DEF = { desk: [5.4, -5.6], zone: [5.4, -4.2], upPad: [3.7, -5.5], unlockPad: [5.4, -4.2] };
+const PHONE_DEF = { desk: [5.4, -5.6], zone: [5.4, -4.2], upPad: [3.88, -4.4], unlockPad: [5.4, -4.2] };   // 升級格放在之後小米辦公室的玻璃牆裡面
 const DESK_AT = [-6.0, 3.3];
 const HIRES = [
   { id: 'worker', name: '工讀生（咖啡）', price: 250, at: [-2.4, 3.0], need: () => shops.coffee.lv >= 1, kind: 'npcF', home: 'coffee', cap: 0xffc83d },
@@ -397,6 +397,15 @@ function setPhoneLook(lv, fancy = true) {
     const bub = keep?.bub || (() => { const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, transparent: true, depthTest: false })); b.scale.set(0.42, 0.42, 1); b.renderOrder = 9; scene.add(b); return b; })();
     phone.lines.push({ ringing: keep?.ringing || false, t: keep ? keep.t : 1 + Math.random() * 2, bub });
   }
+  if (lv >= 3) {   // 第 4、5 階：小米有自己的辦公室
+    const O = MI_OFFICE;
+    if (!phone.office) {   // 玻璃牆擋路（門在前面中間）
+      aabb(O.x0, (O.z0 + O.z1) / 2, 0.06, (O.z1 - O.z0) / 2);
+      aabb((O.x0 + O.door[0]) / 2, O.z1, (O.door[0] - O.x0) / 2, 0.06);
+      aabb((O.door[1] + O.x1) / 2, O.z1, (O.x1 - O.door[1]) / 2, 0.06);
+    } else scene.remove(phone.office);
+    phone.office = miOfficeLook(lv); scene.add(phone.office); if (fancy) popIn(phone.office, 1, 2);
+  }
   if (phone.badge) scene.remove(phone.badge);
   phone.badge = levelBadge(STATIONS.phone.levels[lv].title, lv); phone.badge.position.set(x, 0, z); phone.badge.userData.y = 2.1; scene.add(phone.badge);
 }
@@ -405,7 +414,7 @@ function updatePhone(dt) {
   const P = STATIONS.phone.levels[phone.lv];
   phone.lines.forEach((ln, i) => {
     const ph = phone.look.phones[i];
-    if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) { ln.ringing = true; if (i === 0 || Math.random() < 0.4) sfx.ring(); } }
+    if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) { ln.ringing = true; if ((i === 0 || Math.random() < 0.4) && !(phone.office && hires.mi)) sfx.ring(); } }   // 小米進辦公室後就不響鈴
     const wp = ph.g.getWorldPosition(V());
     ln.bub.visible = ln.ringing;
     if (ln.ringing) {
@@ -594,7 +603,11 @@ const VIVI_LINES = ['大家加油！', '我很看好你喔～', '今天也要開
 function updateHires(dt) {
   for (const h of Object.values(hires)) {
     const a = h.actor;
-    if (h.id === 'mi') { walkTo(a, PHONE_DEF.zone[0] + 0.25, PHONE_DEF.zone[1], 1.4, dt) && turnTo(a, Math.PI, dt); }
+    if (h.id === 'mi') {   // 有辦公室就先走到門口再進去
+      const p = a.root.position, door = (MI_OFFICE.door[0] + MI_OFFICE.door[1]) / 2;
+      if (phone.office && p.z > MI_OFFICE.z1 - 0.15 && Math.abs(p.x - door) > 0.35) walkTo(a, door, MI_OFFICE.z1 + 0.7, 1.4, dt);
+      else walkTo(a, PHONE_DEF.zone[0] + 0.25, PHONE_DEF.zone[1], 1.4, dt) && turnTo(a, Math.PI, dt);
+    }
     else if (h.id === 'jie') updateDesign(dt);
     else if (h.id === 'vivi') {   // 老闆巡視：走來走去幫大家加油（沒有實際效果）
       const pts = [[-1.0, -1.2], [-2.0, 3.8], [2.6, 5.0], [3.0, 0.2], [0.4, -3.2], [-5.0, 4.6]];
@@ -605,16 +618,29 @@ function updateHires(dt) {
     updateActor(a, dt, state.t);
   }
 }
-// 搬運工：去出貨口拿滿 → 送櫃台；自己的站變產線就去幫別站
+// 搬運工：去出貨口拿滿 → 送櫃台。自己的站變產線（不用人搬）就自己找事做：
+// 挑最缺貨（排隊多、櫃台空）、出貨口有貨、另一個工讀生沒在搬的店（販賣機、三個攤位也算）
+function pickJob(h) {
+  const own = shops[h.home]; if (own.unlocked && !isLine(own)) return own;
+  const taken = new Set(Object.values(hires).filter(o => o !== h && o.job).map(o => o.job));
+  const need = s => s.queue.length * 3 - s.stack.length + (s.tray.length ? 6 : -20) - (taken.has(s) ? 10 : 0);
+  return Object.values(shops).filter(s => s.unlocked && !isLine(s)).sort((x, y) => need(y) - need(x))[0] || null;
+}
 function hauler(h, dt) {
   const a = h.actor;
-  const pick = () => { const own = shops[h.home]; if (own.unlocked && !isLine(own)) return own; return Object.values(shops).find(s => s.unlocked && !isLine(s) && s.d.machine); };
-  const s = h.type ? shopOf(h.type) : pick();
+  // 選定一家就搬到送完一趟才換；到了出貨口等 2.5 秒還沒貨也換
+  if (h.job && !h.carry.length && nearAt(a, h.job.pickup, 0.8) && !h.job.tray.length) h.waitT = (h.waitT || 0) + dt; else h.waitT = 0;
+  if (!h.carry.length && h.mode === 'fetch' && (!h.job || isLine(h.job) || h.waitT > 2.5)) {
+    const j = pickJob(h); h.waitT = 0;
+    if (j && j !== h.job && j !== shops[h.home]) floatText(a.root.position.clone().setY(1.5), `去支援${ICON[j.item]}！`, '#2c3e57', 0.6);
+    h.job = j;
+  }
+  const s = h.type ? shopOf(h.type) : h.job;
   if (!s) { a.speed = 0; return; }
   if (h.mode === 'fetch') {
     const full = h.carry.length >= h.carryMax || (h.carry.length && !s.tray.length);
     if (full) h.mode = 'deliver'; else walkTo(a, s.pickup[0] + 0.3, s.pickup[1], CFG.helperSpeed, dt);
-  } else if (walkTo(a, s.d.drop[0] + 0.3, s.d.drop[1], CFG.helperSpeed, dt) && !h.carry.length) h.mode = 'fetch';
+  } else if (walkTo(a, s.d.drop[0] + 0.3, s.d.drop[1], CFG.helperSpeed, dt) && !h.carry.length) { h.mode = 'fetch'; if (h.job !== shops[h.home]) h.job = null; }   // 送完一趟再看哪裡最缺
   carry(h, dt);
 }
 
@@ -633,7 +659,7 @@ function carry(c, dt) {
   if (c.moveT < CFG.moveEvery) return;
   for (const s of Object.values(shops)) {
     if (!s.unlocked) continue;
-    if (!isLine(s) && nearAt(c.actor, s.pickup, 0.8) && s.tray.length && c.carry.length < c.carryMax && (!c.type || c.type === s.item)) {
+    if (!isLine(s) && nearAt(c.actor, s.pickup, 0.8) && s.tray.length && c.carry.length < c.carryMax && (!c.type || c.type === s.item) && (!c.job || c.job === s)) {   // 工讀生只拿自己選的店，路過別家不順手拿
       c.moveT = 0; c.type = s.item;
       const m = s.tray.pop(), i = c.carry.length; c.carry.push(m); retarget(m, () => backSlot(c, i));
       if (c === player) sfx.pick();
