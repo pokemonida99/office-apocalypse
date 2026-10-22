@@ -8,7 +8,7 @@ export function install() {
   const isLine = s => !!s.def.levels[s.lv].line;
   const shopOf = item => Object.values(S).find(s => s.item === item);
   const lv = s => s.unlocked ? s.lv + 1 : '-';
-  const lvls = () => `咖${lv(S.coffee)} 印${lv(S.printer)} 販${lv(S.vending)} 牛${lv(S.beef)} 雞${lv(S.chicken)} 魚${lv(S.fish)} 電${G.phone.unlocked ? G.phone.lv + 1 : '-'} 職${G.state.rank + 1} 人${Object.keys(G.hires).length}`;
+  const lvls = () => `Q${G.state.q} 咖${lv(S.coffee)} 印${lv(S.printer)} 販${lv(S.vending)} 牛${lv(S.beef)} 雞${lv(S.chicken)} 魚${lv(S.fish)} 電${G.phone.unlocked ? G.phone.lv + 1 : '-'} 職${G.state.rank + 1} 人${Object.keys(G.hires).length}`;
   const PHONE = [5.4, -4.2];
   B.decide = () => {
     const p = G.player;
@@ -25,6 +25,13 @@ export function install() {
     if (B.pad && B.pad.shown && G.state.money > 0) return B.pad.at;   // 選定的格子就付到完
     B.pad = pad || null;
     if (pad) return pad.at;
+    // 採購部：買得起最便宜的就去買
+    const item = G.kiosk && G.shopItems().filter(i => i.price != null && G.state.money >= i.price).sort((a, b) => a.price - b.price)[0];
+    if (item) {
+      const z = G.KIOSK.zone, pos = p.actor.root.position;
+      if (Math.hypot(pos.x - z[0], pos.z - z[1]) < 0.8) { G.buy(item.kind, item.id); B.events.push(`${Math.round(G.state.t)}s 買 ${item.name}`); }
+      return z;
+    }
     const cashS = Object.values(S).filter(s => s.unlocked && s.cash.length).sort((a, b) => b.cash.length - a.cash.length)[0];
     if (cashS && cashS.cash.length >= 3) return cashS.d.cash;
     if (G.phone.unlocked && !G.hires.mi && G.phone.lines.filter(l => l.ringing).length >= 2) return PHONE;
@@ -74,11 +81,13 @@ export function install() {
         G.force = d > 0.15 ? [dx / d, dz / d] : [0, 0];
       } else G.force = [0, 0];
       G.step(dt);
+      if (document.getElementById('finale').classList.contains('on')) { B.events.push(`${Math.round(G.state.t)}s 尾牙結束`); G.endFinale(); }
       const now = lvls(); if (now !== B.prev) { B.events.push(`${Math.round(G.state.t)}s $${G.state.money} ${now}`); B.prev = now; }
     }
     return `${Math.round(G.state.t)}s $${G.state.money} ${lvls()}`;
   };
   B.allMax = () => Object.values(S).every(s => s.unlocked && s.lv >= s.def.levels.length - 1) && G.phone.lv >= 4 && Object.keys(G.hires).length >= 5;
+  B.allDone = () => B.allMax() && G.state.finaleDone && G.shopItems().every(i => i.price == null) && G.state.q >= 4;
   window.BOT = B; G.force = null;
   return B;
 }

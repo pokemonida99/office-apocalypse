@@ -1,13 +1,15 @@
-// 上班啟示錄 v0.3：新人小葵在辦公室打雜升級
+// 上班啟示錄 v0.4：新人小葵在辦公室打雜升級
 // 咖啡機／印表機：做貨 → 背去櫃台 → 同事排隊付錢；販賣機、員工餐廳（牛／雞／魚）：搬進貨去補貨 → 同事來買
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
+// 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.3.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.3.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.3.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.3.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.4.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.4.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.4.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.4.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.0';
 
-const VERSION = 'v0.3.0';
+const VERSION = 'v0.4.0';
 
 // ---------- 數值 ----------
 const CFG = {
@@ -30,6 +32,13 @@ const RANKS = [
 ];
 const rankCarry = (r) => 6 + r * 2;
 const rankSpeed = (r) => 2.35 + r * 0.09;
+// 採購部的裝備
+const GEAR = {
+  cart: { icon: '🛒', name: '推車', desc: ['一次多背 4 個', '一次多背 8 個', '黃金推車：多背 14 個'], price: [2000, 7000, 20000], bonus: [0, 4, 8, 14] },
+  scooter: { icon: '🛴', name: '滑板車', desc: ['走路快 15%', '電動滑板車：快 30%'], price: [3000, 12000], bonus: [0, 0.15, 0.3] },
+  magnet: { icon: '🧲', name: '收錢磁鐵', desc: ['靠近錢堆就自動吸過來', '超強磁鐵：全場的錢自動飛過來'], price: [5000, 16000] },
+};
+const carryMaxNow = () => rankCarry(state.rank) + GEAR.cart.bonus[state.gear.cart];
 
 // ---------- 場景配置（x 往右、z 往鏡頭） ----------
 // 北邊：咖啡機、印表機、電話總機；東邊：販賣機；中間：請人格子、設計部；南邊：員工餐廳三攤
@@ -78,6 +87,7 @@ function planks(base, line, w = 256) {
     g.globalAlpha = 0.07; for (let i = 0; i < 60; i++) { g.fillStyle = Math.random() > 0.5 ? '#fff' : '#000'; g.fillRect(Math.random() * W, Math.random() * H, 30 + Math.random() * 40, 2); }
   });
 }
+const ENV = {};   // 換年度時要換色的東西
 const colliders = [];
 const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd }; colliders.push(c); return c; };
 {
@@ -89,12 +99,12 @@ const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z
   // 工作區：暖木地板
   const wood = planks('#dd9a5a', '#b9733c'); wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.repeat.set(4, 1.6);
   const work = new THREE.Mesh(new THREE.PlaneGeometry(15, 4.7), new THREE.MeshStandardMaterial({ map: wood, roughness: 0.7 }));
-  work.rotation.x = -Math.PI / 2; work.position.set(0, 0.004, -4.4); work.receiveShadow = true; scene.add(work);
+  work.rotation.x = -Math.PI / 2; work.position.set(0, 0.004, -4.4); work.receiveShadow = true; scene.add(work); ENV.work = work;
   // 員工餐廳：薄荷綠格子地磚
   const cafe = canvasTex(128, 128, (g) => { g.fillStyle = '#d8f0e3'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c3e6d3'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); });
   cafe.wrapS = cafe.wrapT = THREE.RepeatWrapping; cafe.repeat.set(15, 6);
   const cf = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.2), new THREE.MeshStandardMaterial({ map: cafe, roughness: 0.8 }));
-  cf.rotation.x = -Math.PI / 2; cf.position.set(0, 0.004, 7.9); cf.receiveShadow = true; scene.add(cf);
+  cf.rotation.x = -Math.PI / 2; cf.position.set(0, 0.004, 7.9); cf.receiveShadow = true; scene.add(cf); ENV.cafe = cf;
   // 地上漆的「員工餐廳」字樣（不擋畫面）
   const cafeTxt = canvasTex(512, 96, (g, W, H) => { g.fillStyle = '#2fb27a'; roundRect(g, 4, 4, W - 8, H - 8, 40); g.fill(); g.fillStyle = '#fff'; g.font = `900 58px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍱 員工餐廳', W / 2, H / 2 + 3); });
   const cs = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.8), new THREE.MeshBasicMaterial({ map: cafeTxt, transparent: true, depthWrite: false }));
@@ -174,7 +184,16 @@ function after(sec, fn) { later.push({ at: state.t + sec, fn }); }
 function runLater() { for (let i = later.length - 1; i >= 0; i--) if (state.t >= later[i].at) { const f = later[i].fn; later.splice(i, 1); f(); } }
 
 // ---------- 狀態 ----------
-const state = { money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0 };
+const state = {
+  money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0,
+  earned: 0, q: 0, year: 1, yearBonus: 1, finaleDone: false, rushUntil: 0,
+  gear: { cart: 0, scooter: 0, magnet: 0 }, decor: [],
+  stats: { coffee: 0, doc: 0, drink: 0, beef: 0, chicken: 0, fish: 0, calls: 0, drafts: 0, vip: 0 },
+};
+// 收入倍率：裝潢滿意度（每顆星 +5% 小費）× 新辦公室年度加成 × 午餐尖峰
+const stars = () => state.decor.length;
+const rushOn = () => state.t < state.rushUntil;
+const incomeMult = () => (1 + 0.05 * stars()) * state.yearBonus * (rushOn() ? 2 : 1);
 let kinds, player;
 const carriers = [];
 const shops = {};
@@ -266,15 +285,18 @@ function produce(s, dt) {
 }
 
 // ---------- 排隊的同事 ----------
-function spawnCustomer(s) {
-  const a = makeActor((s.spawnN + s.type.length) % 2 ? kinds.npcF : kinds.npcM, 0.95);
+function spawnCustomer(s, vip = false) {
+  const a = makeActor(vip ? kinds.npcM : (s.spawnN + s.type.length) % 2 ? kinds.npcF : kinds.npcM, vip ? 1.02 : 0.95);
   a.root.position.set(L.elevator[0] + 0.4, 0, L.elevator[1] + (Math.random() - 0.5) * 0.6); a.root.rotation.y = Math.PI / 2;
   scene.add(a.root);
   const many = s.def.restock ? 2 : 3 + Math.min(s.lv, 3);   // 升級後同事一次要更多；便當、飲料一次買少一點
   const want = s.spawnN < 3 ? [2, 3, 1][s.spawnN] : 1 + Math.floor(Math.random() * many);
   s.spawnN++;
-  const c = { actor: a, want, got: [], mode: 'queue', bubble: null, bubbleN: -1, shop: s };
-  s.crowd.push(c); s.queue.push(c);
+  const c = { actor: a, want, got: [], mode: 'queue', bubble: null, bubbleN: -1, shop: s, vip };
+  s.crowd.push(c);
+  if (vip) { c.want = s.def.restock ? 5 + Math.floor(Math.random() * 3) : 8 + Math.floor(Math.random() * 5); vipGear(a.root); s.queue.splice(Math.min(1, s.queue.length), 0, c); }   // VIP 插到第二個
+  else s.queue.push(c);
+  return c;
 }
 function bubbleTex(item, n) {
   return canvasTex(256, 150, (g, W) => {
@@ -288,11 +310,17 @@ const handSlot = (c, i) => { const r = c.actor.root, h = r.rotation.y; return V(
 function updateCustomers(s, dt) {
   if (!s.unlocked) return;
   const Q = s.d.queue;
+  // 第 i 個排隊位置；隊伍比預設長（午餐尖峰）就順著最後一段延伸，碰到牆就停
+  const slotAt = (i) => {
+    if (i < Q.length) return Q[i];
+    const a = Q[Q.length - 1], p = Q[Q.length - 2], k = i - Q.length + 1;
+    return [THREE.MathUtils.clamp(a[0] + (a[0] - p[0]) * k, -7.0, 7.0), THREE.MathUtils.clamp(a[1] + (a[1] - p[1]) * k, L.bounds.minZ, L.bounds.maxZ)];
+  };
   s.queue.forEach((c, i) => {
-    const slot = Q[Math.min(i, Q.length - 1)];
+    const slot = slotAt(i);
     const arrived = walkTo(c.actor, slot[0], slot[1], CFG.crewSpeed, dt);
     // 排第一個面向櫃台，其他人面向前一個人
-    const look = i === 0 ? s.d.counter : Q[Math.max(0, i - 1)];
+    const look = i === 0 ? s.d.counter : slotAt(i - 1);
     if (arrived) turnTo(c.actor, Math.atan2(look[0] - slot[0], look[1] - slot[1]), dt);
     c.ready = arrived && i === 0;
   });
@@ -322,11 +350,13 @@ function updateCustomers(s, dt) {
     if (f.got.length === f.want) pay(s, f);
   }
   s.spawnT += dt;
-  if (s.spawnT >= CFG.spawnEvery && s.queue.length < (s.def.restock ? 4 : CFG.queueMax)) { s.spawnT = 0; spawnCustomer(s); }
+  const rush = rushOn() ? 2 : 0;
+  if (s.spawnT >= CFG.spawnEvery / (rush ? 2 : 1) && s.queue.length < (s.def.restock ? 4 : CFG.queueMax) + rush) { s.spawnT = 0; spawnCustomer(s); }
 }
 function pay(s, c) {
-  s.queue.shift(); c.mode = 'leave'; state.served++;
-  const total = Math.round(c.want * s.def.levels[s.lv].price);
+  s.queue.shift(); c.mode = 'leave'; state.served++; state.stats[s.item] += c.want;
+  const total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1));
+  if (c.vip) vipPaid(s, c, total);
   const bills = Math.min(12, Math.max(1, Math.round(total / 10)));
   const from = c.actor.root.position.clone().setY(0.8);
   for (let i = 0; i < bills; i++) after(i * 0.06, () => {
@@ -389,8 +419,9 @@ function updatePhone(dt) {
     const ln = phone.lines.find(l => l.ringing);
     if (ln) {
       phone.answerT = 0; ln.ringing = false; ln.t = P.ringEvery * (0.6 + Math.random() * 0.8);
-      addMoney(P.price);
-      floatText(ln.bub.position.clone().setY(1.5), '+$' + P.price, '#7b5cff', 0.8);
+      const val = Math.round(P.price * state.yearBonus * (rushOn() ? 2 : 1)); state.stats.calls++;
+      addMoney(val);
+      floatText(ln.bub.position.clone().setY(1.5), '+$' + val, '#7b5cff', 0.8);
       sfx.answer(); if (kuiOn) gainXp(1);
     }
   }
@@ -429,8 +460,9 @@ function updateDesign(dt) {
   if (p >= 1) {   // 交稿！
     design.t = 0;
     const pos = V(DESK_AT[0] - 1.15, 1.2, DESK_AT[1] + 0.25);
-    addMoney(CFG.draftPay);
-    floatText(pos.clone().setY(2.3), '交稿！+$' + CFG.draftPay, '#b46bff', 1.3);
+    const pay = Math.round(CFG.draftPay * state.yearBonus); state.stats.drafts++;
+    addMoney(pay);
+    floatText(pos.clone().setY(2.3), '交稿！+$' + pay, '#b46bff', 1.3);
     confetti(pos, 40, 0.7); sfx.build(); squash(design.look.g, 0.08);
     if (Math.random() < 0.5) floatText(a.root.position.clone().setY(1.7), ['客戶說讚！', '一次過稿！', '這版可以！'][Math.floor(Math.random() * 3)], '#2c3e57', 0.7);
   }
@@ -534,7 +566,7 @@ const HIRE_SUB = {
   jie: `坐在設計部慢慢畫，交一次稿 +$${CFG.draftPay}`, mi: '坐鎮電話總機，一通 $100 起',
   vivi: '老闆來巡視了！（效果：大家被加油了，就這樣）',
 };
-function hire(h) {
+function hire(h, silent = false) {
   const k = kinds[h.kind] || kinds.npcF;
   const a = makeActor(k, h.id.startsWith('worker') ? 0.88 : 0.98);
   if (h.id === 'jie' && kinds.jieJog) addJog(a, kinds.jieJog);
@@ -550,6 +582,7 @@ function hire(h) {
   hires[h.id] = helper;
   if (h.home) carriers.push(helper);
   if (h.id === 'jie') openDesk();
+  if (silent) return;
   pillar(a.root.position, 0xff9ad5, 0.6, 4); confetti(V(a.root.position.x, 1.2, a.root.position.z), 50); sfx.build();
   banner(h.name.replace(/（.*）/, '') + ' 加入！', HIRE_SUB[h.id], 0, h.id === 'jie' ? '#b46bff' : '#ff4fa3');
 }
@@ -586,6 +619,10 @@ function hauler(h, dt) {
 const nearAt = (a, [x, z], r) => Math.hypot(a.root.position.x - x, a.root.position.z - z) < r;
 function backSlot(c, i) {
   const r = c.actor.root, h = r.rotation.y, s = r.scale.x, ih = ITEM_H[c.type || 'coffee'];
+  if (c === player && state.gear.cart) {   // 有推車：貨兩排疊在推車上
+    const side = (i % 2 - 0.5) * 0.2, back = 0.62;
+    return V(r.position.x - Math.sin(h) * back + Math.cos(h) * side, 0.36 + ih / 2 + Math.floor(i / 2) * ih, r.position.z - Math.cos(h) * back - Math.sin(h) * side);
+  }
   return V(r.position.x - Math.sin(h) * 0.27 * s, (0.4 * s + ih / 2) + i * ih, r.position.z - Math.cos(h) * 0.27 * s);
 }
 function carry(c, dt) {
@@ -606,18 +643,19 @@ function carry(c, dt) {
       if (c === player) { sfx.drop(); gainXp(1); }
       return;
     }
-    if (c === player && nearAt(c.actor, s.d.cash, 0.75) && s.cash.length) {
+    const mag = c === player ? [0.75, 2.6, 99][state.gear.magnet] : 0.75;
+    if (c === player && nearAt(c.actor, s.d.cash, mag) && s.cash.length) {
       c.moveT = 0;
       for (let k = 0; k < 2 && s.cash.length; k++) {
         const b = s.cash.pop(), v = b.userData.v;
         retarget(b, () => c.actor.root.position.clone().setY(0.7), () => { addMoney(v); });
       }
-      sfx.coin(); return;
+      sfx.coin(); if (mag < 99) return;
     }
   }
 }
 // 收錢：數字跑上去
-function addMoney(v) { state.money += Math.round(v); bumpMoney(); }
+function addMoney(v) { v = Math.round(v); state.money += v; state.earned += v; bumpMoney(); }
 
 // ---------- 小葵升職 ----------
 function gainXp(n) {
@@ -625,7 +663,7 @@ function gainXp(n) {
   const next = RANKS[state.rank + 1];
   if (next && state.xp >= next.xp) {
     state.rank++;
-    player.carryMax = rankCarry(state.rank);
+    player.carryMax = carryMaxNow();
     const p = player.actor.root.position;
     pillar(p, 0xffb3d9, 0.6, 5); shockwave(p, 0xffb3d9, 3); confetti(V(p.x, 1.2, p.z), 70); camKick(0.7);
     sfx.promote(); popIn(player.actor.root, 1, 3);
@@ -667,7 +705,7 @@ function updatePlayer(dt) {
   if (touch && Math.hypot(touch.dx, touch.dy) > 6) { mx = touch.dx / 50; mz = touch.dy / 50; }
   if (G.force) [mx, mz] = G.force;
   const len = Math.hypot(mx, mz), a = player.actor, p = a.root.position;
-  const top = rankSpeed(state.rank) * Math.min(1, len);
+  const top = rankSpeed(state.rank) * (1 + GEAR.scooter.bonus[state.gear.scooter]) * Math.min(1, len);
   // 加速度平滑：起步、停下不會瞬間，看起來比較順
   const tx = len > 0.05 ? mx / len * top : 0, tz = len > 0.05 ? mz / len * top : 0;
   const k = 1 - Math.exp(-dt * (len > 0.05 ? 10 : 14));
@@ -732,12 +770,275 @@ function updateHud(dt) {
 document.getElementById('ver').textContent = VERSION;
 document.getElementById('coverVer').textContent = VERSION;
 
+// ======================================================================
+// A. 年度業績：Q1～Q4 里程碑（看累積收入）→ 尾牙
+// ======================================================================
+const QUARTERS = [
+  { target: 3000, reward: 400, unlock: '採購部開張了！買裝備、買裝潢' },
+  { target: 15000, reward: 2000, unlock: '開始有突發事件：VIP 客戶、午餐尖峰' },
+  { target: 50000, reward: 6000, unlock: '採購部進了高級裝潢' },
+  { target: 180000, reward: 20000, unlock: '全年達標！準備尾牙' },
+];
+const yearEl = document.getElementById('year'), yearTitle = document.getElementById('yearTitle'), yearNum = document.getElementById('yearNum'), yearBar = document.getElementById('yearBar');
+const yearQs = [...yearEl.querySelectorAll('.qs b')];
+// 新辦公室：每一年目標放大一點
+const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0.6));
+function updateYear() {
+  yearEl.style.display = 'block';
+  yearQs.forEach((b, i) => b.classList.toggle('on', i < state.q));
+  if (state.q >= 4) { yearTitle.textContent = `第 ${state.year} 年　全年達標 ✓`; yearNum.textContent = '$' + state.earned.toLocaleString(); yearBar.style.width = '100%'; return; }
+  const prev = state.q ? qTarget(state.q - 1) : 0, tgt = qTarget(state.q);
+  yearTitle.textContent = `第 ${state.year} 年　Q${state.q + 1} 業績`;
+  yearNum.textContent = `${Math.min(state.earned, tgt).toLocaleString()} / ${tgt.toLocaleString()}`;
+  yearBar.style.width = `${Math.min(100, (state.earned - prev) / (tgt - prev) * 100)}%`;
+  if (state.earned >= tgt) quarterDone(state.q);
+}
+function quarterDone(i) {
+  state.q = i + 1;
+  const Q = QUARTERS[i], reward = Math.round(Q.reward * (1 + (state.year - 1) * 0.6));
+  state.money += reward; bumpMoney();
+  const p = player.actor.root.position;
+  pillar(p, 0x7dff9a, 0.7, 5); confetti(V(p.x, 1.4, p.z), 100, 1.2); camKick(0.8); sfx.upgrade();
+  banner(`Q${i + 1} 業績達標！`, `獎金 +$${reward.toLocaleString()}　${Q.unlock}`, i + 1, '#22a447');
+  if (i === 0) openKiosk(true);
+  if (i === 3 && !state.finaleDone) after(3, startFinale);
+  save();
+}
+
+// ======================================================================
+// B. 採購部：裝備（推車、滑板車、磁鐵）＋裝潢（滿意度星星 → 小費）
+// ======================================================================
+const KIOSK = { at: [-6.4, 5.5], zone: [-5.4, 5.5] };
+const DECOR = [
+  { id: 'sofa', icon: '🛋', name: '沙發組', price: 3000, at: [6.7, 4.7], rot: -Math.PI / 2, q: 1 },
+  { id: 'plants', icon: '🪴', name: '植栽牆', price: 4500, at: [-7.15, 7.4], rot: Math.PI / 2, q: 1 },
+  { id: 'aquarium', icon: '🐠', name: '大魚缸', price: 7000, at: [-6.95, 9.7], rot: Math.PI / 2, q: 1 },
+  { id: 'massage', icon: '💆', name: '按摩椅', price: 9000, at: [6.7, 6.2], rot: -Math.PI / 2, q: 1 },
+  { id: 'catLucky', icon: '🐱', name: '招財貓', price: 12000, at: [-6.9, 1.7], rot: Math.PI / 2, q: 3 },
+  { id: 'claw', icon: '🧸', name: '夾娃娃機', price: 16000, at: [6.75, 8.9], rot: -Math.PI / 2, q: 3 },
+  { id: 'trophy', icon: '🏆', name: '獎盃櫃', price: 22000, at: [-3.75, -6.5], rot: 0, q: 3 },
+  { id: 'piano', icon: '🎹', name: '演奏鋼琴', price: 30000, at: [2.35, -6.5], rot: 0, q: 3 },
+];
+const decorObjs = [];
+let kiosk = null;
+function openKiosk(fancy) {
+  if (kiosk) return;
+  kiosk = kioskLook(); kiosk.position.set(KIOSK.at[0], 0, KIOSK.at[1]); kiosk.rotation.y = Math.PI / 2; scene.add(kiosk);
+  aabb(KIOSK.at[0], KIOSK.at[1], 0.35, 0.7);
+  zoneMark(KIOSK.zone[0], KIOSK.zone[1], 1.1, 1.1, '#7dff9a');
+  if (fancy) { popIn(kiosk); pillar(V(KIOSK.at[0], 0, KIOSK.at[1]), 0x7dff9a, 0.7, 4); }
+}
+function placeDecor(d, fancy) {
+  const look = DECOR_LOOKS[d.id]();
+  look.g.position.set(d.at[0], 0, d.at[1]); look.g.rotation.y = d.rot; scene.add(look.g);
+  decorObjs.push(look);
+  if (fancy) { popIn(look.g); celebrate(V(d.at[0], 0, d.at[1]), `${d.icon} ${d.name}`, `員工滿意度 ★${stars()}　小費 +${stars() * 5}%`, 0, '#ff8a3d'); }
+}
+// 清單：目前可以買的東西
+function shopItems() {
+  const out = [];
+  for (const [id, g] of Object.entries(GEAR)) {
+    const lv = state.gear[id], max = g.price.length;
+    out.push({ kind: 'gear', id, icon: g.icon, name: g.name + (lv ? ` Lv${lv}` : ''), desc: lv >= max ? '已經是最高級' : g.desc[lv], price: lv >= max ? null : g.price[lv] });
+  }
+  for (const d of DECOR) if (state.q >= d.q) out.push({ kind: 'decor', id: d.id, icon: d.icon, name: d.name, desc: '滿意度 +1 ★（小費 +5%）', price: state.decor.includes(d.id) ? null : d.price });
+  return out;
+}
+function buy(kind, id) {
+  const it = shopItems().find(x => x.kind === kind && x.id === id);
+  if (!it || it.price == null || state.money < it.price) return false;
+  state.money -= it.price; bumpMoney(); gainXp(5);
+  if (kind === 'gear') {
+    state.gear[id]++;
+    if (id === 'cart') { player.carryMax = carryMaxNow(); setCart(); }
+    const p = player.actor.root.position; pillar(p, 0x7dff9a, 0.6, 4); confetti(V(p.x, 1.2, p.z), 50); sfx.build();
+    banner(`${GEAR[id].icon} ${GEAR[id].name} Lv${state.gear[id]}`, GEAR[id].desc[state.gear[id] - 1], 0, '#36c35d');
+  } else { state.decor.push(id); placeDecor(DECOR.find(d => d.id === id), true); }
+  renderShop(); save(); return true;
+}
+let cartObj = null;
+function setCart() {
+  if (cartObj) player.actor.root.remove(cartObj);
+  if (!state.gear.cart) return;
+  cartObj = cartLook(state.gear.cart); cartObj.position.set(0, 0, -0.62); player.actor.root.add(cartObj); popIn(cartObj);
+}
+const shopEl = document.getElementById('shop'), shopList = document.getElementById('shopList');
+let shopOpen = false, shopKey = '';
+document.getElementById('shopX').onclick = () => { shopEl.classList.remove('on'); shopOpen = false; shopClosedHere = true; };
+let shopClosedHere = false;
+function renderShop() {
+  const items = shopItems(), key = items.map(i => i.id + i.price).join() + '|' + Math.floor(state.money / 100);
+  if (key === shopKey) return; shopKey = key;
+  let html = '<div class="sec">小葵的裝備</div>';
+  items.forEach((it, i) => {
+    if (it.kind === 'decor' && (i === 0 || items[i - 1].kind !== 'decor')) html += `<div class="sec">辦公室裝潢（現在滿意度 ★${stars()}）</div>`;
+    const btn = it.price == null ? `<button class="buy done" disabled>✓</button>` : `<button class="buy" data-k="${it.kind}" data-id="${it.id}" ${state.money < it.price ? 'disabled' : ''}>$${it.price.toLocaleString()}</button>`;
+    html += `<div class="it"><div class="ic">${it.icon}</div><div class="tx"><b>${it.name}</b><small>${it.desc}</small></div>${btn}</div>`;
+  });
+  shopList.innerHTML = html;
+  shopList.querySelectorAll('.buy[data-id]').forEach(b => b.onclick = (e) => { e.stopPropagation(); audioInit(); buy(b.dataset.k, b.dataset.id); });
+}
+function updateKiosk() {
+  if (!kiosk) return;
+  const near = nearAt(player.actor, KIOSK.zone, 0.85);
+  if (near && !shopOpen && !shopClosedHere) { shopOpen = true; shopKey = ''; shopEl.classList.add('on'); }
+  if (!near) { shopClosedHere = false; if (shopOpen) { shopOpen = false; shopEl.classList.remove('on'); } }
+  if (shopOpen) renderShop();
+  decorObjs.forEach(d => d.tick && d.tick(0, state.t));
+}
+
+// ======================================================================
+// C. 突發事件（Q2 起）：VIP 客戶、午餐尖峰、老闆生日。只有好處、沒有懲罰
+// ======================================================================
+const chipsEl = document.getElementById('chips');
+let nextEvent = 0, cake = null;
+function updateEvents() {
+  if (state.q >= 2 && !design.finale && !nextEvent) nextEvent = state.t + 25;
+  if (state.q >= 2 && !design.finale && state.t >= nextEvent) {
+    nextEvent = state.t + 70 + Math.random() * 50;
+    const pool = ['vip', 'vip', 'rush'];
+    if (hires.vivi && !cake) pool.push('birthday');
+    ({ vip: eventVip, rush: eventRush, birthday: eventBirthday })[pool[Math.floor(Math.random() * pool.length)]]();
+  }
+  let chips = '';
+  if (rushOn()) chips += `<span class="rush">🍱 午餐尖峰 ×2　${Math.ceil(state.rushUntil - state.t)} 秒</span>`;
+  if (stars()) chips += `<span>★${stars()} 小費 +${stars() * 5}%</span>`;
+  if (state.yearBonus > 1) chips += `<span>🏢 第 ${state.year} 年 ×${state.yearBonus.toFixed(2)}</span>`;
+  if (chips !== chipsEl._h) { chipsEl.innerHTML = chips; chipsEl._h = chips; }
+}
+function eventVip() {
+  const open = Object.values(shops).filter(s => s.unlocked);
+  const s = open[Math.floor(Math.random() * open.length)];
+  const c = spawnCustomer(s, true);
+  banner('👑 VIP 客戶來了！', `在${s.type === 'vending' ? '販賣機' : s.def.name}點了一大單，送到給 3 倍`, 0, '#d9a63a');
+  toast(`VIP 想要 ${ICON[s.item]}×${c.want}`);
+}
+function vipPaid(s, c, total) {
+  state.stats.vip++;
+  const p = c.actor.root.position;
+  pillar(p, 0xffd34d, 0.7, 5); confetti(V(p.x, 1.4, p.z), 80, 1.1); sfx.upgrade();
+  floatText(V(p.x, 2.0, p.z), 'VIP 大單 +$' + total.toLocaleString(), '#d9a63a', 1.2);
+}
+function eventRush() {
+  state.rushUntil = state.t + 60;
+  banner('🍱 午餐尖峰！', '60 秒內同事一直湧進來，售價 ×2', 0, '#ff5d3a');
+}
+function eventBirthday() {   // 純搞笑：老闆生日，大家吃蛋糕，沒有任何效果
+  const v = hires.vivi; if (!v) return;
+  const at = v.actor.root.position.clone();
+  cake = cakeLook(); cake.g.position.set(at.x + 0.6, 0, at.z); scene.add(cake.g); popIn(cake.g);
+  banner('🎂 今天是老闆生日！', '大家一起唱生日快樂歌（效果：無）', 0, '#ff4fa3');
+  confetti(V(at.x, 1.4, at.z), 90, 1.1); sfx.promote();
+  const singers = [player, ...Object.values(hires)].map(h => h.actor);
+  for (let i = 0; i < 6; i++) after(0.8 + i * 1.1, () => { const a = singers[i % singers.length]; floatText(a.root.position.clone().setY(1.7), ['生日快樂～', '🎵 祝你生日快樂', '老闆萬歲！', '🎂'][i % 4], '#ff4fa3', 0.8); });
+  after(9, () => { scene.remove(cake.g); cake = null; });
+}
+
+// ======================================================================
+// 尾牙：大家上台、老闆致詞、小葵領年度 MVP → 繼續上班或搬到新辦公室
+// ======================================================================
+const STAGE_AT = [-0.4, 2.1];
+let stage = null;
+function startFinale() {
+  if (state.finaleDone || design.finale) return;
+  design.finale = true;
+  stage = stageLook(state.year); stage.g.position.set(STAGE_AT[0], 0, STAGE_AT[1]); scene.add(stage.g); popIn(stage.g, 1, 1.6);
+  camFocus = V(STAGE_AT[0], 0, STAGE_AT[1] + 0.6);
+  banner(`🎉 第 ${state.year} 年度 尾牙 🎉`, '全年業績達標，大家辛苦了！', 4, '#d9483b');
+  // 小葵站中間、夥伴站兩邊（直接傳送上台）
+  const crew = Object.values(hires).filter(h => h.id !== 'vivi');
+  player.actor.root.position.set(STAGE_AT[0], 0.26, STAGE_AT[1] + 0.2); player.actor.root.rotation.y = 0;
+  crew.forEach((h, i) => { h.actor.root.position.set(STAGE_AT[0] + (i % 2 ? 1 : -1) * (0.75 + Math.floor(i / 2) * 0.6), 0.26, STAGE_AT[1] + 0.1); h.actor.root.rotation.y = 0; });
+  if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.2, 0.26, STAGE_AT[1] - 0.6); hires.vivi.actor.root.rotation.y = 0; }
+  const speaker = hires.vivi ? hires.vivi.actor : player.actor;
+  const lines = hires.vivi ? ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '小葵！！！'] : ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '我自己！（沒請老闆）'];
+  lines.forEach((l, i) => after(1.5 + i * 1.6, () => floatText(speaker.root.position.clone().setY(1.8), l, '#d9483b', 1.1)));
+  for (let i = 0; i < 8; i++) after(1 + i * 0.9, () => confetti(V(STAGE_AT[0] + (Math.random() - 0.5) * 4, 2.5, STAGE_AT[1]), 60, 1.2));
+  after(8.2, () => {   // 頒獎
+    const p = player.actor.root.position;
+    const cup = new THREE.Group(); cyl(0.12, 0.06, 0.2, 0xd9a63a, 0, 0, 0, cup, { metalness: 0.9, roughness: 0.3 }); cyl(0.05, 0.08, 0.08, 0xd9a63a, 0, -0.14, 0, cup, { metalness: 0.9, roughness: 0.3 });
+    cup.position.set(0, 1.35, 0); player.actor.root.add(cup); popIn(cup); design.cup = cup;
+    pillar(p, 0xffd34d, 0.8, 6); shockwave(p, 0xffd34d, 5); camKick(1.2); sfx.promote();
+  });
+  after(11, showFinaleCard);
+}
+function showFinaleCard() {
+  const S = state.stats, el = document.getElementById('finale');
+  document.getElementById('finMvp').textContent = `年度 MVP：${RANKS[state.rank].title} 小葵`;
+  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], ['🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip]];
+  document.getElementById('finStats').innerHTML = rows.map(([k, v]) => `<div>${k}<b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('');
+  const nb = 1 + state.year * 0.25;
+  document.getElementById('finMove').textContent = `搬到新辦公室（第 ${state.year + 1} 年）`;
+  document.getElementById('finNote').textContent = `搬家：設施和錢重新開始，但所有收入永久 ×${nb.toFixed(2)}；留下來：繼續在這裡上班`;
+  el.classList.add('on');
+}
+function endFinale() {
+  document.getElementById('finale').classList.remove('on');
+  design.finale = false; state.finaleDone = true; camFocus = null;
+  if (stage) { scene.remove(stage.g); stage = null; }
+  if (design.cup) { player.actor.root.remove(design.cup); design.cup = null; }
+  player.actor.root.position.y = 0; Object.values(hires).forEach(h => { h.actor.root.position.y = 0; });
+  player.actor.root.position.set(STAGE_AT[0], 0, STAGE_AT[1] + 1.4);
+  save();
+}
+document.getElementById('finStay').onclick = endFinale;
+document.getElementById('finMove').onclick = () => {
+  // 新年度：存下年度與加成，其他歸零，重新載入
+  try {
+    localStorage.setItem(YEAR_KEY, JSON.stringify({ year: state.year + 1, bonus: 1 + state.year * 0.25 }));
+    localStorage.removeItem(SAVE_KEY);
+  } catch {}
+  location.reload();
+};
+
+// ======================================================================
+// 存檔（瀏覽器本機）：每 5 秒、離開頁面時存
+// ======================================================================
+const SAVE_KEY = 'office-apocalypse-save-v1', YEAR_KEY = 'office-apocalypse-year';
+let saveT = 0;
+function save() {
+  if (!player || design.finale) return;
+  const data = {
+    v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
+    gear: state.gear, decor: state.decor, stats: state.stats,
+    shops: Object.fromEntries(Object.values(shops).map(s => [s.type, { unlocked: s.unlocked, lv: s.lv }])),
+    phone: { unlocked: phone.unlocked, lv: phone.lv }, hires: Object.keys(hires),
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
+}
+function loadYear() {
+  try { const y = JSON.parse(localStorage.getItem(YEAR_KEY)); if (y && y.year > 1) { state.year = y.year; state.yearBonus = y.bonus; } } catch {}
+}
+function loadSave() {
+  let d = null; try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch {}
+  if (!d || d.v !== 1) return false;
+  Object.assign(state, { money: d.money, xp: d.xp, rank: d.rank, earned: d.earned, q: d.q, finaleDone: d.finaleDone });
+  Object.assign(state.gear, d.gear); state.decor = d.decor || []; Object.assign(state.stats, d.stats);
+  for (const s of Object.values(shops)) {
+    const o = d.shops?.[s.type]; if (!o) continue;
+    if (o.unlocked && !s.unlocked) openShop(s, false);
+    if (o.lv) { s.lv = o.lv; setLook(s, s.lv, false); }
+  }
+  if (d.phone?.unlocked) { openPhone(); if (d.phone.lv) { phone.lv = d.phone.lv; setPhoneLook(phone.lv, false); } }
+  for (const id of d.hires || []) { const h = HIRES.find(x => x.id === id); if (h) hire(h, true); }
+  if (state.q >= 1) openKiosk(false);
+  state.decor.forEach(id => placeDecor(DECOR.find(x => x.id === id), false));
+  return true;
+}
+function updateSave(dt) { saveT += dt; if (saveT > 5) { saveT = 0; save(); } }
+addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+
 // ---------- 主迴圈 ----------
+let camFocus = null, metaT = 0;
 function update(dt) {
   state.t += dt; runLater();
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
-  updatePhone(dt); updatePlayer(dt); updateHires(dt); updatePads(dt);
-  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt);
+  updatePhone(dt);
+  if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
+  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); }
+  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateEvents(); updateSave(dt);
+  metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
 let last = performance.now();
@@ -747,7 +1048,7 @@ function frame(now) {
   try {
     if (state.started) update(dt);
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
-    updateCamera(V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
+    updateCamera(camFocus || V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
     render();
   } catch (err) { console.error(err); }
 }
@@ -769,6 +1070,8 @@ const G = window.G = {
   get player() { return player; }, give(n) { state.money += n; }, cam,
   look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); },
   step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); },
+  KIOSK, buy, shopItems, startFinale, endFinale, save, get kiosk() { return kiosk; },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday })[n](); },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -777,16 +1080,28 @@ const G = window.G = {
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }
+  if (/[?&]fresh/.test(location.search)) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); } catch {} }   // 測試用：網址加 ?fresh 從頭開始
+  loadYear();
+  // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
+  const TH = [null, { wood: 0xffc9b8, cafe: 0xe4dcff, part: 0xff8a5c }, { wood: 0xcfe8ff, cafe: 0xfff0c2, part: 0x7b5cff }, { wood: 0xd8ffd0, cafe: 0xffd9ec, part: 0x2f7fc4 }][(state.year - 1) % 4];
+  if (TH) { ENV.work.material.color.setHex(TH.wood); ENV.cafe.material.color.setHex(TH.cafe); mat(0x3fb6a8).color.setHex(TH.part); }
   for (const t of ['coffee', 'printer', 'vending', 'beef', 'chicken', 'fish']) makeShop(t);
   const a = addJog(makeActor(kinds.kui, 1), kinds.kuiJog);
   a.root.position.set(L.start[0], 0, L.start[1]); a.root.rotation.y = Math.PI; scene.add(a.root);
   player = { actor: a, carry: [], type: null, carryMax: rankCarry(0), moveT: 0 };
   carriers.push(player);
   cam.target.set(L.start[0], 0, L.start[1]);
-  setupPads(); updateMe();
+  const loaded = loadSave();
+  player.carryMax = carryMaxNow(); setCart();
+  setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
-  btn.disabled = false; btn.textContent = '開始上班';
-  btn.onclick = () => { audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true; };
+  btn.disabled = false; btn.textContent = loaded ? '繼續上班' : state.year > 1 ? `第 ${state.year} 年開工` : '開始上班';
+  const reset = document.getElementById('reset');
+  if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); } catch {} location.reload(); } }; }
+  btn.onclick = () => {
+    audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
+    if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}`, 0, '#2fb27a');
+  };
   if (location.hash === '#play') btn.onclick();
 })();
 requestAnimationFrame(frame);

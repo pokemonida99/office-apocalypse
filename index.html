@@ -31,6 +31,46 @@
   #banner .b-stars { color: #ffd34d; font-size: 30px; letter-spacing: 4px; text-shadow: 0 3px 0 #b8860b, 0 0 18px #ffd34d; }
   #banner .b-title { font-size: 34px; font-weight: 900; color: #fff; background: var(--bc); padding: 8px 26px; border-radius: 20px; box-shadow: 0 6px 0 #0003, 0 0 40px var(--bc); white-space: nowrap; -webkit-text-stroke: 1px #0002; }
   #banner .b-sub { margin-top: 10px; font-size: 16px; font-weight: 900; color: var(--bc); background: #fff; display: inline-block; padding: 5px 16px; border-radius: 14px; box-shadow: 0 3px 0 #0002; }
+  /* 年度業績條、事件倒數、滿意度 */
+  #year { position: absolute; left: 50%; top: calc(54px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(300px, 78vw); background: #2c3e57d9; border-radius: 14px; padding: 5px 10px 7px; color: #fff; font-weight: 900; font-size: 12px; display: none; }
+  #year .row { display: flex; justify-content: space-between; gap: 6px; }
+  #year .bar { height: 8px; border-radius: 4px; background: #ffffff33; margin-top: 4px; overflow: hidden; position: relative; }
+  #year .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7dff9a, #36c35d); transition: width .3s; }
+  #year .qs { display: flex; gap: 3px; margin-top: 4px; }
+  #year .qs b { flex: 1; height: 4px; border-radius: 2px; background: #ffffff33; }
+  #year .qs b.on { background: #ffd34d; }
+  #chips { position: absolute; left: 50%; top: calc(108px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; gap: 6px; }
+  #chips span { background: #fff; color: #2c3e57; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 12px; box-shadow: 0 2px 6px #0002; white-space: nowrap; }
+  #chips .rush { background: #ff5d3a; color: #fff; animation: pulse .8s infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.06); } }
+  /* 採購部清單 */
+  #shop { position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); width: min(360px, 94vw); max-height: 52vh; overflow: auto; background: #fffdf7; border-radius: 20px; box-shadow: 0 10px 30px #0004; padding: 10px 12px 12px; opacity: 0; pointer-events: none; transition: all .2s; z-index: 4; touch-action: pan-y; }
+  #shop.on { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+  #shop h3 { margin: 2px 4px 8px; font-size: 17px; color: #2c3e57; display: flex; justify-content: space-between; align-items: center; }
+  #shop h3 button { border: 0; background: #eee; border-radius: 12px; width: 28px; height: 28px; font-weight: 900; }
+  #shop .sec { font-size: 12px; font-weight: 900; color: #8a6a4c; margin: 8px 4px 4px; }
+  #shop .it { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 12px; }
+  #shop .it:nth-child(even) { background: #f6efe2; }
+  #shop .ic { font-size: 26px; width: 34px; text-align: center; }
+  #shop .tx { flex: 1; line-height: 1.25; }
+  #shop .tx b { font-size: 14px; color: #2c3e57; } #shop .tx small { display: block; font-size: 11px; color: #7a6a5a; }
+  #shop .buy { border: 0; border-radius: 14px; padding: 7px 10px; font-weight: 900; font-size: 13px; background: #36c35d; color: #fff; box-shadow: 0 3px 0 #1f8a3c; min-width: 74px; }
+  #shop .buy:disabled { background: #c9c2b5; box-shadow: 0 3px 0 #9c9488; }
+  #shop .buy.done { background: #ffd34d; color: #7a5a00; box-shadow: none; }
+  /* 尾牙結算 */
+  #finale { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: #0006; z-index: 6; padding: 18px; }
+  #finale.on { display: flex; }
+  #finale .card { background: linear-gradient(#fff6e0, #ffe2b8); border-radius: 24px; padding: 20px 18px; width: min(360px, 92vw); text-align: center; box-shadow: 0 10px 40px #0005; border: 4px solid #ffd34d; }
+  #finale h2 { margin: 0 0 4px; font-size: 26px; color: #d9483b; }
+  #finale .mvp { font-size: 15px; font-weight: 900; color: #8a4b1f; margin-bottom: 10px; }
+  #finale .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0 14px; }
+  #finale .stats div { background: #fff; border-radius: 12px; padding: 6px; font-size: 12px; color: #7a6a5a; }
+  #finale .stats b { display: block; font-size: 17px; color: #2c3e57; }
+  #finale button { font: inherit; font-weight: 900; font-size: 16px; border: 0; border-radius: 18px; padding: 11px 16px; margin: 4px; }
+  #finale .stay { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002; }
+  #finale .move { background: #ff5d3a; color: #fff; box-shadow: 0 4px 0 #b8381c; }
+  #finale small { display: block; margin-top: 8px; font-size: 11px; color: #8a6a4c; }
+  #reset { margin-top: 6px; background: none !important; box-shadow: none !important; color: #8a4b1f !important; font-size: 13px !important; padding: 4px 10px !important; text-decoration: underline; display: none; }
   #stick { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: #ffffff55; border: 3px solid #ffffffaa; display: none; pointer-events: none; z-index: 3; }
   #knob { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: #ffffffe6; box-shadow: 0 2px 6px #0003; }
   #cover { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 35%, #ffe9c9, #f2b98a 70%, #e28f63); color: #5a2e14; z-index: 5; text-align: center; padding: 24px; }
@@ -49,17 +89,27 @@
   <div id="hint">拖曳畫面移動</div>
   <div id="toast"></div>
   <div id="banner"></div>
+  <div id="year"><div class="row"><span id="yearTitle">第 1 年　Q1 業績</span><span id="yearNum">0 / 0</span></div><div class="bar"><i id="yearBar"></i></div><div class="qs"><b></b><b></b><b></b><b></b></div></div>
+  <div id="chips"></div>
 </div>
+<div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
+<div id="finale"><div class="card">
+  <h2>🎉 尾牙 🎉</h2><div class="mvp" id="finMvp"></div>
+  <div class="stats" id="finStats"></div>
+  <button class="stay" id="finStay">繼續上班</button><button class="move" id="finMove">搬到新辦公室</button>
+  <small id="finNote"></small>
+</div></div>
 <div id="stick"><div id="knob"></div></div>
 <div id="cover">
   <h1>上班啟示錄</h1>
   <p>新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
   <button id="start" disabled>載入中…</button>
+  <button id="reset">從頭開始</button>
   <small id="coverVer"></small>
 </div>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.3.0"></script>
+<script type="module" src="js/main.js?v=0.4.0"></script>
 </body>
 </html>
