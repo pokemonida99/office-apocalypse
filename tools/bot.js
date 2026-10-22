@@ -70,17 +70,21 @@ export function install() {
     }
     return [to];
   }
+  // 只決定方向（設 G.force），不推時間：錄影時搭配 G.tick 用
+  B.steer = () => {
+    const pos = G.player.actor.root.position, at = B.decide();
+    if (at) {
+      const k = at.join(',');
+      if (k !== B.pathFor || !B.path.length) { B.path = astar(pos, at); B.pathFor = k; }
+      while (B.path.length > 1 && Math.hypot(B.path[0][0] - pos.x, B.path[0][1] - pos.z) < 0.3) B.path.shift();
+      const wp = B.path[0] || at, dx = wp[0] - pos.x, dz = wp[1] - pos.z, d = Math.hypot(dx, dz);
+      G.force = d > 0.15 ? [dx / d, dz / d] : [0, 0];
+    } else G.force = [0, 0];
+  };
   B.run = (sec, dt = 1 / 30) => {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n; i++) {
-      const pos = G.player.actor.root.position, at = B.decide();
-      if (at) {
-        const k = at.join(',');
-        if (k !== B.pathFor || !B.path.length) { B.path = astar(pos, at); B.pathFor = k; }
-        while (B.path.length > 1 && Math.hypot(B.path[0][0] - pos.x, B.path[0][1] - pos.z) < 0.3) B.path.shift();
-        const wp = B.path[0] || at, dx = wp[0] - pos.x, dz = wp[1] - pos.z, d = Math.hypot(dx, dz);
-        G.force = d > 0.15 ? [dx / d, dz / d] : [0, 0];
-      } else G.force = [0, 0];
+      B.steer();
       G.step(dt);
       if (document.getElementById('finale').classList.contains('on')) { B.events.push(`${Math.round(G.state.t)}s 尾牙結束`); G.endFinale(); }
       const now = lvls(); if (now !== B.prev) { B.events.push(`${Math.round(G.state.t)}s $${G.state.money} ${now}`); B.prev = now; }

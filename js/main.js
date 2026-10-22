@@ -1193,6 +1193,7 @@ function update(dt) {
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);   // 先排下一幀，這幀出錯也不會停住
+  if (G.hold) { last = now; return; }   // 錄影用：由 G.tick 一格一格推
   const dt = Math.min((now - last) / 1000, 0.05) * (G.speedUp || 1); last = now;
   try {
     if (state.started) update(dt);
@@ -1220,6 +1221,13 @@ const G = window.G = {
   look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); },
   step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); },
   KIOSK, buy, shopItems, startFinale, endFinale, save, get kiosk() { return kiosk; },
+  // 錄影用：G.hold = true 後，G.tick(dt) 推一格（更新＋鏡頭＋畫）；G.camAt = [x, z] 可指定鏡頭看哪裡
+  tick(dt) {
+    if (state.started) update(dt);
+    const p = player.actor.root.position;
+    updateCamera(G.camAt ? V(G.camAt[0], 0, G.camAt[1]) : camFocus || V(THREE.MathUtils.clamp(p.x, -4.8, 4.8), 0, THREE.MathUtils.clamp(p.z, -4.4, 9.0)), dt);
+    render();
+  },
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin })[n](); }, get kevin() { return kevin; },
 };   // 除錯用
 (async () => {
