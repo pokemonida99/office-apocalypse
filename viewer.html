@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>上班啟示錄 模型預覽</title>
+<style>
+  html,body{margin:0;height:100%;background:#dfe6ee;font-family:-apple-system,"PingFang TC",sans-serif;overflow:hidden}
+  #ui{position:fixed;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:2}
+  button,select{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:1px solid #9aa8b8;background:#fff;cursor:pointer}
+  button.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+  #info{position:fixed;left:12px;bottom:12px;font-size:13px;color:#456;background:#fffc;padding:6px 10px;border-radius:8px}
+</style>
+</head>
+<body>
+<div id="ui">
+  <select id="pick"></select>
+  <button id="free" class="on">自由轉看</button>
+  <button id="game">遊戲鏡頭</button>
+  <button id="crowd">一群人</button>
+</div>
+<div id="info">載入中…</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+// 模型清單：檔名放 models/ 底下；rot＝把臉轉向鏡頭（Tripo 轉出來預設面向 +x）
+const MODELS = {
+  '小葵（輕快走路）': { url: 'models/kui_walk2.glb', rot: 0 },
+  '小葵（小跑步）': { url: 'models/kui_jog.glb', rot: 0 },
+  '阿傑（走路）': { url: 'models/jie_walk.glb', rot: 0 },
+  '阿傑（小跑步）': { url: 'models/jie_jog.glb', rot: 0 },
+  '小米（走路）': { url: 'models/mi_walk.glb', rot: 0 },
+  'Vivi（走路）': { url: 'models/vivi_walk.glb', rot: 0 },
+  '上班族男（走路）': { url: 'models/npc_m_walk.glb', rot: 0 },
+  '上班族女（走路）': { url: 'models/npc_f_walk.glb', rot: 0 },
+};
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdfe6ee);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(3, 6, 4); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0xb9c2cc }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+const info = document.getElementById('info');
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+let base = null, group = new THREE.Group(), mixers = [];
+scene.add(group);
+
+function setFree() { camera.position.set(0, 1.0, 3.2); controls.target.set(0, 0.5, 0); controls.enabled = true; controls.update(); }
+// 跟廣告一樣：固定斜上方約 50 度往下看
+function setGame() { camera.position.set(0, 9, 7.5); controls.target.set(0, 0, 0); controls.enabled = false; controls.update(); }
+
+function place(n) {
+  group.clear(); mixers = [];
+  for (let i = 0; i < n; i++) {
+    const m = SkeletonUtils.clone(base.scene);
+    m.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+    m.position.set(n > 1 ? (i % 6 - 2.5) * 0.7 : 0, 0, n > 1 ? Math.floor(i / 6) * 0.8 - 1.5 : 0);
+    group.add(m);
+    if (base.animations.length) { const mx = new THREE.AnimationMixer(m); mx.clipAction(base.animations[0]).play(); mx.update(i * 0.13); mixers.push(mx); }
+  }
+}
+
+function load(name) {
+  info.textContent = '載入中…';
+  loader.load(MODELS[name].url, g => {
+    // 轉正、縮成 1 單位高、腳踩地板
+    g.scene.rotation.y = MODELS[name].rot || 0; g.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3());
+    const s = 1 / size.y; g.scene.scale.setScalar(s);
+    g.scene.position.set(-(box.min.x + size.x / 2) * s, -box.min.y * s, -(box.min.z + size.z / 2) * s);
+    const wrap = new THREE.Group(); wrap.add(g.scene);
+    base = { scene: wrap, animations: g.animations };
+    let tris = 0; g.scene.traverse(o => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+    info.textContent = `${name}　${Math.round(tris).toLocaleString()} 面　動畫 ${g.animations.length} 段`;
+    place(1);
+  }, undefined, e => { info.textContent = '載入失敗：' + e.message; });
+}
+
+const pick = document.getElementById('pick');
+for (const k in MODELS) pick.add(new Option(k, k));
+pick.onchange = () => load(pick.value);
+const btns = { free: setFree, game: setGame };
+for (const id in btns) document.getElementById(id).onclick = e => {
+  document.querySelectorAll('#free,#game').forEach(b => b.classList.remove('on'));
+  e.target.classList.add('on'); btns[id]();
+};
+let many = false;
+document.getElementById('crowd').onclick = e => { many = !many; e.target.classList.toggle('on', many); if (base) place(many ? 24 : 1); };
+
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => { const dt = clock.getDelta(); mixers.forEach(m => m.update(dt)); controls.update(); renderer.render(scene, camera); });
+setFree(); load(Object.keys(MODELS)[0]);
+window.V = { THREE, scene, camera, controls, group, get base() { return base; } };  // 除錯用
+</script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>上班啟示錄 走路測試</title>
+<style>
+  html,body{margin:0;height:100%;background:#c9d3de;font-family:-apple-system,"PingFang TC",sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+  #info{position:fixed;left:12px;top:12px;font-size:13px;color:#345;background:#fffd;padding:6px 10px;border-radius:8px;line-height:1.5}
+  #stick{position:fixed;width:120px;height:120px;border-radius:50%;background:#fff5;border:2px solid #fff9;display:none;pointer-events:none}
+  #knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fffc}
+</style>
+</head>
+<body>
+<div id="info">載入中…</div>
+<div id="stick"><div id="knob"></div></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+// 模型都已轉正（臉朝 +z）並綁好原地走路動作
+const LEADER = 'models/kui_walk2.glb';
+const CREW = ['models/npc_m_walk.glb', 'models/npc_f_walk.glb'];   // 隊員男女交錯
+const FOLLOWERS = 10;
+const SPEED = 1.0;         // 每秒幾個角色高度
+const GAP = 0.55;          // 隊員間距
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc9d3de);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 40 });
+scene.add(sun, sun.target);
+
+// 辦公室地毯：程式畫的格子
+const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+const cx = cv.getContext('2d');
+cx.fillStyle = '#aab4c0'; cx.fillRect(0, 0, 256, 256);
+cx.fillStyle = '#a2acb9'; cx.fillRect(0, 0, 128, 128); cx.fillRect(128, 128, 128, 128);
+const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(30, 30); tex.colorSpace = THREE.SRGBColorSpace;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ map: tex }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+// 幾個隔板當參考物
+const partMat = new THREE.MeshStandardMaterial({ color: 0x5b7fb0 });
+for (let i = 0; i < 14; i++) {
+  const p = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 0.08), partMat);
+  const a = i / 14 * Math.PI * 2, r = 6 + (i % 3);
+  p.position.set(Math.cos(a) * r, 0.3, Math.sin(a) * r); p.rotation.y = -a; p.castShadow = p.receiveShadow = true; scene.add(p);
+}
+
+// 跟廣告一樣：固定斜上方往下看，跟著主角
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
+const CAM_OFF = new THREE.Vector3(0, 6.2, 5.2);
+
+const info = document.getElementById('info');
+const units = [];   // {root, mixer, action, natural}
+let ready = false;
+
+function makeUnit(kind, scale) {
+  const root = new THREE.Group();
+  const m = SkeletonUtils.clone(kind.base); m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  root.add(m); root.scale.setScalar(scale); scene.add(root);
+  const mixer = new THREE.AnimationMixer(m);
+  const action = kind.clip ? mixer.clipAction(kind.clip).play() : null;
+  return { root, mixer, action, natural: kind.natural, speed: 0 };
+}
+
+// 載入一個角色：縮成 1 單位高、腳踩地，順便量出不滑步的速度
+async function loadKind(url) {
+  const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+  g.scene.updateMatrixWorld(true);   // 先更新矩陣，不然骨架節點的縮放沒算進去，高度會量錯
+  const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3());
+  const s = 1 / size.y;
+  const base = new THREE.Group(); base.add(g.scene);
+  g.scene.scale.multiplyScalar(s);
+  g.scene.position.set(-(box.min.x + size.x / 2) * s, -box.min.y * s, -(box.min.z + size.z / 2) * s);
+  const clip = g.animations[0] || null;
+  return { base, clip, natural: clip ? measureNatural(base, clip) : 0.25 };
+}
+
+// 走路動畫原速時，貼地那隻腳往後移的速度（每秒幾個身高）。播放速度＝實際移動速度 ÷ 這個值，腳就會踩實
+function measureNatural(base, clip) {
+  const mixer = new THREE.AnimationMixer(base), a = mixer.clipAction(clip).play();
+  let foot, hips; base.traverse(o => { if (o.isBone && o.name === 'LeftFoot') foot = o; if (o.isBone && o.name === 'Hips') hips = o; });
+  if (!foot || !hips) return 0.25;
+  const N = 240, p = new THREE.Vector3(), h = new THREE.Vector3(), zs = [], ys = [];
+  for (let i = 0; i <= N; i++) {
+    a.time = clip.duration * i / N; mixer.update(0); base.updateMatrixWorld(true);
+    foot.getWorldPosition(p); hips.getWorldPosition(h); zs.push(p.z - h.z); ys.push(p.y);
+  }
+  a.stop(); mixer.uncacheRoot(base);
+  const ymin = Math.min(...ys), sp = [];
+  for (let i = 1; i <= N; i++) if (ys[i] < ymin + 0.01 && ys[i - 1] < ymin + 0.01) sp.push(Math.abs(zs[i] - zs[i - 1]) / (clip.duration / N));
+  sp.sort((x, y) => x - y);
+  return sp.length ? sp[sp.length >> 1] : 0.25;
+}
+
+(async () => {
+  const [lead, ...crew] = await Promise.all([LEADER, ...CREW].map(loadKind));
+  units.push(makeUnit(lead, 1));
+  for (let i = 0; i < FOLLOWERS; i++) { const u = makeUnit(crew[i % crew.length], 0.95); u.mixer.update(i * 0.17); units.push(u); }
+  info.innerHTML = `小葵＋${FOLLOWERS} 位上班族<br>不滑步速度：小葵 ${lead.natural.toFixed(3)}、` + crew.map((c, i) => `${['男', '女'][i]} ${c.natural.toFixed(3)}`).join('、') + `<br>方向鍵／WASD／拖曳 控制，放開會自己繞圈`;
+  ready = true;
+})().catch(e => { info.textContent = '載入失敗：' + e.message; });
+
+// 操作：鍵盤或拖曳虛擬搖桿；沒操作 2 秒就自動繞圈
+const keys = {}; let touch = null, lastInput = -9;
+addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+const stick = document.getElementById('stick'), knob = document.getElementById('knob');
+addEventListener('pointerdown', e => { touch = { x0: e.clientX, y0: e.clientY, dx: 0, dy: 0 }; stick.style.display = 'block'; stick.style.left = e.clientX - 60 + 'px'; stick.style.top = e.clientY - 60 + 'px'; });
+addEventListener('pointermove', e => { if (!touch) return; let dx = e.clientX - touch.x0, dy = e.clientY - touch.y0; const l = Math.hypot(dx, dy); if (l > 50) { dx *= 50 / l; dy *= 50 / l; } touch.dx = dx; touch.dy = dy; knob.style.transform = `translate(${dx}px,${dy}px)`; });
+addEventListener('pointerup', () => { touch = null; stick.style.display = 'none'; knob.style.transform = ''; });
+
+const trail = [];   // 主角走過的路，隊員沿著它排
+const clock = new THREE.Clock();
+let t = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05); t += dt;
+  if (ready) {
+    let mx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+    let mz = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+    if (touch && Math.hypot(touch.dx, touch.dy) > 8) { mx = touch.dx / 50; mz = touch.dy / 50; }
+    if (W.force) [mx, mz] = W.force;   // 測試用：程式指定方向
+    if (mx || mz) lastInput = t;
+    if (t - lastInput > 2) { const a = t * 0.45; mx = -Math.sin(a); mz = Math.cos(a); }  // 自動繞圈
+    const len = Math.hypot(mx, mz);
+    const L = units[0];
+    if (len > 0.05) {
+      const k = Math.min(len, 1);
+      const sp = (W.speed || SPEED) * k;
+      L.root.position.x += mx / len * sp * dt; L.root.position.z += mz / len * sp * dt;
+      turnTo(L.root, Math.atan2(mx, mz), dt);
+      L.speed = sp;
+    } else L.speed = 0;
+    const last = trail[trail.length - 1];
+    if (!last || last.distanceTo(L.root.position) > 0.04) { trail.push(L.root.position.clone()); if (trail.length > 2000) trail.shift(); }
+    // 隊員：沿著足跡排在後面
+    for (let i = 1; i < units.length; i++) {
+      const u = units[i], want = pointBack(i * GAP);
+      if (!want) continue;
+      const d = want.clone().sub(u.root.position); d.y = 0;
+      const dist = d.length(), before = u.root.position.clone();
+      if (dist > 0.02) { u.root.position.addScaledVector(d, Math.min(1, dt * 8)); turnTo(u.root, Math.atan2(d.x, d.z), dt); }
+      u.speed = u.root.position.distanceTo(before) / dt;
+    }
+    for (const u of units) {
+      // 播放速度＝實際移動速度 ÷（原速 × 體型），腳就會踩實
+      const moving = u.speed > 0.05;
+      if (u.action) u.action.timeScale = moving ? u.speed / (u.natural * u.root.scale.x) : 0;
+      if (u.action && !moving) u.action.time = 0;   // 停下來就站好
+      u.mixer.update(dt);
+    }
+    camera.position.copy(L.root.position).add(W.camOff || CAM_OFF); camera.lookAt(L.root.position.clone().setY(0.4));
+    sun.position.copy(L.root.position).add(new THREE.Vector3(3, 8, 4)); sun.target.position.copy(L.root.position);
+  }
+  renderer.render(scene, camera);
+});
+
+// 足跡往回量 dist 的位置
+function pointBack(dist) {
+  let acc = 0;
+  for (let i = trail.length - 1; i > 0; i--) {
+    const seg = trail[i].distanceTo(trail[i - 1]);
+    if (acc + seg >= dist) return trail[i - 1].clone().lerp(trail[i], 1 - (dist - acc) / seg);
+    acc += seg;
+  }
+  return null;
+}
+function turnTo(obj, target, dt) {
+  let d = target - obj.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+  obj.rotation.y += d * Math.min(1, dt * 12);
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const W = window.W = { THREE, units, camera, force: null };  // 除錯用
+</script>
+</body>
+</html>

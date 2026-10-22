@@ -1,0 +1,5 @@
+# 原始檔與工作檔（GPT 原圖、未壓縮模型、上傳用檔）只留本機
+work/
+design/*.png
+.DS_Store
+node_modules/

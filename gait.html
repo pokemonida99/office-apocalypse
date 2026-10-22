@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>小葵走路比較</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#f6e3c8;font-family:-apple-system,"PingFang TC",sans-serif}
+  #labels{position:fixed;left:0;right:0;top:10px;display:flex;justify-content:space-around;pointer-events:none}
+  #labels div{background:#fffd;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:800;color:#2c3e57;text-align:center;line-height:1.4}
+  #ctl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px}
+  button{font:inherit;font-weight:800;font-size:14px;padding:8px 14px;border-radius:20px;border:0;background:#fff;color:#2c3e57;box-shadow:0 2px 6px #0002}
+  button.on{background:#ff7a45;color:#fff}
+</style>
+</head>
+<body>
+<div id="labels"></div>
+<div id="ctl"><button id="side" class="on">側面</button><button id="game">遊戲鏡頭</button><button id="spd">速度：快</button></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { loadKind, makeActor, updateActor, addJog } from './js/assets.js?v=0.2.1';
+
+const OPTS = [
+  { name: 'A 原本：Casual_Walk', sub: '慢悠悠搖擺', url: 'work/3d/old/kui_walk_casual.glb' },
+  { name: 'B 輕快走路：walking_2', sub: '步伐短、節奏快', url: 'models/kui_walk2.glb' },
+  { name: 'C 小跑步原檔', sub: '前傾 31°，像鞠躬', url: 'models/kui_jog.glb' },
+  { name: 'D 走＋跑混合（扶正）', sub: '慢用 B、快用 C 扶正到 7°', url: 'mix' },
+];
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf6e3c8);
+scene.add(new THREE.HemisphereLight(0xd6ecff, 0xf2c99a, 1.4));
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6); sun.position.set(3, 8, 5); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 }); sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100);
+
+// 每個角色站在一條會往後捲的地板上（跑步機），地板速度＝角色移動速度，看得出腳有沒有滑
+const strips = [];
+const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+const g = cv.getContext('2d'); g.fillStyle = '#8fb8e8'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#7fa9dc'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64);
+const units = [];
+let speedHi = true;
+(async () => {
+  const kinds = {};
+  for (const o of OPTS) if (o.url !== 'mix') kinds[o.url] = await loadKind(o.url).catch(() => null);   // A 的原檔只在本機 work/，線上版沒有
+  const lab = document.getElementById('labels');
+  OPTS.forEach((o, i) => {
+    const x = (i - 1.5) * 2.2;
+    const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1); tex.colorSpace = THREE.SRGBColorSpace;
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.2), new THREE.MeshStandardMaterial({ map: tex }));
+    f.rotation.x = -Math.PI / 2; f.position.set(x, 0, 0); f.receiveShadow = true; scene.add(f);
+    let a;
+    if (o.url === 'mix') {
+      a = addJog(makeActor(kinds['models/kui_walk2.glb'], 1), kinds['models/kui_jog.glb']);
+    } else if (kinds[o.url]) a = makeActor(kinds[o.url], 1);
+    else return;
+    a.root.position.set(x, 0, 0); a.root.rotation.y = Math.PI / 2; scene.add(a.root);
+    units.push({ a, tex, o });
+    const d = document.createElement('div'); d.innerHTML = `${o.name}<br><small>${o.sub}</small>`; lab.appendChild(d);
+  });
+})();
+let view = 'side';
+const setView = v => { view = v; document.getElementById('side').classList.toggle('on', v === 'side'); document.getElementById('game').classList.toggle('on', v === 'game'); };
+document.getElementById('side').onclick = () => setView('side');
+document.getElementById('game').onclick = () => setView('game');
+document.getElementById('spd').onclick = e => { speedHi = !speedHi; e.target.textContent = '速度：' + (speedHi ? '快' : '慢'); };
+const clock = new THREE.Clock(); let t = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05); t += dt;
+  const speed = speedHi ? 2.6 : 1.1;   // 遊戲裡的移動速度（身高／秒）
+  for (const u of units) {
+    u.a.speed = speed;
+    updateActor(u.a, dt, t);   // 混合版：速度 1.4 以下全走路，2.2 以上全小跑（assets.js）
+    u.tex.offset.x += speed * dt * 2 / 2.0;   // 2 單位長的地板重複 2 次，往後捲
+  }
+  if (view === 'side') { camera.position.set(0, 1.0, 13); camera.lookAt(0, 0.55, 0); }
+  else { camera.position.set(0, 9.5, 8); camera.lookAt(0, 0.3, 0); }
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+  renderer.render(scene, camera);
+});
+window.U = units;
+</script>
+</body>
+</html>
