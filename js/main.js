@@ -3,14 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.5.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.0';
-import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.5.1';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.1';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.1';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.1';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.1';
+import { openCallGame } from './callgame.js?v=0.5.1';
+import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.1';
 
-const VERSION = 'v0.5.0';
+const VERSION = 'v0.5.1';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -40,7 +41,7 @@ const rankSpeed = (r) => 2.35 + r * 0.2;   // 每升一階明顯變快：實習�
 const GEAR = {
   cart: { icon: '🛒', name: '推車', desc: ['一次多背 4 個', '一次多背 8 個', '黃金推車：多背 14 個'], price: [2000, 7000, 20000], bonus: [0, 4, 8, 14] },
   scooter: { icon: '🛴', name: '滑板車', desc: ['走路快 15%', '電動滑板車：快 30%'], price: [3000, 12000], bonus: [0, 0.15, 0.3] },
-  magnet: { icon: '🧲', name: '收錢磁鐵', desc: ['靠近錢堆就自動吸過來', '超強磁鐵：全場的錢自動飛過來'], price: [5000, 16000] },
+  magnet: { icon: '🧲', name: '收錢磁鐵', desc: ['靠近錢堆就自動吸過來', '強力磁鐵：吸的範圍再大一點', '超強磁鐵：全場的錢自動飛過來'], price: [5000, 15000, 40000], reach: [0.75, 1.8, 3.2, 99] },   // 三級：小範圍 → 大一點 → 全場
 };
 const carryMaxNow = () => rankCarry(state.rank) + GEAR.cart.bonus[state.gear.cart];
 
@@ -681,7 +682,7 @@ function carry(c, dt) {
       if (c === player) { sfx.drop(); gainXp(1); }
       return;
     }
-    const mag = c === player ? [0.75, 2.6, 99][state.gear.magnet] : 0.75;
+    const mag = c === player ? GEAR.magnet.reach[state.gear.magnet] : 0.75;
     if (c === player && nearAt(c.actor, s.d.cash, mag) && s.cash.length) {
       c.moveT = 0;
       for (let k = 0; k < 2 && s.cash.length; k++) {
@@ -1195,6 +1196,22 @@ function floorGuide() {
   return [null, '同事上來玩，玩完會付門票錢'];
 }
 
+// ---------- 小米的接電話挑戰（站在總機旁邊就會出現按鈕） ----------
+const miBtn = document.getElementById('miBtn');
+function updateMiBtn() {
+  const show = state.floor === 'f1' && phone.unlocked && !design.finale && nearAt(player.actor, PHONE_DEF.zone, 1.7);
+  if (show !== (miBtn.style.display === 'block')) miBtn.style.display = show ? 'block' : 'none';
+}
+miBtn.onclick = () => {
+  audioInit(); state.mini = true; miBtn.style.display = 'none';
+  openCallGame({ sfx, best: state.miBest || 0, onEnd: (r) => {
+    // 獎金：每一分＝現在總機一通價的 15%（老闆來電算 3 分），再乘年度加成；大約等於自己站總機接電話的收入，不會比主遊戲好賺
+    const reward = Math.round(r.score * STATIONS.phone.levels[phone.lv].price * 0.15 * state.yearBonus);
+    addMoney(reward); state.miBest = r.best; state.stats.calls += r.answered; save();
+    return { reward, close: () => { state.mini = false; if (r.newBest) banner('🏆 接電話新紀錄！', `${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
+  } });
+};
+
 // ---------- 頂樓遊樂園 ----------
 const OXR = FLOORS.rf.ox, rw = ([x, z]) => [OXR + x, z];
 const roof = { rides: {}, visitors: [], spawnT: 0, n: 0 };
@@ -1280,7 +1297,7 @@ function updateRoof(dt) {
     r.look.tick(dt, r.run, state.t);
     // 收門票錢（磁鐵照樣有用）
     r.collectT += dt;
-    const mag = [0.75, 2.6, 99][state.gear.magnet];
+    const mag = GEAR.magnet.reach[state.gear.magnet];
     if (state.floor === 'rf' && r.cash.length && r.collectT > CFG.moveEvery && nearAt(player.actor, rw(r.def.cash), Math.min(mag, 6))) {
       r.collectT = 0;
       for (let k = 0; k < 2 && r.cash.length; k++) { const b = r.cash.pop(), v = b.userData.v; retarget(b, () => player.actor.root.position.clone().setY(0.7), () => addMoney(v)); }
@@ -1364,7 +1381,7 @@ function save() {
   if (!player || design.finale || !state.started || noSave) return;   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
     v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
-    gear: state.gear, decor: state.decor, stats: state.stats,
+    gear: state.gear, decor: state.decor, stats: state.stats, miBest: state.miBest || 0,
     shops: Object.fromEntries(Object.values(shops).map(s => [s.type, { unlocked: s.unlocked, lv: s.lv }])),
     phone: { unlocked: phone.unlocked, lv: phone.lv }, hires: Object.keys(hires),
     roof: Object.fromEntries(Object.values(roof.rides).map(r => [r.def.id, { u: r.unlocked, lv: r.lv }])),
@@ -1379,7 +1396,7 @@ function loadSave() {
   let d = null; try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch {}
   if (!d || d.v !== 1) return false;
   Object.assign(state, { money: d.money, xp: d.xp, rank: d.rank, earned: d.earned, q: d.q, finaleDone: d.finaleDone });
-  Object.assign(state.gear, d.gear); state.decor = d.decor || []; Object.assign(state.stats, d.stats);
+  Object.assign(state.gear, d.gear); state.decor = d.decor || []; Object.assign(state.stats, d.stats); state.miBest = d.miBest || 0;
   for (const s of Object.values(shops)) {
     const o = d.shops?.[s.type]; if (!o) continue;
     if (o.unlocked && !s.unlocked) openShop(s, false);
@@ -1403,7 +1420,7 @@ function update(dt) {
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
-  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateRoom(); }
+  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateRoom(); updateMiBtn(); }
   updateRoof(dt); updatePet(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
@@ -1415,7 +1432,7 @@ function frame(now) {
   if (G.hold) { last = now; return; }   // 錄影用：由 G.tick 一格一格推
   const dt = Math.min((now - last) / 1000, 0.05) * (G.speedUp || 1); last = now;
   try {
-    if (state.started) update(dt);
+    if (state.started && !state.mini) update(dt);   // 玩小米的挑戰時主遊戲暫停
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
     updateCamera(camFocus || camFocusOf(p), dt);
     render();
@@ -1442,11 +1459,12 @@ const G = window.G = {
   KIOSK, buy, shopItems, startFinale, endFinale, save, get kiosk() { return kiosk; },
   // 錄影用：G.hold = true 後，G.tick(dt) 推一格（更新＋鏡頭＋畫）；G.camAt = [x, z] 可指定鏡頭看哪裡
   tick(dt) {
-    if (state.started) update(dt);
+    if (state.started && !state.mini) update(dt);   // 玩小米的挑戰時主遊戲暫停
     const p = player.actor.root.position;
     updateCamera(G.camAt ? V(G.camAt[0], 0, G.camAt[1]) : camFocus || camFocusOf(p), dt);
     render();
   },
+  playCall: () => miBtn.onclick(),
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin })[n](); }, get kevin() { return kevin; },
 };   // 除錯用

@@ -116,6 +116,48 @@
   #room .opts button:disabled { background: #d9d1c4; box-shadow: none; }
   #fade { position: fixed; inset: 0; background: #fff3e0; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 7; }
   #fade.on { opacity: 1; }
+  /* 小米的接電話挑戰 */
+  #miBtn { position: absolute; left: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); pointer-events: auto; display: none; background: #7b5cff; color: #fff; border: 0; border-radius: 16px; font: inherit; font-size: 13px; font-weight: 900; padding: 8px 12px; box-shadow: 0 3px 0 #4f37c4; animation: miPulse 1.2s ease-in-out infinite; }
+  @keyframes miPulse { 50% { transform: scale(1.06); } }
+  #callgame { position: fixed; inset: 0; z-index: 8; display: none; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 30%, #9d86ff, #5a3fd6 70%, #3a2690); padding: 12px; touch-action: none; }
+  #callgame.on { display: flex; }
+  #callgame.shake .panel { animation: cgShake .3s; }
+  @keyframes cgShake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  #callgame .panel { position: relative; width: min(420px, 100%); }
+  #callgame .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
+  #callgame .host { display: flex; align-items: flex-end; gap: 8px; flex: 1; }
+  #callgame .host img { width: 64px; height: 64px; border-radius: 18px; border: 3px solid #fff; flex: none; }
+  #callgame .say { background: #fff; color: #4f37c4; font-weight: 900; font-size: 14px; padding: 8px 12px; border-radius: 14px 14px 14px 4px; min-height: 20px; }
+  #callgame .say.pop { animation: talkIn .3s cubic-bezier(.2,1.4,.4,1); }
+  #callgame .hud { text-align: right; color: #fff; font-weight: 900; }
+  #callgame .score { font-size: 15px; } #callgame .score b { font-size: 30px; }
+  #callgame .combo { font-size: 14px; color: #ffd34d; min-height: 18px; }
+  #callgame .time { height: 10px; background: #ffffff33; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+  #callgame .time i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ffd34d, #ff7a45); }
+  #callgame .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  #callgame .cell { position: relative; aspect-ratio: 1; border: 0; border-radius: 22px; background: #efeaff; box-shadow: 0 6px 0 #c9bdf5; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #callgame .cell .ph { font-size: 44px; filter: grayscale(1) opacity(.35); }
+  #callgame .cell .tag { font-size: 12px; font-weight: 900; height: 14px; }
+  #callgame .cell.ring { animation: cgRing .14s linear infinite alternate; }
+  #callgame .cell.ring .ph { filter: none; }
+  #callgame .cell.call { background: #ff5d73; box-shadow: 0 6px 0 #c4364a; }
+  #callgame .cell.vip { background: #ffd34d; box-shadow: 0 6px 0 #d9a020; color: #7a5a00; }
+  #callgame .cell.kevin { background: #2c3e57; box-shadow: 0 6px 0 #1a2638; color: #c9b6ff; animation: none; }
+  @keyframes cgRing { from { transform: rotate(-4deg); } to { transform: rotate(4deg) scale(1.03); } }
+  #callgame .fx { position: absolute; top: 20%; left: 0; right: 0; text-align: center; font-style: normal; font-weight: 900; font-size: 22px; pointer-events: none; animation: cgFx .6s ease-out forwards; }
+  #callgame .fx.ok { color: #36c35d; } #callgame .fx.vip { color: #ff7a45; } #callgame .fx.bad { color: #ff3b3b; }
+  @keyframes cgFx { to { transform: translateY(-34px); opacity: 0; } }
+  #callgame .legend { color: #fff; opacity: .85; font-size: 12px; font-weight: 800; text-align: center; margin-top: 10px; }
+  #callgame .big { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 90px; font-weight: 900; color: #fff; text-shadow: 0 6px 0 #4f37c4; pointer-events: none; }
+  #callgame .big.on { display: flex; animation: talkIn .4s cubic-bezier(.2,1.4,.4,1); }
+  #callgame .end { position: absolute; inset: -6px; display: none; flex-direction: column; justify-content: center; background: #fffdf7; border-radius: 24px; padding: 18px; box-shadow: 0 10px 30px #0005; }
+  #callgame .end.on { display: flex; animation: talkIn .35s cubic-bezier(.2,1.4,.4,1); }
+  #callgame .end h2 { margin: 0 0 10px; text-align: center; color: #7b5cff; font-size: 20px; }
+  #callgame .end .rows div { display: flex; justify-content: space-between; padding: 6px 4px; border-bottom: 1px dashed #e4d6c2; color: #2c3e57; font-weight: 800; }
+  #callgame .end .btns { display: flex; gap: 10px; margin-top: 14px; }
+  #callgame .end button { flex: 1; font: inherit; font-weight: 900; font-size: 16px; border: 0; border-radius: 16px; padding: 12px; }
+  #callgame .end .again { background: #7b5cff; color: #fff; box-shadow: 0 4px 0 #4f37c4; }
+  #callgame .end .back { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002; }
   /* 開場：小葵的對話框 */
   #talk { position: fixed; inset: 0; z-index: 4; display: none; align-items: flex-end; justify-content: center; padding: 0 12px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent 55%, #2c3e5755); }
   #talk.on { display: flex; }
@@ -152,10 +194,20 @@
   <div id="year"><div class="row"><span id="yearTitle">第 1 年　Q1 業績</span><span id="yearNum">0 / 0</span></div><div class="bar"><i id="yearBar"></i></div><div class="qs"><b></b><b></b><b></b><b></b></div></div>
   <div id="chips"></div>
   <button id="swapHud"></button>
+  <button id="miBtn">🎮 小米的接電話挑戰</button>
 </div>
 <div id="elev"><h3><span>🛗 搭電梯</span><button id="elevX">✕</button></h3><div id="elevList"></div></div>
 <div id="room"><h3><span>🛋 家具型錄 <small id="roomComfort"></small></span><button id="roomX">✕</button></h3><div id="roomList"></div></div>
 <div id="fade"></div>
+<div id="callgame"><div class="panel">
+  <div class="top"><div class="host"><img src="icons/mi-180.png" alt="小米"><div class="say"></div></div>
+    <div class="hud"><div class="score">分數 <b>0</b></div><div class="combo"></div></div></div>
+  <div class="time"><i></i></div>
+  <div class="grid"></div>
+  <div class="legend">☎ 響了就點　👑 老闆 3 倍　🤖 AI 推銷別接！</div>
+  <div class="big"></div>
+  <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="again">再玩一次</button><button class="back">回去上班</button></div></div>
+</div></div>
 <div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
 <div id="finale"><div class="card">
   <h2>🎉 尾牙 🎉</h2><div class="mvp" id="finMvp"></div>
@@ -209,6 +261,6 @@
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.5.0"></script>
+<script type="module" src="js/main.js?v=0.5.1"></script>
 </body>
 </html>
