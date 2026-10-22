@@ -27,7 +27,7 @@
   #hud { position: fixed; inset: 0; pointer-events: none; }
   /* 左上：小葵的職稱與經驗條 */
   #me { position: absolute; left: 10px; top: calc(8px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 8px; background: #2c3e57d9; border-radius: 26px; padding: 4px 12px 4px 4px; color: #fff; }
-  #me .face { width: 38px; height: 38px; border-radius: 50%; background: #ffcf8a url() center/cover; display: grid; place-items: center; font-weight: 900; font-size: 15px; color: #8a4b1f; border: 3px solid #ffd34d; }
+  #me .face { width: 38px; height: 38px; border-radius: 50%; background: #ffcf8a url(icons/kui-180.png) 50% 28% / 150% no-repeat; border: 3px solid #ffd34d; }   /* 大頭貼：放大到臉 */
   #me .t { font-weight: 900; font-size: 14px; line-height: 1.1; }
   #me .bar { width: 96px; height: 7px; border-radius: 4px; background: #ffffff33; margin-top: 4px; overflow: hidden; }
   #me .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd34d, #ff8a3d); border-radius: 4px; transition: width .25s; }
@@ -86,6 +86,8 @@
   #finale .move { background: #ff5d3a; color: #fff; box-shadow: 0 4px 0 #b8381c; }
   #finale small { display: block; margin-top: 8px; font-size: 11px; color: #8a6a4c; }
   #reset { margin-top: 6px; background: none !important; box-shadow: none !important; color: #8a4b1f !important; font-size: 13px !important; padding: 4px 10px !important; text-decoration: underline; display: none; }
+  #swapHud { position: absolute; right: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); pointer-events: auto; background: #ffffffe6; color: #2c3e57; border: 0; border-radius: 16px; font: inherit; font-size: 12px; font-weight: 900; padding: 6px 11px; box-shadow: 0 3px 0 #0002; }
+  #cover #swap { display: none; font-size: 16px; padding: 9px 26px; background: #6b4cff; box-shadow: 0 5px 0 #4229b8; }
   #stick { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: #ffffff55; border: 3px solid #ffffffaa; display: none; pointer-events: none; z-index: 3; }
   #knob { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: #ffffffe6; box-shadow: 0 2px 6px #0003; }
   #cover { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 35%, #ffe9c9, #f2b98a 70%, #e28f63); color: #5a2e14; z-index: 5; text-align: center; padding: 24px; }
@@ -121,7 +123,7 @@
 </head>
 <body>
 <div id="hud">
-  <div id="me"><div class="face">葵</div><div><div class="t" id="meTitle">Lv1 實習生</div><div class="bar"><i id="meBar"></i></div></div></div>
+  <div id="me"><div class="face"></div><div><div class="t" id="meTitle">Lv1 實習生</div><div class="bar"><i id="meBar"></i></div></div></div>
   <div id="money"><i></i><span id="moneyTxt">0</span></div>
   <div id="ver"></div>
   <div id="hint">拖曳畫面移動</div>
@@ -129,6 +131,7 @@
   <div id="banner"></div>
   <div id="year"><div class="row"><span id="yearTitle">第 1 年　Q1 業績</span><span id="yearNum">0 / 0</span></div><div class="bar"><i id="yearBar"></i></div><div class="qs"><b></b><b></b><b></b><b></b></div></div>
   <div id="chips"></div>
+  <button id="swapHud"></button>
 </div>
 <div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
 <div id="finale"><div class="card">
@@ -145,8 +148,9 @@
 </div></div>
 <div id="cover">
   <h1>上班啟示錄</h1>
-  <p>新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
+  <p id="coverTxt">新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
   <button id="start" disabled>載入中…</button>
+  <button id="swap">😎 操控阿傑老鳥</button>
   <button id="reset">從頭開始</button>
   <div id="iconBox">
     <b>挑一個主畫面圖示</b>

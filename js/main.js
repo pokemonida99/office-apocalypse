@@ -10,6 +10,9 @@ import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './asse
 import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.2';
 
 const VERSION = 'v0.4.2';
+// 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
+const JIE = location.hash === '#jie';
+const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
 
 // ---------- 數值 ----------
 const CFG = {
@@ -74,7 +77,7 @@ const DESK_AT = [-6.0, 3.3];
 const HIRES = [
   { id: 'worker', name: '工讀生（咖啡）', price: 250, at: [-2.4, 3.0], need: () => shops.coffee.lv >= 1, kind: 'npcF', home: 'coffee', cap: 0xffc83d },
   { id: 'worker2', name: '工讀生（影印）', price: 900, at: [-0.6, 3.0], need: () => shops.printer.unlocked, kind: 'npcM', home: 'printer', cap: 0x3fa7ff },
-  { id: 'jie', name: '阿傑（設計部）', price: 1800, at: DESK_AT, need: () => shops.printer.lv >= 1, kind: 'jie' },
+  { id: 'jie', name: JIE ? '小葵（設計部）' : '阿傑（設計部）', price: 1800, at: DESK_AT, need: () => shops.printer.lv >= 1, kind: JIE ? 'kui' : 'jie' },   // 阿傑模式換小葵坐這裡畫圖
   { id: 'mi', name: '小米', price: 2500, at: [1.2, 3.0], need: () => phone.unlocked, kind: 'mi' },
   { id: 'vivi', name: 'Vivi 老闆', price: 9000, at: [3.0, 3.0], need: () => phone.unlocked && shops.vending.unlocked, kind: 'vivi' },
 ];
@@ -569,8 +572,8 @@ const HIRE_SUB = {
 function hire(h, silent = false) {
   const k = kinds[h.kind] || kinds.npcF;
   const a = makeActor(k, h.id.startsWith('worker') ? 0.88 : 0.98);
-  if (h.id === 'jie' && kinds.jieJog) addJog(a, kinds.jieJog);
-  a.root.position.set(h.at[0], 0, h.at[1] - (h.id === 'jie' ? 0.7 : 0));   // 阿傑直接坐到桌子後面
+  if (h.id === 'jie' && kinds[h.kind + 'Jog']) addJog(a, kinds[h.kind + 'Jog']);
+  a.root.position.set(h.at[0], 0, h.at[1] - (h.id === 'jie' ? 0.7 : 0));   // 設計師直接坐到桌子後面
   scene.add(a.root); popIn(a.root, a.root.scale.x);
   if (h.cap) {   // 工讀生戴鴨舌帽（咖啡黃、影印藍）
     const cap = sphere(0.2, h.cap, 0, 0.86, 0, a.root); cap.scale.set(1.05, 0.55, 1.05);
@@ -666,6 +669,18 @@ const INTRO = [
   '錢夠了就站上格子：金色升級設施、白色開新區域、粉紅色請人來幫忙。',
   '做越多事就會升職，升職能背更多、走更快！一起把這間破辦公室變成產線吧 💪',
 ];
+const JIE_INTRO = [
+  '喲～我是阿傑，這間公司的老鳥 😎',
+  '小葵說想學畫圖，設計部就交給她，今天雜事我來扛！',
+  '店全部都開好了。我背得多、走得快，收錢還有超強磁鐵。',
+  '玩法一樣：拿貨 → 送到櫃台 → 收錢 → 踩格子升級。來看看老鳥的速度吧！',
+];
+// 換角色：先存檔，網址換成另一個模式（#jie／沒有）後重新載入，直接開工
+const GO_KEY = 'office-apocalypse-go';
+function swapMode() {
+  save(); try { sessionStorage.setItem(GO_KEY, '1'); } catch {}
+  history.replaceState(null, '', location.pathname + (JIE ? '' : '#jie')); location.reload();
+}
 function talk(lines, done) {
   const el = document.getElementById('talk'), txt = document.getElementById('talkTxt'), dots = document.getElementById('talkDots');
   dots.innerHTML = lines.map(() => '<i></i>').join('');
@@ -679,6 +694,7 @@ function talk(lines, done) {
     typing = setInterval(() => { n += 1; txt.textContent = lines[i].slice(0, n); if (n >= lines[i].length) finish(); }, 35);
   };
   const close = () => { clearInterval(typing); el.classList.remove('on'); el.onpointerdown = null; state.talking = false; done && done(); };
+  el.querySelector('img').src = `icons/${ME.icon}-180.png`; el.querySelector('.name').textContent = ME.name;
   state.talking = true; el.classList.add('on');
   el.onpointerdown = e => { if (e.target.id !== 'talkSkip') next(); };
   document.getElementById('talkSkip').onclick = close;
@@ -702,7 +718,7 @@ function gainXp(n) {
 const meTitle = document.getElementById('meTitle'), meBar = document.getElementById('meBar');
 function updateMe() {
   const r = RANKS[state.rank], n = RANKS[state.rank + 1];
-  meTitle.textContent = `Lv${state.rank + 1} ${r.title}`;
+  meTitle.textContent = JIE ? '😎 老鳥 阿傑' : `Lv${state.rank + 1} ${r.title}`;
   meBar.style.width = n ? `${Math.min(100, (state.xp - r.xp) / (n.xp - r.xp) * 100)}%` : '100%';
 }
 
@@ -898,7 +914,7 @@ let shopClosedHere = false;
 function renderShop() {
   const items = shopItems(), key = items.map(i => i.id + i.price).join() + '|' + Math.floor(state.money / 100);
   if (key === shopKey) return; shopKey = key;
-  let html = '<div class="sec">小葵的裝備</div>';
+  let html = `<div class="sec">${ME.name}的裝備</div>`;
   items.forEach((it, i) => {
     if (it.kind === 'decor' && (i === 0 || items[i - 1].kind !== 'decor')) html += `<div class="sec">辦公室裝潢（現在滿意度 ★${stars()}）</div>`;
     const btn = it.price == null ? `<button class="buy done" disabled>✓</button>` : `<button class="buy" data-k="${it.kind}" data-id="${it.id}" ${state.money < it.price ? 'disabled' : ''}>$${it.price.toLocaleString()}</button>`;
@@ -980,7 +996,7 @@ function startFinale() {
   crew.forEach((h, i) => { h.actor.root.position.set(STAGE_AT[0] + (i % 2 ? 1 : -1) * (0.75 + Math.floor(i / 2) * 0.6), 0.26, STAGE_AT[1] + 0.1); h.actor.root.rotation.y = 0; });
   if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.2, 0.26, STAGE_AT[1] - 0.6); hires.vivi.actor.root.rotation.y = 0; }
   const speaker = hires.vivi ? hires.vivi.actor : player.actor;
-  const lines = hires.vivi ? ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '小葵！！！'] : ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '我自己！（沒請老闆）'];
+  const lines = hires.vivi ? ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', `${ME.name}！！！`] : ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '我自己！（沒請老闆）'];
   lines.forEach((l, i) => after(1.5 + i * 1.6, () => floatText(speaker.root.position.clone().setY(1.8), l, '#d9483b', 1.1)));
   for (let i = 0; i < 8; i++) after(1 + i * 0.9, () => confetti(V(STAGE_AT[0] + (Math.random() - 0.5) * 4, 2.5, STAGE_AT[1]), 60, 1.2));
   after(8.2, () => {   // 頒獎
@@ -993,8 +1009,8 @@ function startFinale() {
 }
 function showFinaleCard() {
   const S = state.stats, el = document.getElementById('finale');
-  document.getElementById('finMvp').textContent = `年度 MVP：${RANKS[state.rank].title} 小葵`;
-  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], ['🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip]];
+  document.getElementById('finMvp').textContent = JIE ? '年度 MVP：老鳥 阿傑' : `年度 MVP：${RANKS[state.rank].title} 小葵`;
+  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip]];
   document.getElementById('finStats').innerHTML = rows.map(([k, v]) => `<div>${k}<b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('');
   const nb = 1 + state.year * 0.25;
   document.getElementById('finMove').textContent = `搬到新辦公室（第 ${state.year + 1} 年）`;
@@ -1023,10 +1039,10 @@ document.getElementById('finMove').onclick = () => {
 // ======================================================================
 // 存檔（瀏覽器本機）：每 5 秒、離開頁面時存
 // ======================================================================
-const SAVE_KEY = 'office-apocalypse-save-v1', YEAR_KEY = 'office-apocalypse-year';
+const SAVE_KEY = 'office-apocalypse-save-v1' + (JIE ? '-jie' : ''), YEAR_KEY = 'office-apocalypse-year' + (JIE ? '-jie' : '');   // 阿傑模式另存一份
 let saveT = 0;
 function save() {
-  if (!player || design.finale) return;
+  if (!player || design.finale || !state.started) return;   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
     v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
     gear: state.gear, decor: state.decor, stats: state.stats,
@@ -1109,18 +1125,27 @@ const G = window.G = {
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }
-  if (/[?&]fresh/.test(location.search)) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); } catch {} }   // 測試用：網址加 ?fresh 從頭開始
+  if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
   loadYear();
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
   const TH = [null, { wood: 0xffc9b8, cafe: 0xe4dcff, part: 0xff8a5c }, { wood: 0xcfe8ff, cafe: 0xfff0c2, part: 0x7b5cff }, { wood: 0xd8ffd0, cafe: 0xffd9ec, part: 0x2f7fc4 }][(state.year - 1) % 4];
   if (TH) { ENV.work.material.color.setHex(TH.wood); ENV.cafe.material.color.setHex(TH.cafe); mat(0x3fb6a8).color.setHex(TH.part); }
   for (const t of ['coffee', 'printer', 'vending', 'beef', 'chicken', 'fish']) makeShop(t);
-  const a = addJog(makeActor(kinds.kui, 1), kinds.kuiJog);
+  const a = addJog(makeActor(kinds[ME.icon], 1), kinds[ME.icon + 'Jog']);
   a.root.position.set(L.start[0], 0, L.start[1]); a.root.rotation.y = Math.PI; scene.add(a.root);
   player = { actor: a, carry: [], type: null, carryMax: rankCarry(0), moveT: 0 };
   carriers.push(player);
   cam.target.set(L.start[0], 0, L.start[1]);
   const loaded = loadSave();
+  if (JIE) {   // 老鳥模式：職等、裝備全滿，店全開，小葵已經坐在設計部
+    state.rank = RANKS.length - 1;
+    for (const k in GEAR) state.gear[k] = GEAR[k].price.length;
+    for (const s of Object.values(shops)) if (!s.unlocked) openShop(s, false);
+    if (!phone.unlocked) openPhone();
+    if (!hires.jie) hire(HIRES.find(h => h.id === 'jie'), true);
+    openKiosk(false);
+  }
+  document.querySelector('#me .face').style.backgroundImage = `url(icons/${ME.icon}-180.png)`;
   player.carryMax = carryMaxNow(); setCart();
   setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
@@ -1130,8 +1155,14 @@ const G = window.G = {
   btn.onclick = () => {
     audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
     if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}`, 0, '#2fb27a');
-    else if (!loaded && location.hash !== '#play') talk(INTRO);   // 第一次玩：小葵打招呼、說明玩法
+    else if (!loaded && location.hash !== '#play') talk(JIE ? JIE_INTRO : INTRO);   // 第一次玩：打招呼、說明玩法
   };
-  if (location.hash === '#play') btn.onclick();
+  // 換角色按鈕：封面一顆、遊戲裡一顆
+  const swap = document.getElementById('swap'), swapHud = document.getElementById('swapHud');
+  swap.textContent = JIE ? '🌻 換小葵玩' : '😎 操控阿傑老鳥'; swap.style.display = 'inline-block'; swap.onclick = swapMode;
+  swapHud.textContent = JIE ? '💾 存檔離開・換小葵' : '😎 換阿傑'; swapHud.onclick = swapMode;
+  if (JIE) document.getElementById('coverTxt').innerHTML = '老鳥阿傑出動！素質全滿、所有店都開好了，<br>小葵去設計部學畫圖，雜事交給我！';
+  let go = false; try { go = sessionStorage.getItem(GO_KEY) === '1'; sessionStorage.removeItem(GO_KEY); } catch {}
+  if (location.hash === '#play' || go) btn.onclick();
 })();
 requestAnimationFrame(frame);
