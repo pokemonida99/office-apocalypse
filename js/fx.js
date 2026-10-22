@@ -180,5 +180,7 @@ export const sfx = {
   answer() { tone(784, 0.08, 'sine', 0.6); tone(1175, 0.12, 'sine', 0.6, 0.06); },
   build() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.18, 'triangle', 0.7, i * 0.07)); },
   upgrade() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.22, 'triangle', 0.7, i * 0.06)); tone(2093, 0.5, 'sine', 0.4, 0.38); },
+  punch() { tone(150, 0.09, 'square', 0.7); tone(95, 0.14, 'sawtooth', 0.45, 0.02); },   // 揍 Kevin
+  alarm() { for (let i = 0; i < 3; i++) { tone(880, 0.14, 'square', 0.22, i * 0.32); tone(660, 0.14, 'square', 0.22, i * 0.32 + 0.16); } },   // Kevin 來了
   promote() { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.2, 'square', 0.3, i * 0.09)); [1046, 1318, 1568].forEach((f) => tone(f, 0.6, 'triangle', 0.45, 0.4)); },
 };

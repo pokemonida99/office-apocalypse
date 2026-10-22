@@ -810,7 +810,8 @@ function updateGuide() {
   const cashShop = open.filter(s => s.cash.length).sort((a, b) => dist(a.d.cash) - dist(b.d.cash))[0];
   const padReady = pads.filter(p => p.shown && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
   const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
-  if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
+  if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = [k.x, k.z]; text = '👊 快去揍 Kevin，叫他滾！'; }   // 最優先
+  else if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
   else if (ringing && phone.lines.filter(l => l.ringing).length >= 2) { at = PHONE_DEF.zone; text = '電話響了！去接電話'; }
@@ -962,6 +963,82 @@ function updateKiosk() {
 // C. 突發事件（Q2 起）：VIP 客戶、午餐尖峰、老闆生日。只有好處、沒有懲罰
 // ======================================================================
 const chipsEl = document.getElementById('chips');
+// ---------- 第二年起：特助 Kevin 來鬧事 ----------
+// 他會走到一家店說「這個用 AI 就好了」，倒數結束前沒把他打跑，那家店就被打回 Lv1（產線也拆掉）
+const KEVIN = { first: 45, every: [100, 160], wait: 15, hp: 5, punchEvery: 0.22, reward: 600 };
+const KEVIN_TALK = ['這個用 AI 就好了 🤖', 'AI 一秒就做完了啦', '這些人力都可以省下來', '我已經跟老闆報告了喔'];
+const KEVIN_OUCH = ['砰！', '滾！', '別來鬧事！', '👊', '啪！'];
+let kevin = null, nextKevin = 0;
+function spawnKevin() {
+  nextKevin = state.t + KEVIN.every[0] + Math.random() * (KEVIN.every[1] - KEVIN.every[0]);
+  const targets = Object.values(shops).filter(s => s.unlocked && s.lv >= 1);
+  if (!targets.length) return;
+  const s = targets[Math.floor(Math.random() * targets.length)];
+  const a = makeActor(kinds.kevin || kinds.npcM, 0.98);
+  a.root.position.set(L.elevator[0] + 0.6, 0, L.elevator[1]); scene.add(a.root); popIn(a.root, a.root.scale.x);
+  const tab = rbox(0.3, 0.2, 0.025, 0x3a3f48, 0, 0.5, 0.2, a.root, { metalness: 0.6, roughness: 0.3 }); tab.rotation.x = -0.6;   // 手上的平板
+  box(0.26, 0.16, 0.005, new THREE.MeshBasicMaterial({ color: 0x7fd8ff, toneMapped: false }), 0, 0, 0.014, tab);
+  const tag = labelSprite('特助 Kevin', { bg: '#2c3e57', size: 0.26 }); tag.position.y = 1.38; a.root.add(tag);
+  const spot = [s.pickup[0] + (s.type === 'vending' ? -0.9 : 0.9), s.pickup[1]];
+  kevin = { a, s, spot, phase: 'walk', t: KEVIN.wait, hp: KEVIN.hp, punchT: 0, bubble: null, sec: -1 };
+  sfx.alarm(); camKick(0.4);
+  banner('⚠️ 特助 Kevin 來了！', `他說${s.def.name}「用 AI 就好了」，快去叫他滾！`, 0, '#2c3e57');
+}
+// 對話泡泡（比招牌寬，長句子不會被切掉）；sec 有給就在前面加紅色倒數
+function kevinSay(text, sec) {
+  const k = kevin; if (k.bubble) { k.a.root.remove(k.bubble); k.bubble.material.map.dispose(); }
+  const t = canvasTex(1024, 150, (g, W, H) => {
+    g.font = `900 60px ${FONT}`; const head = sec != null ? `⏰${sec}　` : '';
+    const w = Math.min(W - 8, g.measureText(head + text).width + 70), x0 = (W - w) / 2;
+    g.fillStyle = '#ffffff'; roundRect(g, x0, 8, w, H - 34, 36); g.fill();
+    g.beginPath(); g.moveTo(W / 2 - 18, H - 27); g.lineTo(W / 2, H - 4); g.lineTo(W / 2 + 18, H - 27); g.fill();
+    g.textBaseline = 'middle'; g.fillStyle = '#ff3b3b'; g.fillText(head, x0 + 35, (H - 26) / 2 + 4);
+    g.fillStyle = '#2c3e57'; g.fillText(text, x0 + 35 + g.measureText(head).width, (H - 26) / 2 + 4);
+  });
+  k.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  k.bubble.scale.set(3.8, 0.56, 1); k.bubble.renderOrder = 9; k.bubble.position.y = 1.9; k.a.root.add(k.bubble);
+}
+function updateKevin(dt) {
+  if (state.year < 2 || design.finale) return;
+  if (!kevin) { if (!nextKevin) nextKevin = state.t + KEVIN.first; if (state.t >= nextKevin) spawnKevin(); return; }
+  const k = kevin, a = k.a, p = a.root.position;
+  if (k.phase === 'flee') {   // 跑回電梯消失
+    if (walkTo(a, L.elevator[0] + 0.3, L.elevator[1], 3.2, dt)) { scene.remove(a.root); kevin = null; return; }
+  } else {
+    if (k.phase === 'walk' && walkTo(a, k.spot[0], k.spot[1], 1.7, dt)) { k.phase = 'talk'; floatText(p.clone().setY(1.9), KEVIN_TALK[0], '#2c3e57', 0.9); }
+    if (k.phase === 'talk') {
+      a.speed = 0; turnTo(a, Math.atan2(k.s.src[0] - p.x, k.s.src[1] - p.z), dt);
+      k.t -= dt;
+      const sec = Math.ceil(k.t);
+      if (sec !== k.sec) { k.sec = sec; kevinSay(KEVIN_TALK[Math.floor((KEVIN.wait - sec) / 4) % KEVIN_TALK.length], Math.max(0, sec)); }
+      if (k.t <= 0) {   // 來不及：被 AI 取代，打回 Lv1
+        const s = k.s;
+        if (s.belt) { scene.remove(s.belt.g); s.belt = null; s.beltItems.forEach(b => scene.remove(b.m)); s.beltItems = []; }
+        s.lv = 0; setLook(s, 0, true); save();
+        puff(V(s.src[0], 0.8, s.src[1])); camKick(0.8);
+        banner('😱 被 AI 取代了……', `${s.def.name}被打回 Lv1`, 0, '#7a7f87');
+        kevinSay('搞定，AI 接手 😎'); k.phase = 'flee'; return updateActor(a, dt, state.t);
+      }
+    }
+    // 小葵（或阿傑）碰到他就開扁
+    const pp = player.actor.root.position, d = Math.hypot(pp.x - p.x, pp.z - p.z);
+    k.punchT += dt;
+    if (d < 1.05 && k.punchT >= KEVIN.punchEvery) {
+      k.punchT = 0; k.hp--;
+      const dir = V(p.x - pp.x, 0, p.z - pp.z).normalize();
+      p.addScaledVector(dir, 0.22); squash(player.actor.root, 0.25); squash(a.root, 0.3);
+      shockwave(V(p.x, 0.05, p.z), 0xff5d3a, 1.6); camKick(0.35); sfx.punch();
+      floatText(p.clone().setY(1.5 + Math.random() * 0.3), KEVIN_OUCH[Math.floor(Math.random() * KEVIN_OUCH.length)], '#ff3b3b', 1);
+      if (k.hp <= 0) {
+        const val = Math.round(KEVIN.reward * state.yearBonus);
+        addMoney(val); gainXp(3); confetti(V(p.x, 1.2, p.z), 50); sfx.upgrade();
+        banner(`${ME.name}：別來鬧事！`, `Kevin 夾著平板逃走了　+$${val.toLocaleString()}`, 0, '#ff5d3a');
+        kevinSay('好啦好啦我滾 😭'); k.phase = 'flee';
+      }
+    }
+  }
+  updateActor(a, dt, state.t);
+}
 let nextEvent = 0, cake = null;
 function updateEvents() {
   if (state.q >= 2 && !design.finale && !nextEvent) nextEvent = state.t + 25;
@@ -972,6 +1049,7 @@ function updateEvents() {
     ({ vip: eventVip, rush: eventRush, birthday: eventBirthday })[pool[Math.floor(Math.random() * pool.length)]]();
   }
   let chips = '';
+  if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
   if (rushOn()) chips += `<span class="rush">🍱 午餐尖峰 ×2　${Math.ceil(state.rushUntil - state.t)} 秒</span>`;
   if (stars()) chips += `<span>★${stars()} 小費 +${stars() * 5}%</span>`;
   if (state.yearBonus > 1) chips += `<span>🏢 第 ${state.year} 年 ×${state.yearBonus.toFixed(2)}</span>`;
@@ -1108,7 +1186,7 @@ function update(dt) {
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
   else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); }
-  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateEvents(); updateSave(dt);
+  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
@@ -1142,12 +1220,12 @@ const G = window.G = {
   look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); },
   step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); },
   KIOSK, buy, shopItems, startFinale, endFinale, save, get kiosk() { return kiosk; },
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday })[n](); },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin })[n](); }, get kevin() { return kevin; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
   try {
-    const urls = { kui: 'models/kui_walk2.glb', kuiJog: 'models/kui_jog.glb', npcM: 'models/npc_m_walk.glb', npcF: 'models/npc_f_walk.glb', jie: 'models/jie_walk.glb', jieJog: 'models/jie_jog.glb', mi: 'models/mi_walk.glb', vivi: 'models/vivi_walk.glb' };
+    const urls = { kui: 'models/kui_walk2.glb', kuiJog: 'models/kui_jog.glb', npcM: 'models/npc_m_walk.glb', npcF: 'models/npc_f_walk.glb', jie: 'models/jie_walk.glb', jieJog: 'models/jie_jog.glb', mi: 'models/mi_walk.glb', vivi: 'models/vivi_walk.glb', kevin: 'models/kevin_walk.glb' };
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }

@@ -6,7 +6,7 @@ const THREE_URL = 'https://unpkg.com/three@0.170.0/';
 const FILES = [
   './',
   ...['main', 'world', 'fx', 'stations', 'assets', 'decor'].map(n => `js/${n}.js?v=${VERSION}`),
-  ...['kui_walk2', 'kui_jog', 'npc_m_walk', 'npc_f_walk', 'jie_walk', 'jie_jog', 'mi_walk', 'vivi_walk'].map(n => `models/${n}.glb`),
+  ...['kui_walk2', 'kui_jog', 'npc_m_walk', 'npc_f_walk', 'jie_walk', 'jie_jog', 'mi_walk', 'vivi_walk', 'kevin_walk'].map(n => `models/${n}.glb`),
   ...['kui', 'mi', 'jie', 'vivi'].flatMap(k => [`icons/${k}-180.png`, `icons/${k}-192.png`, `icons/${k}-512.png`, `icons/manifest-${k}.json`]),
   THREE_URL + 'build/three.module.js',
   ...['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'libs/meshopt_decoder.module.js', 'postprocessing/EffectComposer.js', 'postprocessing/RenderPass.js',
