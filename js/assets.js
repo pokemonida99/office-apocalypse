@@ -49,7 +49,7 @@ export function addJog(a, jogKind, keepDeg = 7) {
   a.model.traverse(o => { if (o.isBone && o.name === 'Spine02') a.spine = o; });
   return a;
 }
-const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _ax = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _ax = new THREE.Vector3(), _hp = new THREE.Vector3(), _fp = new THREE.Vector3();
 
 // 走路動畫原速時，貼地那隻腳往後移的速度（每秒幾個身高）。播放速度＝實際移動速度 ÷ 這個值，腳就會踩實
 function measureNatural(base, clip) {
@@ -77,7 +77,8 @@ export function makeActor(kind, scale = 1) {
   const mixer = new THREE.AnimationMixer(model);
   const action = kind.clip ? mixer.clipAction(kind.clip).play() : null;
   if (action) action.setEffectiveWeight(0);
-  return { root, model, mixer, action, natural: kind.natural, speed: 0, w: 0, phase: Math.random() * 6 };
+  let head = null, headFront = null; model.traverse(o => { if (o.name === 'Head') head = o; if (o.name === 'headfront') headFront = o; });
+  return { root, model, mixer, action, natural: kind.natural, speed: 0, w: 0, phase: Math.random() * 6, head, headFront };
 }
 
 // 走路權重平滑切換：走＝播放走路，停＝回到站姿並輕輕呼吸
@@ -105,6 +106,13 @@ export function updateActor(a, dt, t) {
     _q.setFromAxisAngle(_ax, -a.leanFix * jogW);
     a.spine.parent.getWorldQuaternion(_pq);
     a.spine.quaternion.premultiply(_pq.clone().invert().multiply(_q).multiply(_pq));
+  }
+  // 走路動作會低頭約 13°（俯視不明顯，近看像在看地上）：量這一格臉的俯仰，往下的部分繞頭骨本地 X 抬回水平
+  if (a.head && a.headFront && a.w > 0.01) {
+    a.headFront.updateWorldMatrix(true, false);
+    a.head.getWorldPosition(_hp); a.headFront.getWorldPosition(_fp);
+    const pitch = Math.atan2(_fp.y - _hp.y, Math.hypot(_fp.x - _hp.x, _fp.z - _hp.z));
+    if (pitch < 0) a.head.rotateX(pitch);
   }
   a.model.scale.y = 1 + (1 - a.w) * 0.015 * Math.sin(t * 3 + a.phase);
 }
