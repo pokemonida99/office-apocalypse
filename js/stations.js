@@ -1,6 +1,6 @@
 // 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.4.1';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.4.2';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -271,7 +271,8 @@ export function levelBadge(name, lv, total = 5) {
   s.scale.set(1.6, 0.5, 1); s.renderOrder = 8; return s;
 }
 
-// ---------- 可愛攤位（櫃台）：條紋遮雨棚、波浪簾、招牌 ----------
+// ---------- 可愛攤位（櫃台）：條紋布、波浪邊、招牌 ----------
+// 不做遮雨棚和柱子：鏡頭從前上方往下看，屋頂會蓋住小葵和櫃台上的貨，所以裝飾都貼在櫃台本身（前後兩面一樣，背對鏡頭的攤位也好看）
 // 本地座標：客人在 +z（前面），員工在 -z（後面）。回傳 { g, slot(i)（櫃台上第 i 個貨的本地位置）, tick }
 const stripeTex = {};
 function awningTex(a, b) {
@@ -289,26 +290,34 @@ export function stallLook(type, lv = 0, fx = {}) {
   const st = STALL_STYLE[type], w = 2.4 + lv * 0.2, g = new THREE.Group();
   rbox(w, 0.78, 0.72, st.base, 0, 0.39, 0, g);
   rbox(w + 0.15, 0.08, 0.86, st.top, 0, 0.82, 0, g);
-  box(w * 0.92, 0.1, 0.02, st.top, 0, 0.6, 0.37, g);   // 前面一條飾帶
-  for (let i = 0; i < 5; i++) sphere(0.05, st.top, (i - 2) * w * 0.18, 0.4, 0.37, g);   // 小圓點
-  for (const x of [-w / 2 + 0.06, w / 2 - 0.06]) for (const z of [-0.3, 0.38]) cyl(0.035, 0.035, 1.12, 0xfff4e2, x, 1.42, z, g);
-  // 遮雨棚：條紋布往前斜＋波浪簾
-  const aw = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.05, 1.15), [mat(st.base), mat(st.base), new THREE.MeshStandardMaterial({ map: awningTex(st.a, st.b) }), mat(st.base), mat(st.base), mat(st.base)]);
-  aw.position.set(0, 2.02, 0.08); aw.rotation.x = 0.22; aw.castShadow = true; g.add(aw);
-  const n = Math.round((w + 0.3) / 0.24);
-  for (let i = 0; i < n; i++) {
-    const s = sphere(0.13, i % 2 ? 0xffffff : st.base, -(w + 0.3) / 2 + 0.12 + i * (w + 0.3 - 0.24) / (n - 1), 1.86, 0.66, g);
-    s.scale.set(1, 0.55, 0.35);
+  const stripe = new THREE.MeshStandardMaterial({ map: awningTex(st.a, st.b) });
+  // 桌面鋪條紋桌巾（鏡頭從上面看最明顯的一面）
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.05, 0.78), stripe); cloth.rotation.x = -Math.PI / 2; cloth.position.y = 0.862; cloth.receiveShadow = true; g.add(cloth);
+  const signTex = labelSprite(st.sign, { bg: st.signBg }).material.map;
+  const signMat = new THREE.MeshBasicMaterial({ map: signTex, transparent: true, toneMapped: lv < 2 });
+  const lights = [], n = Math.round(w / 0.2);
+  for (const side of [1, -1]) {   // 前面、後面各一套
+    const z = side * 0.362, face = new THREE.Group(); face.position.z = z; face.rotation.y = side > 0 ? 0 : Math.PI; g.add(face);
+    const skirt = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.94, 0.52), stripe); skirt.position.set(0, 0.4, 0.004); face.add(skirt);
+    for (let i = 0; i < n; i++) {   // 上緣一排波浪邊（原本遮雨棚的簾子）
+      const b = sphere(0.13, i % 2 ? 0xffffff : st.base, -w / 2 + 0.1 + i * (w - 0.2) / (n - 1), 0.74, 0.07, face);
+      b.scale.set(1, 0.65, 0.4);
+    }
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.34), signMat); sign.position.set(0, 0.4, 0.012); face.add(sign);
+    if (lv >= 1) for (let i = 0; i < 11; i++) {   // 小燈泡串掛在櫃台下緣
+      const x = -w / 2 + 0.12 + i * (w - 0.24) / 10;
+      lights.push(sphere(0.045, new THREE.MeshBasicMaterial({ color: [0xffe08a, 0xff9ad5, 0x9be7ff][i % 3], toneMapped: false }), x, 0.12 + Math.abs(Math.sin(i * 0.9)) * 0.03, 0.05, face));
+    }
   }
-  const sign = labelSprite(st.sign, { bg: st.signBg, size: 0.34, glow: lv >= 2 }); sign.position.set(0, 2.55, 0); g.add(sign);
-  const lights = [];
-  if (lv >= 1) {   // 小燈泡串＋兩盆花
-    for (let i = 0; i < 9; i++) { const b = sphere(0.04, new THREE.MeshBasicMaterial({ color: [0xffe08a, 0xff9ad5, 0x9be7ff][i % 3], toneMapped: false }), -w / 2 + i * w / 8, 1.78, 0.72, g); lights.push(b); }
-    for (const x of [-w / 2 - 0.25, w / 2 + 0.25]) { cyl(0.16, 0.13, 0.28, 0xff8a5c, x, 0.14, 0.3, g); for (let k = 0; k < 4; k++) sphere(0.12, [0xff6b8b, 0xffd34d, 0x47b35a, 0xb46bff][k], x + Math.cos(k * 1.6) * 0.07, 0.38 + (k % 2) * 0.08, 0.3 + Math.sin(k * 1.6) * 0.07, g); }
+  if (lv >= 1) for (const x of [-w / 2 - 0.25, w / 2 + 0.25]) {   // 兩盆花
+    cyl(0.16, 0.13, 0.28, 0xff8a5c, x, 0.14, 0.3, g);
+    for (let k = 0; k < 4; k++) sphere(0.12, [0xff6b8b, 0xffd34d, 0x47b35a, 0xb46bff][k], x + Math.cos(k * 1.6) * 0.07, 0.38 + (k % 2) * 0.08, 0.3 + Math.sin(k * 1.6) * 0.07, g);
   }
-  if (lv >= 2) {   // 豪華：金邊、星星
-    rbox(w + 0.2, 0.05, 0.9, 0xd9a63a, 0, 0.88, 0, g, gold);
+  if (lv >= 2) {   // 豪華：金邊、前面兩角金星（矮的，不擋視線）
+    for (const z of [-0.44, 0.44]) rbox(w + 0.2, 0.06, 0.06, 0xd9a63a, 0, 0.88, z, g, gold);   // 桌緣金框（中間留給桌巾）
+    for (const x of [-(w + 0.14) / 2, (w + 0.14) / 2]) rbox(0.06, 0.06, 0.9, 0xd9a63a, x, 0.88, 0, g, gold);
     rbox(w + 0.2, 0.05, 0.9, 0xd9a63a, 0, 0.03, 0, g, gold);
+    for (const x of [-w / 2, w / 2]) { cyl(0.03, 0.03, 0.3, 0xd9a63a, x, 1.03, 0.36, g, gold); sphere(0.11, 0xffd34d, x, 1.24, 0.36, g, gold); }
   }
   let st2 = 0;
   const tick = (dt, t, pos) => {

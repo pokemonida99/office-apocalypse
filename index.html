@@ -94,6 +94,22 @@
   #cover button { font: inherit; font-size: 21px; font-weight: 900; padding: 13px 44px; border: 0; border-radius: 30px; background: #ff5d3a; color: #fff; box-shadow: 0 6px 0 #b8381c; cursor: pointer; }
   #cover button:disabled { background: #c9a98f; box-shadow: 0 6px 0 #9c7d66; }
   #cover small { font-size: 12px; opacity: .6; }
+  /* 開場：小葵的對話框 */
+  #talk { position: fixed; inset: 0; z-index: 4; display: none; align-items: flex-end; justify-content: center; padding: 0 12px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent 55%, #2c3e5755); }
+  #talk.on { display: flex; }
+  #talk .box { position: relative; width: 100%; max-width: 460px; display: flex; align-items: flex-end; gap: 10px; animation: talkIn .35s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes talkIn { from { transform: translateY(40px) scale(.9); opacity: 0; } }
+  #talk img { width: 86px; height: 86px; border-radius: 22px; border: 4px solid #fff; box-shadow: 0 4px 0 #c4501f55; flex: none; animation: talkBob 1.4s ease-in-out infinite; }
+  @keyframes talkBob { 50% { transform: translateY(-5px); } }
+  #talk .bubble { position: relative; flex: 1; background: #fffdf8; border-radius: 20px; padding: 22px 16px 26px; min-height: 104px; color: #4a2a14; font-weight: 800; font-size: 16px; line-height: 1.55; box-shadow: 0 5px 0 #e0a070, 0 8px 18px #0003; border: 3px solid #ffb47a; }
+  #talk .bubble::before { content: ''; position: absolute; left: -12px; bottom: 26px; border: 10px solid transparent; border-right: 12px solid #ffb47a; border-left: 0; }
+  #talk .name { position: absolute; left: 14px; top: -14px; background: #ff7a45; color: #fff; font-size: 13px; font-weight: 900; padding: 3px 12px; border-radius: 12px; box-shadow: 0 2px 0 #c4501f; }
+  #talk .next { position: absolute; right: 14px; bottom: 6px; font-size: 11px; color: #c4501f; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  #talk .skip { position: absolute; right: 0; top: -40px; background: #ffffffcc; color: #8a4b1f; border: 0; border-radius: 14px; font: inherit; font-size: 13px; font-weight: 800; padding: 5px 12px; }
+  #talk .dots { position: absolute; left: 16px; bottom: 10px; display: flex; gap: 5px; }
+  #talk .dots i { width: 6px; height: 6px; border-radius: 50%; background: #ffd2b0; }
+  #talk .dots i.on { background: #ff7a45; }
   /* 封面：挑主畫面圖示 */
   #iconBox { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
   #iconBox b { font-size: 13px; }
@@ -122,6 +138,11 @@
   <small id="finNote"></small>
 </div></div>
 <div id="stick"><div id="knob"></div></div>
+<div id="talk"><div class="box">
+  <button class="skip" id="talkSkip">跳過 ⏭</button>
+  <img src="icons/kui-180.png" alt="小葵">
+  <div class="bubble"><span class="name">小葵</span><span id="talkTxt"></span><div class="dots" id="talkDots"></div><span class="next">點一下繼續 ▶</span></div>
+</div></div>
 <div id="cover">
   <h1>上班啟示錄</h1>
   <p>新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
@@ -151,9 +172,16 @@
     }
   })();
 </script>
+<script>
+  // 離線玩：只在線上版（或網址加 ?sw 測試）啟用，本機開發不快取
+  if ('serviceWorker' in navigator && (location.hostname.endsWith('github.io') || /[?&]sw/.test(location.search))) {
+    const sendList = () => navigator.serviceWorker.ready.then(reg => reg.active && reg.active.postMessage({ cache: performance.getEntriesByType('resource').map(e => e.name) }));
+    addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(sendList).catch(() => {}); setTimeout(sendList, 8000); });
+  }
+</script>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.4.1"></script>
+<script type="module" src="js/main.js?v=0.4.2"></script>
 </body>
 </html>

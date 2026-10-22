@@ -3,13 +3,13 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.4.1';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.4.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.4.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.4.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.4.2';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.4.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook } from './stations.js?v=0.4.2';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.4.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.4.2';
 
-const VERSION = 'v0.4.1';
+const VERSION = 'v0.4.2';
 
 // ---------- 數值 ----------
 const CFG = {
@@ -31,7 +31,7 @@ const RANKS = [
   { xp: 130, title: '資深專員' }, { xp: 210, title: '組長' }, { xp: 320, title: '主任' }, { xp: 470, title: '經理' }, { xp: 680, title: '總監' },
 ];
 const rankCarry = (r) => 6 + r * 2;
-const rankSpeed = (r) => 2.35 + r * 0.09;
+const rankSpeed = (r) => 2.35 + r * 0.2;   // 每升一階明顯變快：實習生 2.35 → 總監 3.95
 // 採購部的裝備
 const GEAR = {
   cart: { icon: '🛒', name: '推車', desc: ['一次多背 4 個', '一次多背 8 個', '黃金推車：多背 14 個'], price: [2000, 7000, 20000], bonus: [0, 4, 8, 14] },
@@ -657,6 +657,34 @@ function carry(c, dt) {
 // 收錢：數字跑上去
 function addMoney(v) { v = Math.round(v); state.money += v; state.earned += v; bumpMoney(); }
 
+// ---------- 開場：小葵的對話框（點一下繼續，打字中點一下直接顯示整句） ----------
+const INTRO = [
+  '大家好！我是小葵，今天第一天來上班，請多多指教 ✨',
+  '聽說新人什麼雜事都要做……老闆說，先從煮咖啡開始！',
+  '拖曳畫面就能走路。走到咖啡機前面的白框，咖啡會一杯一杯疊到我手上。',
+  '把咖啡送到櫃台，排隊的同事拿到就會付錢，記得走去綠框把錢收起來喔！',
+  '錢夠了就站上格子：金色升級設施、白色開新區域、粉紅色請人來幫忙。',
+  '做越多事就會升職，升職能背更多、走更快！一起把這間破辦公室變成產線吧 💪',
+];
+function talk(lines, done) {
+  const el = document.getElementById('talk'), txt = document.getElementById('talkTxt'), dots = document.getElementById('talkDots');
+  dots.innerHTML = lines.map(() => '<i></i>').join('');
+  let i = -1, n = 0, typing = null;
+  const finish = () => { clearInterval(typing); typing = null; txt.textContent = lines[i]; };
+  const next = () => {
+    if (typing) return finish();
+    if (++i >= lines.length) return close();
+    n = 0; txt.textContent = ''; [...dots.children].forEach((d, k) => d.className = k === i ? 'on' : '');
+    sfx.pick(i);
+    typing = setInterval(() => { n += 1; txt.textContent = lines[i].slice(0, n); if (n >= lines[i].length) finish(); }, 35);
+  };
+  const close = () => { clearInterval(typing); el.classList.remove('on'); el.onpointerdown = null; state.talking = false; done && done(); };
+  state.talking = true; el.classList.add('on');
+  el.onpointerdown = e => { if (e.target.id !== 'talkSkip') next(); };
+  document.getElementById('talkSkip').onclick = close;
+  next();
+}
+
 // ---------- 小葵升職 ----------
 function gainXp(n) {
   state.xp += n;
@@ -667,7 +695,7 @@ function gainXp(n) {
     const p = player.actor.root.position;
     pillar(p, 0xffb3d9, 0.6, 5); shockwave(p, 0xffb3d9, 3); confetti(V(p.x, 1.2, p.z), 70); camKick(0.7);
     sfx.promote(); popIn(player.actor.root, 1, 3);
-    banner('升職！' + next.title, `一次背 ${player.carryMax} 個　走路更快`, 0, '#ff4fa3');
+    banner('升職！' + next.title, `一次背 ${player.carryMax} 個　走路速度 +${Math.round((rankSpeed(state.rank) / rankSpeed(0) - 1) * 100)}%`, 0, '#ff4fa3');
   }
   updateMe();
 }
@@ -703,6 +731,7 @@ function updatePlayer(dt) {
   let mx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
   let mz = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (touch && Math.hypot(touch.dx, touch.dy) > 6) { mx = touch.dx / 50; mz = touch.dy / 50; }
+  if (state.talking) mx = mz = 0;   // 對話中不能走
   if (G.force) [mx, mz] = G.force;
   const len = Math.hypot(mx, mz), a = player.actor, p = a.root.position;
   const top = rankSpeed(state.rank) * (1 + GEAR.scooter.bonus[state.gear.scooter]) * Math.min(1, len);
@@ -1101,6 +1130,7 @@ const G = window.G = {
   btn.onclick = () => {
     audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
     if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}`, 0, '#2fb27a');
+    else if (!loaded && location.hash !== '#play') talk(INTRO);   // 第一次玩：小葵打招呼、說明玩法
   };
   if (location.hash === '#play') btn.onclick();
 })();
