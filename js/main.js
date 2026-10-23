@@ -3,15 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.2';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.2';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.2';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.2';
-import { openCallGame } from './callgame.js?v=0.6.2';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.2';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.3';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.3';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.3';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.3';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.3';
+import { openCallGame } from './callgame.js?v=0.6.3';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.3';
 
-const VERSION = 'v0.6.2';
+const VERSION = 'v0.6.3';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -897,6 +897,8 @@ const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0
 function updateYear() {
   yearEl.style.display = 'block';
   yearQs.forEach((b, i) => b.classList.toggle('on', i < state.q));
+  const done = state.q >= 4 && state.finaleDone && !design.finale;   // 尾牙辦完、選了繼續上班：隨時可以搬家
+  if (done !== yearEl.classList.contains('done')) { yearEl.classList.toggle('done', done); chipsEl.classList.toggle('low', done); moveBtn.textContent = `🚚 搬到新辦公室（第 ${state.year + 1} 年）`; }
   if (state.q >= 4) { yearTitle.textContent = `第 ${state.year} 年　全年達標 ✓`; yearNum.textContent = '$' + state.earned.toLocaleString(); yearBar.style.width = '100%'; return; }
   const prev = state.q ? qTarget(state.q - 1) : 0, tgt = qTarget(state.q);
   yearTitle.textContent = `第 ${state.year} 年　Q${state.q + 1} 業績`;
@@ -1379,15 +1381,27 @@ function endFinale() {
   save();
 }
 document.getElementById('finStay').onclick = endFinale;
-document.getElementById('finMove').onclick = () => {
+document.getElementById('finMove').onclick = () => moveToNextYear();
+// 搬家：存下年度與加成，其他歸零，重新載入（尾牙的按鈕、之後進度條下面的按鈕都走這裡）
+const nextBonus = () => 1 + state.year * 0.25;
+function moveToNextYear() {
   noSave = true;
   // 新年度：存下年度與加成，其他歸零，重新載入
   try {
-    localStorage.setItem(YEAR_KEY, JSON.stringify({ year: state.year + 1, bonus: 1 + state.year * 0.25 }));
+    localStorage.setItem(YEAR_KEY, JSON.stringify({ year: state.year + 1, bonus: nextBonus() }));
     localStorage.removeItem(SAVE_KEY);
   } catch {}
   location.reload();
+}
+const moveBtn = document.getElementById('moveBtn'), moveAsk = document.getElementById('moveAsk');
+moveBtn.onclick = (e) => {
+  e.stopPropagation(); audioInit(); sfx.pick?.();
+  document.getElementById('moveTxt').innerHTML = `第 ${state.year + 1} 年的新辦公室：店、錢、職等、員工都從頭開始，年度目標也會變大。<br>2F 買的家具會跟著搬過去。`;
+  document.getElementById('moveBonus').textContent = `所有收入永久 ×${nextBonus().toFixed(2)}（現在 ×${state.yearBonus.toFixed(2)}）`;
+  moveAsk.classList.add('on');
 };
+document.getElementById('moveGo').onclick = () => moveToNextYear();
+document.getElementById('moveNo').onclick = () => moveAsk.classList.remove('on');
 
 // ======================================================================
 // 樓層：電梯、頂樓遊樂園、2F 我的辦公室（第 2 年開放；阿傑老鳥一開始就能去）
