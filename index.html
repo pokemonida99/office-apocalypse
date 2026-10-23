@@ -195,6 +195,29 @@
   #callgame .end button { flex: 1; font: inherit; font-weight: 900; font-size: 16px; border: 0; border-radius: 16px; padding: 12px; }
   #callgame .end .again { background: #7b5cff; color: #fff; box-shadow: 0 4px 0 #4f37c4; }
   #callgame .end .back { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002; }
+  #callgame .end .btns + .btns { margin-top: 10px; }
+  #callgame .end .next { background: #ff7a45; color: #fff; box-shadow: 0 4px 0 #c9502a; }
+  #callgame .end .pick { background: #efeaff; color: #4f37c4; box-shadow: 0 4px 0 #c9bdf5; }
+  #callgame .end .unlock { margin: 10px 0 0; text-align: center; font-weight: 900; color: #ff7a45; font-size: 16px; animation: talkIn .4s cubic-bezier(.2,1.4,.4,1); }
+  #callgame .end .rows div { padding: 4px 4px; }
+  /* 選關 */
+  #callgame .levels { display: none; flex-direction: column; gap: 10px; }
+  #callgame.picking .time, #callgame.picking .hud, #callgame.picking .legend { visibility: hidden; }
+  #callgame .levels.on { display: flex; }
+  #callgame .lv { display: flex; align-items: center; gap: 10px; border: 0; border-radius: 20px; background: #fff; padding: 12px 14px; box-shadow: 0 5px 0 #c9bdf5; font: inherit; text-align: left; color: #2c3e57; }
+  #callgame .lv:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9bdf5; }
+  #callgame .lv .ic { font-size: 34px; flex: none; }
+  #callgame .lv .tx { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  #callgame .lv .tx b { font-size: 16px; color: #4f37c4; } #callgame .lv .tx small { font-size: 12px; font-weight: 700; opacity: .8; }
+  #callgame .lv .bs { font-size: 12px; font-weight: 900; color: #ff7a45; flex: none; }
+  #callgame .lv.lock { background: #ffffff99; box-shadow: 0 5px 0 #0002; } #callgame .lv.lock .tx b { color: #6b6b80; }
+  #callgame .lvback { border: 0; border-radius: 16px; padding: 10px; font: inherit; font-weight: 900; background: #ffffff33; color: #fff; }
+  /* 第 2、3 關的新電話 */
+  #callgame .grid.g4 { gap: 8px; } #callgame .grid.g4 .cell .ph { font-size: 34px; } #callgame .grid.g4 .cell { border-radius: 18px; }
+  #callgame .cell.angry { background: #ff3b3b; box-shadow: 0 6px 0 #b0202a; color: #fff; animation-duration: .08s; }
+  #callgame .cell.angry.calm { background: #ff9a5c; box-shadow: 0 6px 0 #c9602a; }
+  #callgame .cell.cai { background: linear-gradient(135deg, #ff4d4d, #ffd34d); box-shadow: 0 6px 0 #c9302a; color: #fff; }
+  #callgame.frenzy { background: radial-gradient(circle at 50% 30%, #ffd34d, #ff7a45 60%, #d9483b); }
   /* 開場：小葵的對話框 */
   #talk { position: fixed; inset: 0; z-index: 4; display: none; align-items: flex-end; justify-content: center; padding: 0 12px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent 55%, #2c3e5755); }
   #talk.on { display: flex; }
@@ -260,7 +283,8 @@
   <div class="grid"></div>
   <div class="legend">☎ 響了就點　👑 老闆 3 倍　🤖 AI 推銷別接！</div>
   <div class="big"></div>
-  <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="again">再玩一次</button><button class="back">回去上班</button></div></div>
+  <div class="levels"></div>
+  <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="next">下一關 ▶</button><button class="again">再玩一次</button></div><div class="btns"><button class="pick">選關卡</button><button class="back">回去上班</button></div></div>
 </div></div>
 <div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
 <div id="finale"><div class="card">
@@ -317,6 +341,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.6.1"></script>
+<script type="module" src="js/main.js?v=0.6.2"></script>
 </body>
 </html>

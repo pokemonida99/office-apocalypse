@@ -1,7 +1,7 @@
 // 其他樓層的外觀：頂樓遊樂園（環境＋四個設施）、2F 我的辦公室（房間＋家具樣式）
 // 樓層放在同一個世界的不同區域：頂樓在 x+40、2F 在 x-40，搭電梯就是瞬移過去
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.1';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.2';
 
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
 const gold = { metalness: 0.9, roughness: 0.3 };

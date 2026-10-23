@@ -3,15 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.1';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.1';
-import { openCallGame } from './callgame.js?v=0.6.1';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.2';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.2';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.2';
+import { openCallGame } from './callgame.js?v=0.6.2';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.2';
 
-const VERSION = 'v0.6.1';
+const VERSION = 'v0.6.2';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -212,7 +212,7 @@ function runLater() { for (let i = later.length - 1; i >= 0; i--) if (state.t >=
 const state = {
   money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0,
   earned: 0, q: 0, year: 1, yearBonus: 1, finaleDone: false, rushUntil: 0, floor: 'f1',
-  gear: { cart: 0, scooter: 0, magnet: 0 }, decor: [],
+  miBests: [0, 0, 0], gear: { cart: 0, scooter: 0, magnet: 0 }, decor: [],
   stats: { coffee: 0, doc: 0, drink: 0, beef: 0, chicken: 0, fish: 0, tea: 0, sand: 0, cake: 0, calls: 0, drafts: 0, vip: 0 },
 };
 // 收入倍率：裝潢滿意度（每顆星 +5% 小費）× 新辦公室年度加成 × 午餐尖峰
@@ -1489,11 +1489,12 @@ function updateMiBtn() {
 miBtn.onclick = () => startCallGame();
 function startCallGame(fromCover = false) {
   audioInit(); state.mini = true; miBtn.style.display = 'none';
-  openCallGame({ sfx, best: state.miBest || 0, onEnd: (r) => {
-    // 獎金：每一分＝現在總機一通價的 15%（老闆來電算 3 分），再乘年度加成；大約等於自己站總機接電話的收入，不會比主遊戲好賺
-    const reward = Math.round(r.score * STATIONS.phone.levels[phone.lv].price * 0.15 * state.yearBonus);
-    addMoney(reward); state.miBest = r.best; state.stats.calls += r.answered; save(fromCover);
-    return { reward, close: () => { state.mini = false; if (r.newBest && !fromCover) banner('🏆 接電話新紀錄！', `${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
+  openCallGame({ sfx, bests: state.miBests, onEnd: (r) => {
+    if (!r) return { close: () => { state.mini = false; } };   // 選關畫面直接按回去
+    // 獎金：每一分＝現在總機一通價的 15%（老闆來電算 3 分），再乘年度加成；後面的關卡每分多一點（×1.3、×1.6）
+    const reward = Math.round(r.score * STATIONS.phone.levels[phone.lv].price * 0.15 * [1, 1.3, 1.6][r.level] * state.yearBonus);
+    addMoney(reward); state.miBests = r.bests; state.stats.calls += r.answered; save(fromCover);
+    return { reward, close: () => { state.mini = false; if ((r.newBest || r.unlocked >= 0) && !fromCover) banner(r.unlocked >= 0 ? `🔓 接電話第 ${r.unlocked + 1} 關開放！` : '🏆 接電話新紀錄！', `第 ${r.level + 1} 關 ${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
   } });
 }
 // 封面也能玩（不用先開工）
@@ -1673,7 +1674,7 @@ function save(force = false) {
   if (!player || design.finale || (!state.started && !force) || noSave) return;   // force：封面玩小米挑戰拿到的獎金也要存   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
     v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
-    gear: state.gear, decor: state.decor, stats: state.stats, miBest: state.miBest || 0,
+    gear: state.gear, decor: state.decor, stats: state.stats, miBests: state.miBests,
     shops: Object.fromEntries(Object.values(shops).map(s => [s.type, { unlocked: s.unlocked, lv: s.lv }])),
     phone: { unlocked: phone.unlocked, lv: phone.lv }, hires: Object.keys(hires),
     roof: Object.fromEntries(Object.values(roof.rides).map(r => [r.def.id, { u: r.unlocked, lv: r.lv }])),
@@ -1688,7 +1689,7 @@ function loadSave() {
   let d = null; try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch {}
   if (!d || d.v !== 1) return false;
   Object.assign(state, { money: d.money, xp: d.xp, rank: d.rank, earned: d.earned, q: d.q, finaleDone: d.finaleDone });
-  Object.assign(state.gear, d.gear); state.decor = d.decor || []; Object.assign(state.stats, d.stats); state.miBest = d.miBest || 0;
+  Object.assign(state.gear, d.gear); state.decor = d.decor || []; Object.assign(state.stats, d.stats); state.miBests = d.miBests || [d.miBest || 0, 0, 0];   // 舊存檔只有第 1 關的紀錄
   for (const s of Object.values(shops)) {
     const o = d.shops?.[s.type]; if (!o) continue;
     if (o.unlocked && !s.unlocked) openShop(s, false);
