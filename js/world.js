@@ -8,8 +8,15 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
+// 畫質：漂亮（柔光後製、2 倍解析度、陰影）／流暢（直接畫不做後製、1.25 倍解析度、不畫陰影）
+// 偏好存在 localStorage：auto（預設：核心少或記憶體小的手機先用流暢，main.js 開玩後再看幀率調）、high、low
+const Q_KEY = 'office-apocalypse-quality';
+const weak = matchMedia('(pointer: coarse)').matches && ((navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3);
+export const quality = { pref: 'auto', level: 'high', weak };
+try { const v = localStorage.getItem(Q_KEY); if (['auto', 'high', 'low'].includes(v)) quality.pref = v; } catch {}
+quality.level = quality.pref === 'auto' ? (weak ? 'low' : 'high') : quality.pref;
 export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, quality.level === 'low' ? 1.25 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -53,6 +60,19 @@ composer.addPass(grade);
 composer.addPass(new OutputPass());
 export const post = { composer, bloom, grade, on: true };
 export function render() { if (post.on) composer.render(); else renderer.render(scene, camera); }
+export function setQuality(level) {
+  quality.level = level; const low = level === 'low';
+  renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 2)); renderer.setSize(innerWidth, innerHeight);
+  composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight);
+  post.on = !low;
+  // 流暢：連陰影都關掉（陰影要把每個角色多畫一次，手機 CPU 會差很多）；開關陰影要讓材質重新編譯
+  if (renderer.shadowMap.enabled === low) { renderer.shadowMap.enabled = !low; scene.traverse(o => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); }
+}
+export function setQualityPref(pref) {
+  quality.pref = pref; try { localStorage.setItem(Q_KEY, pref); } catch {}
+  setQuality(pref === 'auto' ? (weak ? 'low' : 'high') : pref);
+}
+setQuality(quality.level);
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();

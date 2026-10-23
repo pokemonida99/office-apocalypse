@@ -3,15 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite } from './world.js?v=0.5.1';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.1';
-import { openCallGame } from './callgame.js?v=0.5.1';
-import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.5.2';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.2';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.2';
+import { openCallGame } from './callgame.js?v=0.5.2';
+import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.2';
 
-const VERSION = 'v0.5.1';
+const VERSION = 'v0.5.2';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -1426,10 +1426,25 @@ function update(dt) {
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge, ...Object.values(roof.rides).map(r => r.badge)]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
+// ---------- 畫質：自動模式下，開玩後每 3 秒算一次幀率，連兩次低於 40 就切成「流暢」 ----------
+const fpsMon = { wait: 2, t: 0, n: 0, bad: 0 };
+function watchFps(dt) {
+  if (quality.pref !== 'auto' || quality.level === 'low' || !state.started || state.mini || document.hidden || dt > 0.25) return;
+  if ((fpsMon.wait -= dt) > 0) return;
+  fpsMon.t += dt; fpsMon.n++;
+  if (fpsMon.t < 3) return;
+  const fps = fpsMon.n / fpsMon.t; fpsMon.t = fpsMon.n = 0;
+  fpsMon.bad = fps < 40 ? fpsMon.bad + 1 : 0;
+  if (fpsMon.bad >= 2) { setQuality('low'); updateQBtn(); toast('畫面有點卡，已切換成「流暢」畫質'); }
+}
+const qBtn = document.getElementById('qBtn'), Q_NAME = { auto: '自動', high: '漂亮', low: '流暢' };
+function updateQBtn() { qBtn.textContent = `🎨 畫質：${Q_NAME[quality.pref]}` + (quality.pref === 'auto' ? `（現在${Q_NAME[quality.level]}）` : ''); }
+qBtn.onclick = () => { setQualityPref({ auto: 'high', high: 'low', low: 'auto' }[quality.pref]); fpsMon.bad = 0; updateQBtn(); };
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);   // 先排下一幀，這幀出錯也不會停住
   if (G.hold) { last = now; return; }   // 錄影用：由 G.tick 一格一格推
+  watchFps((now - last) / 1000);
   const dt = Math.min((now - last) / 1000, 0.05) * (G.speedUp || 1); last = now;
   try {
     if (state.started && !state.mini) update(dt);   // 玩小米的挑戰時主遊戲暫停
@@ -1474,7 +1489,7 @@ const G = window.G = {
     const urls = { kui: 'models/kui_walk2.glb', kuiJog: 'models/kui_jog.glb', npcM: 'models/npc_m_walk.glb', npcF: 'models/npc_f_walk.glb', jie: 'models/jie_walk.glb', jieJog: 'models/jie_jog.glb', mi: 'models/mi_walk.glb', vivi: 'models/vivi_walk.glb', kevin: 'models/kevin_walk.glb' };
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
-  } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); return; }
+  } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year', 'office-apocalypse-room']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
   loadYear();
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
@@ -1500,6 +1515,7 @@ const G = window.G = {
   player.carryMax = carryMaxNow(); setCart();
   setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
+  window.bootOk?.(); updateQBtn();
   btn.disabled = false; btn.textContent = loaded ? '繼續上班' : state.year > 1 ? `第 ${state.year} 年開工` : '開始上班';
   const reset = document.getElementById('reset');
   if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); localStorage.removeItem(ROOM_KEY); } catch {} location.reload(); } }; }
