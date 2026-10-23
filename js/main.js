@@ -3,15 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh } from './decor.js?v=0.6.0';
-import { openCallGame } from './callgame.js?v=0.6.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.1';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.1';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.1';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.1';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.1';
+import { openCallGame } from './callgame.js?v=0.6.1';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.1';
 
-const VERSION = 'v0.6.0';
+const VERSION = 'v0.6.1';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -218,7 +218,8 @@ const state = {
 // 收入倍率：裝潢滿意度（每顆星 +5% 小費）× 新辦公室年度加成 × 午餐尖峰
 const stars = () => state.decor.length;
 const rushOn = () => state.t < state.rushUntil;
-const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * (1 - 0.05 * waterEmpty()) * state.yearBonus * (rushOn() ? 2 : 1);   // 飲水機沒水：每台小費 -5%   // 舒適度：2F 每買一件家具 +2%
+let cai = null;   // 黑財神（坐雲撒錢事件）
+const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * (1 - 0.05 * waterEmpty()) * state.yearBonus * (rushOn() ? 2 : 1) * (cai ? 2 : 1);   // 黑財神在場收益 ×2；飲水機沒水：每台小費 -5%   // 舒適度：2F 每買一件家具 +2%
 let kinds, player;
 const carriers = [];
 const shops = {};
@@ -808,7 +809,7 @@ function updatePlayer(dt) {
   if (state.talking) mx = mz = 0;   // 對話中不能走
   if (G.force) [mx, mz] = G.force;
   const len = Math.hypot(mx, mz), a = player.actor, p = a.root.position;
-  const top = rankSpeed(state.rank) * (1 + GEAR.scooter.bonus[state.gear.scooter]) * Math.min(1, len);
+  const top = rankSpeed(state.rank) * (1 + GEAR.scooter.bonus[state.gear.scooter]) * Math.min(1, len) * (state.t < poopUntil ? 0.45 : 1);   // 被屎砸到走不快
   // 加速度平滑：起步、停下不會瞬間，看起來比較順
   const tx = len > 0.05 ? mx / len * top : 0, tz = len > 0.05 ? mz / len * top : 0;
   const k = 1 - Math.exp(-dt * (len > 0.05 ? 10 : 14));
@@ -843,7 +844,9 @@ function updateGuide() {
   const padReady = pads.filter(p => p.shown && (p.floor || 'f1') === state.floor && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
   const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
   if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = state.floor === 'f1' ? [k.x, k.z] : elevAt(); text = state.floor === 'f1' ? '👊 快去揍 Kevin，叫他滾！' : '👊 Kevin 在 1F 鬧事！快搭電梯下去'; }   // 最優先
+  else if (cai && !cai.leaving && state.floor !== 'f1') { at = elevAt(); text = '🧧 黑財神在 1F 撒錢！快搭電梯下去'; }
   else if (state.floor !== 'f1') [at, text] = floorGuide();
+  else if (cai && !cai.leaving && cai.drops.some(d => !d.landed && d.kind !== 'poop')) { const d = cai.drops.filter(d => !d.landed && d.kind !== 'poop').sort((a, b) => dist([a.x, a.z]) - dist([b.x, b.z]))[0]; at = [d.x, d.z]; text = '🧧 接住天上掉下來的元寶！（小心 💩）'; }
   else if (yan && yan.phase === 'wait' && player.carry.length && yan.need[player.type] > 0) { const y = yan.a.root.position; at = [y.x, y.z]; text = `📋 把 ${ICON[player.type]} 交給小燕`; }
   else if (yan && yan.phase === 'wait' && !player.carry.length) { const [it, n] = Object.entries(yan.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `📋 小燕急件：去拿 ${ICON[it]}×${n}`; } }
   else if (waterEmpty() && !player.carry.length) { const u = water.units.find(u => u.level <= 0); [at, text] = player.jug ? [u.at, '💧 把水倒進飲水機'] : [WATER.pickup, '💧 飲水機沒水了，去搬桶裝水']; }
@@ -1023,7 +1026,8 @@ function spawnKevin() {
 // 對話泡泡（比招牌寬，長句子不會被切掉）；sec 有給就在前面加紅色倒數。Kevin、小燕、黑輪共用
 function kevinSay(text, sec) { npcSay(kevin, text, sec); }
 function npcSay(k, text, sec) {
-  if (k.bubble) { k.a.root.remove(k.bubble); k.bubble.material.map.dispose(); }
+  const host = k.sayAt || k.a.root;   // 黑財神的泡泡掛在雲上（他整個人往後仰，掛身上會歪）
+  if (k.bubble) { host.remove(k.bubble); k.bubble.material.map.dispose(); }
   const t = canvasTex(1024, 150, (g, W, H) => {
     g.font = `900 60px ${FONT}`; const head = sec != null ? `⏰${sec}　` : '';
     const w = Math.min(W - 8, g.measureText(head + text).width + 70), x0 = (W - w) / 2;
@@ -1033,7 +1037,7 @@ function npcSay(k, text, sec) {
     g.fillStyle = '#2c3e57'; g.fillText(text, x0 + 35 + g.measureText(head).width, (H - 26) / 2 + 4);
   });
   k.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
-  k.bubble.scale.set(3.8, 0.56, 1); k.bubble.renderOrder = 9; k.bubble.position.y = 1.9; k.a.root.add(k.bubble);
+  k.bubble.scale.set(3.8, 0.56, 1); k.bubble.renderOrder = 9; k.bubble.position.y = k.sayY || 1.9; host.add(k.bubble);
 }
 function updateKevin(dt) {
   if (state.year < 2 || design.finale) return;
@@ -1093,11 +1097,14 @@ function updateEvents() {
     if (hires.vivi && !cake) pool.push('birthday');
     if (state.year >= 3 && !yan && kinds.yan) pool.push('yan', 'yan');
     if (state.year >= 3 && !heilun && kinds.heilun) pool.push('heilun', 'heilun');
-    ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, yan: eventYan, heilun: eventHeilun })[pool[Math.floor(Math.random() * pool.length)]]();
+    if (!cai && kinds.caishen && state.floor === 'f1') pool.push('caishen');
+    ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[pool[Math.floor(Math.random() * pool.length)]]();
   }
   let chips = '';
   if (waterEmpty()) chips += `<span class="rush">💧 飲水機沒水 小費 -${waterEmpty() * 5}%</span>`;
   if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
+  if (cai) chips += `<span class="rush">🧧 黑財神降臨 收益 ×2　${Math.max(0, Math.ceil(cai.until - state.t))} 秒</span>`;
+  if (state.t < poopUntil) chips += `<span class="rush">💩 被屎砸到，走路變慢</span>`;
   if (yan && yan.phase === 'wait') chips += `<span class="rush">📋 小燕急件 ${needText(yan.need)}　${Math.max(0, Math.ceil(yan.t))} 秒</span>`;
   if (heilun && heilun.phase === 'wait') chips += `<span class="rush">🤝 黑輪的大客戶 ${heilun.vips.filter(c => c.mode !== 'leave').length} 位</span>`;
   if (rushOn()) chips += `<span class="rush">🍱 午餐尖峰 ×2　${Math.ceil(state.rushUntil - state.t)} 秒</span>`;
@@ -1238,8 +1245,80 @@ function updateHeilun(dt) {
   }
   updateActor(a, dt, state.t);
 }
+// ---------- 黑財神：坐著雲飄在 1F 上空撒金銀元寶，小葵去接；偶爾會掉屎 ----------
+// 在場這段時間所有收入 ×2（incomeMult）。元寶落地沒接到就消失；接到屎走路變慢一下，不扣錢
+// 元寶價值跟著進度走：目前開著的店裡最貴一份商品的售價 ×1（金）／×0.45（銀）；全接到約年度目標一成多
+const CAI = { time: 30, every: 0.32, gold: 1.0, silver: 0.45, poop: 0.13, h: 2.9, catchR: 0.75 };
+const CAI_TALK = ['恭喜發財！', '金銀財寶接好喔～', '今年大賺！', '財源滾滾！', '哈哈哈，再來一個！', '紅包拿來……啊不是，是給你！'];
+let poopUntil = 0;
+function eventCaishen() {
+  if (cai || !kinds.caishen) return;
+  const g = new THREE.Group(), cloud = cloudLook(); g.add(cloud);
+  const a = makeActor(kinds.caishen, 1.5); a.action?.setEffectiveWeight(1); a.root.position.set(0, 0.42, 0.1); a.root.rotation.x = -0.6; g.add(a.root);   // 坐姿動作一直播；屁股放在雲頂、往後仰、臉朝上對著鏡頭（俯視鏡頭才看得到臉，不然只看到帽頂）
+  const tag = labelSprite('🧧 黑財神', { bg: '#d9483b', size: 0.3 }); tag.position.y = 2.0; g.add(tag);
+  const pp = player.actor.root.position;
+  g.position.set(THREE.MathUtils.clamp(pp.x, -5.5, 5.5), CAI.h + 3, pp.z + 0.6); scene.add(g);
+  cai = { g, a, sayAt: g, sayY: 2.45, until: state.t + CAI.time, dropT: 0, talkT: 0, line: 0, drops: [], vx: (Math.random() < 0.5 ? -1 : 1) * 0.8, leaving: false, caught: 0, got: 0 };
+  sfx.promote(); pillar(V(g.position.x, 0, g.position.z), 0xffd34d, 1.2, 6); confetti(V(g.position.x, 2.2, g.position.z), 90, 1.2);
+  banner('🧧 黑財神降臨！', `${CAI.time} 秒內收益 ×2，天上掉下來的金銀元寶快去接（小心屎 💩）`, 0, '#d9483b');
+}
+function updateCaishen(dt) {
+  const c = cai, g = c.g, pp = player.actor.root.position;
+  c.a.mixer.update(dt);
+  if (!c.leaving && state.t >= c.until) {
+    c.leaving = true; npcSay(c, c.got ? `接到 $${c.got.toLocaleString()}，明年再來！` : '下次要接快一點喔～');
+  }
+  // 飄：從天上降下來，在小葵上空左右晃（跟著她，掉的東西才接得到；鏡頭是斜的，雲放在她前面一點畫面上才剛好在她頭上）
+  const ty = c.leaving ? CAI.h + 4 : CAI.h + Math.sin(state.t * 1.6) * 0.12;
+  g.position.y += (ty - g.position.y) * Math.min(1, dt * (c.leaving ? 1.2 : 2));
+  if (!c.leaving) {
+    g.position.x += c.vx * dt;
+    if (g.position.x > Math.min(6, pp.x + 2.6)) c.vx = -Math.abs(c.vx); if (g.position.x < Math.max(-6, pp.x - 2.6)) c.vx = Math.abs(c.vx);
+    g.position.z += (THREE.MathUtils.clamp(pp.z + 0.6, L.bounds.minZ + 1, L.bounds.maxZ - 0.5) - g.position.z) * Math.min(1, dt * 0.8);
+    g.rotation.z = Math.sin(state.t * 1.3) * 0.05;
+    c.talkT += dt; if (c.talkT > 4) { c.talkT = 0; npcSay(c, CAI_TALK[c.line++ % CAI_TALK.length]); }
+    c.dropT += dt;
+    if (c.dropT >= CAI.every && g.position.y < CAI.h + 0.6) { c.dropT = 0; caiDrop(c); }
+  } else if (g.position.y > CAI.h + 3.5 && !c.drops.length) { scene.remove(g); cai = null; return; }
+  // 掉落物：地上有影子提示落點，頭頂高度以下碰到小葵就算接到
+  for (let i = c.drops.length - 1; i >= 0; i--) {
+    const d = c.drops[i], m = d.m;
+    if (d.landed) { d.t += dt; m.scale.setScalar(Math.max(0.01, 1 - d.t * 1.6)); if (d.t > 0.6) { scene.remove(m); scene.remove(d.mark); c.drops.splice(i, 1); } continue; }
+    d.vy -= 9 * dt; m.position.y += d.vy * dt; m.rotation.y += dt * 4;
+    m.position.x += (d.x - m.position.x) * Math.min(1, dt * 3); m.position.z += (d.z - m.position.z) * Math.min(1, dt * 3);
+    const k = THREE.MathUtils.clamp(1 - m.position.y / CAI.h, 0.2, 1); d.mark.scale.setScalar(k); d.mark.material.opacity = 0.15 + 0.35 * k;
+    if (m.position.y < 1.25 && Math.hypot(m.position.x - pp.x, m.position.z - pp.z) < CAI.catchR) { caiCatch(c, d); scene.remove(m); scene.remove(d.mark); c.drops.splice(i, 1); continue; }
+    if (m.position.y <= 0.08) { m.position.y = 0.08; d.landed = true; d.t = 0; if (d.kind === 'poop') puff(V(m.position.x, 0.2, m.position.z)); }
+  }
+}
+function caiDrop(c) {
+  const r = Math.random(), kind = r < CAI.poop ? 'poop' : r < 0.55 ? 'gold' : 'silver';
+  const m = kind === 'poop' ? poopLook() : ingotLook(kind === 'silver');
+  const g = c.g.position; m.position.set(g.x + (Math.random() - 0.5) * 1.2, g.y - 0.2, g.z); scene.add(m);
+  // 落點：雲底下附近、往小葵那邊偏一點
+  const pp = player.actor.root.position, ang = Math.random() * Math.PI * 2, rr = 0.4 + Math.random() * 2.2;
+  const x = THREE.MathUtils.clamp(g.x * 0.5 + pp.x * 0.5 + Math.cos(ang) * rr, L.bounds.minX + 0.3, L.bounds.maxX - 0.3);
+  const z = THREE.MathUtils.clamp(g.z * 0.3 + pp.z * 0.7 + Math.sin(ang) * rr, L.bounds.minZ + 0.3, L.bounds.maxZ - 0.3);
+  const mark = new THREE.Mesh(new THREE.CircleGeometry(0.32, 20), new THREE.MeshBasicMaterial({ color: kind === 'poop' ? 0x6b3f1a : 0xffb000, transparent: true, opacity: 0.2, depthWrite: false }));
+  mark.rotation.x = -Math.PI / 2; mark.position.set(x, 0.015, z); scene.add(mark);
+  c.drops.push({ m, mark, kind, x, z, vy: 1.2, landed: false, t: 0 });
+}
+function caiCatch(c, d) {
+  const p = player.actor.root.position;
+  if (d.kind === 'poop') {
+    poopUntil = state.t + 2.5; squash(player.actor.root, 0.4); camKick(0.3); sfx.punch();
+    puff(V(p.x, 1.1, p.z)); floatText(V(p.x, 1.8, p.z), '噁！💩', '#8a5527', 1.1);
+    if (Math.random() < 0.5) after(0.4, () => cai && npcSay(cai, '哎呀，那個不是我丟的 😅'));
+    return;
+  }
+  const unit = Math.max(20, ...Object.values(shops).filter(s => s.unlocked).map(s => s.def.levels[s.lv].price));
+  const val = Math.round((d.kind === 'gold' ? CAI.gold : CAI.silver) * unit * incomeMult());
+  addMoney(val); c.got += val; c.caught++; sfx.coin(); sparkle(V(p.x, 1.3, p.z));
+  floatText(V(p.x, 1.6, p.z), `${d.kind === 'gold' ? '金' : '銀'}元寶 +$${val.toLocaleString()}`, d.kind === 'gold' ? '#d9a63a' : '#7a8794', 0.9);
+}
 // 尾牙開始：還在場的小燕、黑輪直接下班
 function clearVisitors() {
+  if (cai) { cai.drops.forEach(d => { scene.remove(d.m); scene.remove(d.mark); }); scene.remove(cai.g); cai = null; }
   for (const o of [yan, heilun]) if (o) { o.got?.forEach(m => untrack(m)); scene.remove(o.a.root); }
   if (heilun) heilun.vips.forEach(c => c.heilun = false);
   yan = heilun = null;
@@ -1635,7 +1714,7 @@ function update(dt) {
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
   else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateRoom(); updateMiBtn(); }
   updateRoof(dt); updatePet(dt); updateWater(dt);
-  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); updateEvents(); updateSave(dt);
+  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); if (cai && !design.finale) updateCaishen(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge, ...Object.values(roof.rides).map(r => r.badge)]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
@@ -1695,7 +1774,7 @@ const G = window.G = {
   playCall: () => miBtn.onclick(),
   get water() { return water; }, WATER,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun })[n](); }, get kevin() { return kevin; }, get yan() { return yan; }, get heilun() { return heilun; },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -1706,6 +1785,7 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year', 'office-apocalypse-room']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
   loadYear();
+  loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
   const TH = [null, { wood: 0xffc9b8, cafe: 0xe4dcff, part: 0xff8a5c }, { wood: 0xcfe8ff, cafe: 0xfff0c2, part: 0x7b5cff }, { wood: 0xd8ffd0, cafe: 0xffd9ec, part: 0x2f7fc4 }][(state.year - 1) % 4];

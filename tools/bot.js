@@ -24,6 +24,10 @@ export function install() {
     if (G.water && G.water.on && !p.carry.length && G.water.units.some(u => u.level < 0.15)) {   // 飲水機快沒水：先去換
       const u = G.water.units.find(u => u.level < 0.15); return p.jug ? u.at : G.WATER.pickup;
     }
+    if (G.cai && !G.cai.leaving) {   // 黑財神撒錢：去接最近的元寶（避開屎）
+      const pos = p.actor.root.position, d = G.cai.drops.filter(d => !d.landed && d.kind !== 'poop').sort((a, b) => Math.hypot(a.x - pos.x, a.z - pos.z) - Math.hypot(b.x - pos.x, b.z - pos.z))[0];
+      if (d) return [d.x, d.z];
+    }
     if (G.kevin && G.kevin.phase !== 'flee') { const k = G.kevin.a.root.position; return [k.x, k.z]; }   // Kevin 來鬧事：先去揍他
     if (p.carry.length) return shopOf(p.type).d.drop;
     if (B.pad && B.pad.shown && G.state.money > 0) return B.pad.at;   // 選定的格子就付到完

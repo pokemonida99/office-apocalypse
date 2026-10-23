@@ -1,6 +1,6 @@
 // 外觀：採購部攤位、辦公室裝潢、小葵的推車、VIP 配件、尾牙舞台、生日蛋糕
 import * as THREE from 'three';
-import { rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.0';
+import { rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.1';
 
 const gold = { metalness: 0.9, roughness: 0.3 };
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
@@ -165,5 +165,29 @@ export function jugPileLook() {
   rbox(0.9, 0.12, 0.62, 0x8a6a4c, 0, 0.06, 0, g);
   for (const [x, z] of [[-0.2, -0.14], [0.2, -0.14], [-0.2, 0.16], [0.2, 0.16]]) { const j = jugMesh(); j.position.set(x, 0.32, z); g.add(j); }
   const t = labelSprite('💧 桶裝水', { bg: '#2f7fc4', size: 0.2 }); t.position.y = 1.0; g.add(t);
+  return g;
+}
+
+// ---------- 黑財神：坐的雲、掉下來的金銀元寶、偶爾的屎 ----------
+export function cloudLook() {
+  const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, emissive: 0xfff3d6, emissiveIntensity: 0.08 });
+  for (const [x, y, z, r] of [[0, 0, 0, 0.55], [-0.55, -0.05, 0.05, 0.42], [0.55, -0.05, 0.02, 0.44], [-0.25, 0.18, -0.15, 0.4], [0.28, 0.2, -0.12, 0.38], [-0.9, -0.12, 0, 0.28], [0.92, -0.12, 0, 0.3], [0, -0.12, 0.3, 0.4]]) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), m); s.position.set(x, y, z); s.scale.y = 0.72; g.add(s);
+  }
+  return g;
+}
+export function ingotLook(silver = false) {
+  const g = new THREE.Group(), c = silver ? 0x76828f : 0xf0a400, o = { metalness: 0.35, roughness: 0.45 };   // 顏色壓暗一點，不然後製泛光會變一團亮光
+  const body = sphere(0.2, c, 0, 0, 0, g, o); body.scale.set(1.25, 0.5, 0.8);
+  for (const s of [-1, 1]) { const w = sphere(0.1, c, s * 0.2, 0.07, 0, g, o); w.scale.set(1, 0.9, 1.3); }   // 兩邊翹起來的船形
+  sphere(0.1, c, 0, 0.1, 0, g, o);   // 中間鼓起
+  g.scale.setScalar(1.3);
+  return g;
+}
+export function poopLook() {
+  const g = new THREE.Group(), c = 0x8a5527, o = { roughness: 0.6 };
+  [[0.2, 0], [0.15, 0.1], [0.1, 0.19]].forEach(([r, y]) => { const t = sphere(r, c, 0, y, 0, g, o); t.scale.y = 0.55; });
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 12), mat(c, o)); tip.position.y = 0.27; g.add(tip);
+  for (const s of [-1, 1]) { sphere(0.035, 0xffffff, s * 0.06, 0.12, 0.12, g); sphere(0.018, 0x222222, s * 0.06, 0.12, 0.15, g); }
   return g;
 }
