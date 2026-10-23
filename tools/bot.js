@@ -21,6 +21,9 @@ export function install() {
       else if (B.idle > 2) { B.mode = null; B.idle = 0; B.skip = G.state.t + 3; }
       else return s.pickup;
     }
+    if (G.water && G.water.on && !p.carry.length && G.water.units.some(u => u.level < 0.15)) {   // 飲水機快沒水：先去換
+      const u = G.water.units.find(u => u.level < 0.15); return p.jug ? u.at : G.WATER.pickup;
+    }
     if (G.kevin && G.kevin.phase !== 'flee') { const k = G.kevin.a.root.position; return [k.x, k.z]; }   // Kevin 來鬧事：先去揍他
     if (p.carry.length) return shopOf(p.type).d.drop;
     if (B.pad && B.pad.shown && G.state.money > 0) return B.pad.at;   // 選定的格子就付到完

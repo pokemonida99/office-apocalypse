@@ -3,15 +3,15 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.5.2';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.5.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.5.2';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.5.2';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook } from './decor.js?v=0.5.2';
-import { openCallGame } from './callgame.js?v=0.5.2';
-import { buildRoof, RIDES, rideLook, buildOffice, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.5.2';
+import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit } from './fx.js?v=0.6.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh } from './decor.js?v=0.6.0';
+import { openCallGame } from './callgame.js?v=0.6.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.0';
 
-const VERSION = 'v0.5.2';
+const VERSION = 'v0.6.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash === '#jie';
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -43,18 +43,19 @@ const GEAR = {
   scooter: { icon: '🛴', name: '滑板車', desc: ['走路快 15%', '電動滑板車：快 30%'], price: [3000, 12000], bonus: [0, 0.15, 0.3] },
   magnet: { icon: '🧲', name: '收錢磁鐵', desc: ['靠近錢堆就自動吸過來', '強力磁鐵：吸的範圍再大一點', '超強磁鐵：全場的錢自動飛過來'], price: [5000, 15000, 40000], reach: [0.75, 1.8, 3.2, 99] },   // 三級：小範圍 → 大一點 → 全場
 };
+const magnetMax = () => state.gear.magnet >= GEAR.magnet.price.length;   // 第三級磁鐵：錢直接進帳，不畫鈔票（畫面太亂、手機會卡）
 const carryMaxNow = () => rankCarry(state.rank) + GEAR.cart.bonus[state.gear.cart];
 
 // ---------- 場景配置（x 往右、z 往鏡頭） ----------
 // 北邊：咖啡機、印表機、電話總機；東邊：販賣機；中間：請人格子、設計部；南邊：員工餐廳三攤
 const L = {
   bounds: { minX: -7.2, maxX: 7.2, minZ: -6.5, maxZ: 10.6 },
-  elevator: [-7.0, -0.6], exit: [7.0, 2.6], start: [-2.2, -3.6],
+  elevator: [-7.0, -0.6], exit: [7.0, 1.95], start: [-2.2, -3.6],   // 出口往下挪一點，讓出右牆給茶水站
 };
 // 樓層：同一個世界的不同區域（2F 在 x-40、頂樓在 x+40），搭電梯就是瞬移；1F 照常運轉
 const FLOORS = {
   f1: { name: '1F 辦公室', icon: '🏢', ox: 0, bounds: L.bounds, cam: [-4.8, 4.8, -4.4, 9.0] },
-  f2: { name: '2F 我的辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 4.5 }, cam: [-44.8, -35.2, -4.4, 2.0] },
+  f2: { name: '2F 我的辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 1.9 }, cam: [-44.8, -35.2, -4.4, -0.6] },   // 縮小：後面兩間辦公室＋前面走廊
   rf: { name: 'RF 頂樓遊樂園', icon: '🎡', ox: 40, bounds: { minX: 32.8, maxX: 47.2, minZ: -6.5, maxZ: 7.0 }, cam: [35.2, 44.8, -4.4, 4.6] },
 };
 const camFocusOf = (p) => { const c = FLOORS[state.floor].cam; return V(THREE.MathUtils.clamp(p.x, c[0], c[1]), 0, THREE.MathUtils.clamp(p.z, c[2], c[3])); };
@@ -62,7 +63,16 @@ const foodShop = (x, upX) => ({
   source: [x, 9.9], srcRot: Math.PI, pickup: [x, 9.05], counter: [x, 6.8], rot: Math.PI, drop: [x, 7.85], cash: [x + 1.6, 7.85],
   queue: [[x, 5.75], [x, 5.05], [x, 4.35], [x + 0.7, 4.35], [x + 1.4, 4.35]], upPad: [upX, 8.9], unlockPad: [x, 7.85],
 });
+// 第三年：一樓後牆往後推 6.3，多出一條早餐街（三攤；客人從左邊後門進、右邊後門出，不會穿過機器）
+const NORTH_Z = -6.3;
+const northShop = (x, upX) => ({ north: true,
+  source: [x, -12.9], srcRot: 0, pickup: [x, -12.05], counter: [x, -10.0], rot: 0, drop: [x, -10.95], cash: [x + 1.6, -10.95],
+  queue: [[x, -9.0], [x, -8.3], [x, -7.6], [x + 0.7, -7.6], [x + 1.4, -7.6]], upPad: [upX, -12.2], unlockPad: [x, -10.95],
+  spawn: [-7.0, -9.3], exit: [7.0, -9.3] });
 const SHOPS_DEF = {
+  tea: { ...northShop(-4.2, -6.2), need: () => state.year >= 3 },
+  sand: { ...northShop(0, -1.8), need: () => shops.tea.unlocked },
+  cake: { ...northShop(4.2, 2.3), need: () => shops.sand.unlocked },
   coffee: {
     machine: [-5.4, -5.7], counter: [-4.0, -2.4], drop: [-4.0, -3.4], cash: [-2.4, -3.4],
     queue: [[-4.0, -1.5], [-4.0, -0.8], [-4.0, -0.1], [-4.0, 0.6], [-4.0, 1.3], [-4.7, 1.3], [-5.4, 1.3], [-6.1, 1.3], [-6.8, 1.3]],
@@ -121,7 +131,8 @@ const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z
   const cafeTxt = canvasTex(512, 96, (g, W, H) => { g.fillStyle = '#2fb27a'; roundRect(g, 4, 4, W - 8, H - 8, 40); g.fill(); g.fillStyle = '#fff'; g.font = `900 58px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍱 員工餐廳', W / 2, H / 2 + 3); });
   const cs = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.8), new THREE.MeshBasicMaterial({ map: cafeTxt, transparent: true, depthWrite: false }));
   cs.rotation.x = -Math.PI / 2; cs.position.set(0, 0.01, 10.55); scene.add(cs);
-  // 後牆＋晴天窗景（城市大樓）
+  // 後牆＋晴天窗景（城市大樓）。整面收進 ENV.backWall，第三年打通時往後推
+  const n0 = scene.children.length;
   rbox(15.4, 3.0, 0.3, 0xfff1dd, 0, 1.5, -7.0);
   const sky = canvasTex(256, 192, (g, W, H) => {
     const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#7cc4ff'); gr.addColorStop(1, '#d6efff');
@@ -139,6 +150,7 @@ const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z
   { const c = cyl(0.32, 0.32, 0.06, 0xffffff, 0, 2.62, -6.82); c.rotation.x = Math.PI / 2; box(0.03, 0.2, 0.02, 0x2c3e57, 0, 2.66, -6.78); box(0.15, 0.03, 0.02, 0x2c3e57, 0.06, 2.62, -6.78); }
   rbox(1.0, 0.6, 0.05, 0xc9915b, 4.05, 2.4, -6.82);
   [0xffe08a, 0x9be7ff, 0xff9ad5].forEach((c, i) => box(0.24, 0.24, 0.02, c, 3.75 + i * 0.3, 2.42 + (i % 2) * 0.08, -6.78).rotation.z = (i - 1) * 0.15);
+  ENV.backWall = new THREE.Group(); for (const o of scene.children.slice(n0)) ENV.backWall.add(o); scene.add(ENV.backWall);
   // 側牆隔板（青綠色）、電梯
   for (let z = -6.3; z <= 10.3; z += 1.3) {
     if (Math.abs(z - L.elevator[1]) > 0.9) rbox(0.14, 0.75, 1.24, 0x3fb6a8, -7.6, 0.375, z);
@@ -150,7 +162,10 @@ const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z
   // 植物（放在路線外）
   const plant = (x, z, s = 1) => { cyl(0.22 * s, 0.17 * s, 0.34 * s, 0xff8a5c, x, 0.17 * s, z); for (let i = 0; i < 5; i++) { const l = sphere(0.22 * s, 0x47b35a, x + Math.cos(i * 1.3) * 0.13 * s, (0.5 + (i % 2) * 0.18) * s, z + Math.sin(i * 1.3) * 0.13 * s, scene, { roughness: 0.9 }); l.scale.y = 1.25; } };
   [[-7.0, -6.3], [7.0, -6.3], [-3.0, -6.4], [3.4, -6.4], [-7.0, 10.2], [7.0, 10.2], [-2.1, 10.3], [2.1, 10.3], [7.0, 4.4]].forEach(([x, z]) => plant(x, z));
-  // 排隊紅地毯＋金色紅龍柱
+  for (const d of Object.values(SHOPS_DEF)) if (!d.north) queueDecor(d);
+}
+// 排隊紅地毯＋金色紅龍柱
+function queueDecor(d) {
   const runner = (pts) => {
     for (let i = 0; i < pts.length - 1; i++) {
       const [x1, z1] = pts[i], [x2, z2] = pts[i + 1], len = Math.hypot(x2 - x1, z2 - z1);
@@ -158,13 +173,11 @@ const aabb = (x, z, hw, hd) => { const c = { minX: x - hw, maxX: x + hw, minZ: z
       r.rotation.x = -Math.PI / 2; r.rotation.z = -Math.atan2(x2 - x1, z2 - z1); r.position.set((x1 + x2) / 2, 0.006 + i * 0.0005, (z1 + z2) / 2); r.receiveShadow = true; scene.add(r);
     }
   };
-  for (const d of Object.values(SHOPS_DEF)) {
-    const q = d.queue; runner(q.length > 5 ? [q[0], q[4], q[q.length - 1]] : q.length === 5 ? [q[0], q[2], q[4]] : [q[0], q[q.length - 1]]);
-    for (const [x, z] of [q[1], q[q.length > 5 ? 3 : 2]]) for (const s of [-0.45, 0.45]) {
-      const horiz = Math.abs(q[1][1] - q[0][1]) < 0.01;   // 往旁邊排的隊伍，柱子放上下
-      const px = horiz ? x : x + s, pz = horiz ? z + s : z;
-      cyl(0.04, 0.04, 0.6, 0xe0b040, px, 0.3, pz, scene, { metalness: 0.8, roughness: 0.3 }); sphere(0.06, 0xe0b040, px, 0.62, pz, scene, { metalness: 0.8, roughness: 0.3 });
-    }
+  const q = d.queue; runner(q.length > 5 ? [q[0], q[4], q[q.length - 1]] : q.length === 5 ? [q[0], q[2], q[4]] : [q[0], q[q.length - 1]]);
+  for (const [x, z] of [q[1], q[q.length > 5 ? 3 : 2]]) for (const s of [-0.45, 0.45]) {
+    const horiz = Math.abs(q[1][1] - q[0][1]) < 0.01;   // 往旁邊排的隊伍，柱子放上下
+    const px = horiz ? x : x + s, pz = horiz ? z + s : z;
+    cyl(0.04, 0.04, 0.6, 0xe0b040, px, 0.3, pz, scene, { metalness: 0.8, roughness: 0.3 }); sphere(0.06, 0xe0b040, px, 0.62, pz, scene, { metalness: 0.8, roughness: 0.3 });
   }
 }
 
@@ -200,12 +213,12 @@ const state = {
   money: 0, xp: 0, rank: 0, t: 0, started: false, served: 0,
   earned: 0, q: 0, year: 1, yearBonus: 1, finaleDone: false, rushUntil: 0, floor: 'f1',
   gear: { cart: 0, scooter: 0, magnet: 0 }, decor: [],
-  stats: { coffee: 0, doc: 0, drink: 0, beef: 0, chicken: 0, fish: 0, calls: 0, drafts: 0, vip: 0 },
+  stats: { coffee: 0, doc: 0, drink: 0, beef: 0, chicken: 0, fish: 0, tea: 0, sand: 0, cake: 0, calls: 0, drafts: 0, vip: 0 },
 };
 // 收入倍率：裝潢滿意度（每顆星 +5% 小費）× 新辦公室年度加成 × 午餐尖峰
 const stars = () => state.decor.length;
 const rushOn = () => state.t < state.rushUntil;
-const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * state.yearBonus * (rushOn() ? 2 : 1);   // 舒適度：2F 每買一件家具 +2%
+const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * (1 - 0.05 * waterEmpty()) * state.yearBonus * (rushOn() ? 2 : 1);   // 飲水機沒水：每台小費 -5%   // 舒適度：2F 每買一件家具 +2%
 let kinds, player;
 const carriers = [];
 const shops = {};
@@ -299,7 +312,7 @@ function produce(s, dt) {
 // ---------- 排隊的同事 ----------
 function spawnCustomer(s, vip = false) {
   const a = makeActor(vip ? kinds.npcM : (s.spawnN + s.type.length) % 2 ? kinds.npcF : kinds.npcM, vip ? 1.02 : 0.95);
-  a.root.position.set(L.elevator[0] + 0.4, 0, L.elevator[1] + (Math.random() - 0.5) * 0.6); a.root.rotation.y = Math.PI / 2;
+  const sp = s.d.spawn || L.elevator; a.root.position.set(sp[0] + 0.4, 0, sp[1] + (Math.random() - 0.5) * 0.6); a.root.rotation.y = Math.PI / 2;
   scene.add(a.root);
   const many = s.def.restock ? 2 : 3 + Math.min(s.lv, 3);   // 升級後同事一次要更多；便當、飲料一次買少一點
   const want = s.spawnN < 3 ? [2, 3, 1][s.spawnN] : 1 + Math.floor(Math.random() * many);
@@ -338,7 +351,8 @@ function updateCustomers(s, dt) {
   });
   for (let i = s.crowd.length - 1; i >= 0; i--) {
     const c = s.crowd[i];
-    if (c.mode === 'leave' && walkTo(c.actor, L.exit[0] - 0.3, L.exit[1], CFG.crewSpeed * 1.2, dt)) {
+    const ex = s.d.exit || L.exit;
+    if (c.mode === 'leave' && walkTo(c.actor, ex[0] - 0.3, ex[1], CFG.crewSpeed * 1.2, dt)) {
       scene.remove(c.actor.root); c.got.forEach(m => untrack(m)); s.crowd.splice(i, 1); continue;
     }
     const need = c.want - c.got.length, show = c.mode === 'queue' && s.queue[0] === c && need > 0;
@@ -369,6 +383,7 @@ function pay(s, c) {
   s.queue.shift(); c.mode = 'leave'; state.served++; state.stats[s.item] += c.want;
   const total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1));
   if (c.vip) vipPaid(s, c, total);
+  if (magnetMax()) { addMoney(total); sfx.coin(); floatText(V(s.d.cash[0], 1.1, s.d.cash[1]), '+$' + total, '#22a447'); return; }
   const bills = Math.min(12, Math.max(1, Math.round(total / 10)));
   const from = c.actor.root.position.clone().setY(0.8);
   for (let i = 0; i < bills; i++) after(i * 0.06, () => {
@@ -423,7 +438,7 @@ function updatePhone(dt) {
   const P = STATIONS.phone.levels[phone.lv];
   phone.lines.forEach((ln, i) => {
     const ph = phone.look.phones[i];
-    if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) { ln.ringing = true; if ((i === 0 || Math.random() < 0.4) && !(phone.office && hires.mi)) sfx.ring(); } }   // 小米進辦公室後就不響鈴
+    if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) ln.ringing = true; }   // 不放響鈴聲（使用者覺得吵），看紅色泡泡就好
     const wp = ph.g.getWorldPosition(V());
     ln.bub.visible = ln.ringing;
     if (ln.ringing) {
@@ -545,8 +560,8 @@ function celebrate(pos, title, sub, stars, color) {
   for (let i = 0; i < 10; i++) after(i * 0.06, () => sparkle(V(pos.x + (Math.random() - 0.5) * 2, 0.5 + Math.random() * 1.8, pos.z + (Math.random() - 0.5) * 1.4), 0xffe08a, 0.4));
   banner(title, sub, stars, color); sfx.upgrade();
 }
-const SHOP_COLOR = { coffee: '#e0663a', printer: '#3f8fe0', vending: '#ff4f5e', beef: '#d9483b', chicken: '#e8902a', fish: '#2f7fc4' };
-const UNLOCK_SUB = { printer: '同事開始排隊印文件了', vending: '去搬飲料箱幫販賣機補貨', beef: '去冷藏櫃搬牛肉便當補貨', chicken: '雞肉飯開賣！', fish: '魚排飯開賣！' };
+const SHOP_COLOR = { coffee: '#e0663a', printer: '#3f8fe0', vending: '#ff4f5e', beef: '#d9483b', chicken: '#e8902a', fish: '#2f7fc4', tea: '#8a5a32', sand: '#d99a1a', cake: '#e0559a' };
+const UNLOCK_SUB = { tea: '早餐街開張！去搬茶葉珍珠', sand: '早餐店開賣！', cake: '甜點店開賣！', printer: '同事開始排隊印文件了', vending: '去搬飲料箱幫販賣機補貨', beef: '去冷藏櫃搬牛肉便當補貨', chicken: '雞肉飯開賣！', fish: '魚排飯開賣！' };
 function setupPads() {
   setupRoofPads();
   for (const s of Object.values(shops)) {
@@ -619,6 +634,10 @@ function updateHires(dt) {
       else walkTo(a, PHONE_DEF.zone[0] + 0.25, PHONE_DEF.zone[1], 1.4, dt) && turnTo(a, Math.PI, dt);
     }
     else if (h.id === 'jie') updateDesign(dt);
+    else if (h.id === 'vivi' && kevin && kevin.phase !== 'flee') {   // Kevin 來鬧事：老闆慢慢走過去趕人（走得慢，小葵先揍跑還有獎金）
+      const k = kevin.a.root.position;
+      if (walkTo(a, k.x + 0.6, k.z + 0.35, 1.25, dt)) viviScold(); else if (Math.random() < dt * 0.4) floatText(a.root.position.clone().setY(1.6), 'Kevin！你給我過來！', '#ff4fa3', 0.7);
+    }
     else if (h.id === 'vivi') {   // 老闆巡視：走來走去幫大家加油（沒有實際效果）
       const pts = [[-1.0, -1.2], [-2.0, 3.8], [2.6, 5.0], [3.0, 0.2], [0.4, -3.2], [-5.0, 4.6]];
       h.wp = h.wp ?? 0; h.wait = (h.wait ?? 0) - dt;
@@ -681,6 +700,9 @@ function carry(c, dt) {
       if (!c.carry.length) c.type = null;
       if (c === player) { sfx.drop(); gainXp(1); }
       return;
+    }
+    if (c === player && magnetMax() && s.cash.length) {   // 剛升到第三級時，地上還有的錢一次收掉
+      let v = 0; while (s.cash.length) { const b = s.cash.pop(); v += b.userData.v; untrack(b); } addMoney(v); sfx.coin(); continue;
     }
     const mag = c === player ? GEAR.magnet.reach[state.gear.magnet] : 0.75;
     if (c === player && nearAt(c.actor, s.d.cash, mag) && s.cash.length) {
@@ -812,7 +834,7 @@ function collide(p, r = 0.28) {
 const arrow = new THREE.Group(); scene.add(arrow);
 { const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 24), new THREE.MeshStandardMaterial({ color: 0xff5d3a, emissive: 0x7a1e00, roughness: 0.4 })); cone.rotation.x = Math.PI; arrow.add(cone); }
 const hintEl = document.getElementById('hint'); let hintText = '';
-const PICK_TEXT = { coffee: '去咖啡機拿咖啡', doc: '去印表機拿文件', drink: '去搬飲料箱', beef: '去搬牛肉便當', chicken: '去搬雞肉便當', fish: '去搬魚排便當' };
+const PICK_TEXT = { tea: '去搬手搖飲', sand: '去搬早餐', cake: '去搬甜點', coffee: '去咖啡機拿咖啡', doc: '去印表機拿文件', drink: '去搬飲料箱', beef: '去搬牛肉便當', chicken: '去搬雞肉便當', fish: '去搬魚排便當' };
 function updateGuide() {
   const pos = player.actor.root.position, dist = ([x, z]) => Math.hypot(pos.x - x, pos.z - z);
   let at = null, text = '';
@@ -822,6 +844,9 @@ function updateGuide() {
   const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
   if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = state.floor === 'f1' ? [k.x, k.z] : elevAt(); text = state.floor === 'f1' ? '👊 快去揍 Kevin，叫他滾！' : '👊 Kevin 在 1F 鬧事！快搭電梯下去'; }   // 最優先
   else if (state.floor !== 'f1') [at, text] = floorGuide();
+  else if (yan && yan.phase === 'wait' && player.carry.length && yan.need[player.type] > 0) { const y = yan.a.root.position; at = [y.x, y.z]; text = `📋 把 ${ICON[player.type]} 交給小燕`; }
+  else if (yan && yan.phase === 'wait' && !player.carry.length) { const [it, n] = Object.entries(yan.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `📋 小燕急件：去拿 ${ICON[it]}×${n}`; } }
+  else if (waterEmpty() && !player.carry.length) { const u = water.units.find(u => u.level <= 0); [at, text] = player.jug ? [u.at, '💧 把水倒進飲水機'] : [WATER.pickup, '💧 飲水機沒水了，去搬桶裝水']; }
   else if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
@@ -995,9 +1020,10 @@ function spawnKevin() {
   sfx.alarm(); camKick(0.4);
   banner('⚠️ 特助 Kevin 來了！', `他說${s.def.name}「用 AI 就好了」，快去叫他滾！`, 0, '#2c3e57');
 }
-// 對話泡泡（比招牌寬，長句子不會被切掉）；sec 有給就在前面加紅色倒數
-function kevinSay(text, sec) {
-  const k = kevin; if (k.bubble) { k.a.root.remove(k.bubble); k.bubble.material.map.dispose(); }
+// 對話泡泡（比招牌寬，長句子不會被切掉）；sec 有給就在前面加紅色倒數。Kevin、小燕、黑輪共用
+function kevinSay(text, sec) { npcSay(kevin, text, sec); }
+function npcSay(k, text, sec) {
+  if (k.bubble) { k.a.root.remove(k.bubble); k.bubble.material.map.dispose(); }
   const t = canvasTex(1024, 150, (g, W, H) => {
     g.font = `900 60px ${FONT}`; const head = sec != null ? `⏰${sec}　` : '';
     const w = Math.min(W - 8, g.measureText(head + text).width + 70), x0 = (W - w) / 2;
@@ -1050,6 +1076,14 @@ function updateKevin(dt) {
   }
   updateActor(a, dt, state.t);
 }
+// 老闆出手：叫 Kevin 去寫檢討報告（店保住了，但沒有揍跑的獎金）
+function viviScold() {
+  if (!kevin || kevin.phase === 'flee') return;
+  const v = hires.vivi.actor.root.position;
+  floatText(v.clone().setY(1.8), '你去寫檢討報告！', '#ff4fa3', 1.2);
+  kevinSay('……是，老闆 😭'); kevin.phase = 'flee'; camKick(0.4); sfx.build();
+  banner('👩‍💼 老闆出手了！', 'Kevin 被叫去寫檢討報告', 0, '#ff4fa3');
+}
 let nextEvent = 0, cake = null;
 function updateEvents() {
   if (state.q >= 2 && !design.finale && !nextEvent) nextEvent = state.t + 25;
@@ -1057,10 +1091,15 @@ function updateEvents() {
     nextEvent = state.t + 70 + Math.random() * 50;
     const pool = ['vip', 'vip', 'rush'];
     if (hires.vivi && !cake) pool.push('birthday');
-    ({ vip: eventVip, rush: eventRush, birthday: eventBirthday })[pool[Math.floor(Math.random() * pool.length)]]();
+    if (state.year >= 3 && !yan && kinds.yan) pool.push('yan', 'yan');
+    if (state.year >= 3 && !heilun && kinds.heilun) pool.push('heilun', 'heilun');
+    ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, yan: eventYan, heilun: eventHeilun })[pool[Math.floor(Math.random() * pool.length)]]();
   }
   let chips = '';
+  if (waterEmpty()) chips += `<span class="rush">💧 飲水機沒水 小費 -${waterEmpty() * 5}%</span>`;
   if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
+  if (yan && yan.phase === 'wait') chips += `<span class="rush">📋 小燕急件 ${needText(yan.need)}　${Math.max(0, Math.ceil(yan.t))} 秒</span>`;
+  if (heilun && heilun.phase === 'wait') chips += `<span class="rush">🤝 黑輪的大客戶 ${heilun.vips.filter(c => c.mode !== 'leave').length} 位</span>`;
   if (rushOn()) chips += `<span class="rush">🍱 午餐尖峰 ×2　${Math.ceil(state.rushUntil - state.t)} 秒</span>`;
   if (stars()) chips += `<span>★${stars()} 小費 +${stars() * 5}%</span>`;
   if (comfort()) chips += `<span>🛋 舒適度 +${comfort() * 2}%</span>`;
@@ -1076,6 +1115,7 @@ function eventVip() {
 }
 function vipPaid(s, c, total) {
   state.stats.vip++;
+  if (c.heilun && heilun) heilun.earned += total;
   const p = c.actor.root.position;
   pillar(p, 0xffd34d, 0.7, 5); confetti(V(p.x, 1.4, p.z), 80, 1.1); sfx.upgrade();
   floatText(V(p.x, 2.0, p.z), 'VIP 大單 +$' + total.toLocaleString(), '#d9a63a', 1.2);
@@ -1095,6 +1135,116 @@ function eventBirthday() {   // 純搞笑：老闆生日，大家吃蛋糕，沒
   after(9, () => { scene.remove(cake.g); cake = null; });
 }
 
+// ---------- 第三年：PM 小燕（急件）、業務黑輪（帶大客戶來，順便抽成） ----------
+const YAN = { at: [-1.3, -0.4], time: 45, mult: 4 };
+const HEILUN = { at: [-1.3, 4.6], vips: 4, wait: 90, cut: 0.1 };
+const HEILUN_TALK = ['這幾位都是大客戶，好好招待喔～', '我跟他們說我們公司最專業了', '業績達標，今年我要換車 😎', '單子我都簽好了，剩下交給你們', '客戶喜歡就是我喜歡'];
+let yan = null, heilun = null;
+const needText = (need) => Object.entries(need).filter(([, n]) => n > 0).map(([it, n]) => `${ICON[it]}×${n}`).join(' ');
+function npcEnter(kind, name, bg) {
+  const a = makeActor(kinds[kind] || kinds.npcF, 0.98);
+  a.root.position.set(L.elevator[0] + 0.6, 0, L.elevator[1]); scene.add(a.root); popIn(a.root, a.root.scale.x);
+  const tag = labelSprite(name, { bg, size: 0.26 }); tag.position.y = 1.38; a.root.add(tag);
+  return a;
+}
+// 小燕：客戶臨時要開會，限時把指定的東西拿給她（自己搬得到的店才會點），完成拿 4 倍
+function eventYan() {
+  if (yan || !kinds.yan) return;
+  const open = Object.values(shops).filter(s => s.unlocked && !isLine(s)).sort(() => Math.random() - 0.5).slice(0, 2);
+  if (!open.length) return;
+  const need = Object.fromEntries(open.map(s => [s.item, Math.min(player.carryMax, 3 + Math.floor(Math.random() * 3))]));
+  const a = npcEnter('yan', 'PM 小燕', '#3f5fd9');
+  const pad = rbox(0.26, 0.34, 0.03, 0xf4f6fb, 0.12, 0.55, 0.2, a.root); pad.rotation.x = -0.5;   // 手上的待辦清單
+  yan = { a, need, got: [], phase: 'walk', t: YAN.time, bubble: null, sec: -1, giveT: 0, value: 0 };
+  sfx.alarm(); camKick(0.3);
+  banner('📋 PM 小燕：急件！', `客戶臨時要開會，${YAN.time} 秒內幫我拿 ${needText(need)}`, 0, '#3f5fd9');
+}
+function updateYan(dt) {
+  const y = yan, a = y.a, p = a.root.position;
+  if (y.phase === 'leave') {
+    if (walkTo(a, L.elevator[0] + 0.3, L.elevator[1], 2.6, dt)) { scene.remove(a.root); yan = null; return; }
+    return updateActor(a, dt, state.t);
+  }
+  if (y.phase === 'walk' && walkTo(a, YAN.at[0], YAN.at[1], 2.2, dt)) y.phase = 'wait';
+  if (y.phase === 'wait') {
+    const pp = player.actor.root.position;
+    a.speed = 0; turnTo(a, Math.atan2(pp.x - p.x, pp.z - p.z), dt);
+    y.t -= dt;
+    const sec = Math.ceil(y.t);
+    if (sec !== y.sec) { y.sec = sec; npcSay(y, '我要 ' + needText(y.need), Math.max(0, sec)); }
+    // 背著她要的東西走過去，一個一個交給她
+    y.giveT += dt;
+    if (player.carry.length && y.need[player.type] > 0 && Math.hypot(pp.x - p.x, pp.z - p.z) < 1.3 && y.giveT >= 0.12) {
+      y.giveT = 0;
+      const it = player.type, s = shopOf(it), m = player.carry.pop(), n = y.got.length;
+      y.need[it]--; y.value += s.def.levels[s.lv].price; y.got.push(m); y.sec = -1;
+      if (!player.carry.length) player.type = null;
+      retarget(m, () => V(p.x + ((n % 4) - 1.5) * 0.24, ITEM_H[it] / 2 + Math.floor(n / 4) * 0.22, p.z + 0.5)); sfx.drop();
+    }
+    const done = Object.values(y.need).every(n => n <= 0);
+    if (done || y.t <= 0) {
+      y.got.forEach(m => untrack(m)); puff(V(p.x, 0.4, p.z + 0.5));
+      if (done) {
+        const val = Math.round(y.value * YAN.mult * incomeMult());
+        addMoney(val); gainXp(4); confetti(V(p.x, 1.4, p.z), 70, 1.1); pillar(p, 0x3f5fd9, 0.7, 5); sfx.upgrade();
+        npcSay(y, '救了我一命！下次請你喝飲料 🥹');
+        banner('📋 急件完成！', `客戶很滿意，小燕的獎金分你　+$${val.toLocaleString()}`, 0, '#3f5fd9');
+      } else {
+        const val = Math.round(y.value * incomeMult());   // 交到的部分照原價算
+        if (val) addMoney(val);
+        npcSay(y, '算了……我去跟客戶喬延期 😮‍💨');
+        banner('📋 急件來不及', val ? `交到的部分照原價算　+$${val.toLocaleString()}` : '小燕去跟客戶喬延期了', 0, '#7a7f87');
+      }
+      y.phase = 'leave';
+    }
+  }
+  updateActor(a, dt, state.t);
+}
+// 黑輪：帶一群 VIP 大客戶來，每家店一位；大單做完他說業績算他的，抽 10%（還是大賺）
+function eventHeilun() {
+  if (heilun || !kinds.heilun) return;
+  const open = Object.values(shops).filter(s => s.unlocked).sort(() => Math.random() - 0.5).slice(0, HEILUN.vips);
+  if (!open.length) return;
+  const a = npcEnter('heilun', '業務 黑輪', '#e0663a');
+  const bag = rbox(0.34, 0.24, 0.08, 0x3a2a20, 0.3, 0.45, 0.05, a.root); bag.rotation.z = 0.1;   // 公事包
+  const vips = open.map(s => { const c = spawnCustomer(s, true); c.heilun = true; return c; });
+  heilun = { a, vips, earned: 0, phase: 'walk', t: HEILUN.wait, bubble: null, talkT: 0, line: 0 };
+  sfx.promote(); camKick(0.3);
+  banner('🤝 業務黑輪帶客戶來了！', `${vips.length} 位 VIP 一起下大單，各店送到給 3 倍`, 0, '#e0663a');
+}
+function updateHeilun(dt) {
+  const h = heilun, a = h.a, p = a.root.position;
+  if (h.phase === 'leave') {
+    if (walkTo(a, L.elevator[0] + 0.3, L.elevator[1], 2.4, dt)) { scene.remove(a.root); heilun = null; return; }
+    return updateActor(a, dt, state.t);
+  }
+  if (h.phase === 'walk' && walkTo(a, HEILUN.at[0], HEILUN.at[1], 2.0, dt)) { h.phase = 'wait'; h.talkT = 99; }
+  if (h.phase === 'wait') {
+    const pp = player.actor.root.position;
+    a.speed = 0; turnTo(a, Math.atan2(pp.x - p.x, pp.z - p.z), dt);
+    h.t -= dt; h.talkT += dt;
+    if (h.talkT > 5) { h.talkT = 0; npcSay(h, HEILUN_TALK[h.line++ % HEILUN_TALK.length]); }
+    if (h.vips.every(c => c.mode === 'leave') || h.t <= 0) {
+      h.vips.forEach(c => c.heilun = false);
+      const cut = Math.min(state.money, Math.round(h.earned * HEILUN.cut));
+      if (cut > 0) {
+        state.money -= cut; bumpMoney(); sfx.coin();
+        floatText(p.clone().setY(1.6), `抽成 -$${cut.toLocaleString()}`, '#e0663a', 1.1);
+        npcSay(h, '業績算我的，抽個 10% 不過分吧 😏');
+        banner('🤝 黑輪：合作愉快！', `大單收了 $${h.earned.toLocaleString()}，黑輪抽走 $${cut.toLocaleString()}`, 0, '#e0663a');
+      } else npcSay(h, '客戶等不及，我先帶他們去吃飯了……');
+      h.phase = 'leave';
+    }
+  }
+  updateActor(a, dt, state.t);
+}
+// 尾牙開始：還在場的小燕、黑輪直接下班
+function clearVisitors() {
+  for (const o of [yan, heilun]) if (o) { o.got?.forEach(m => untrack(m)); scene.remove(o.a.root); }
+  if (heilun) heilun.vips.forEach(c => c.heilun = false);
+  yan = heilun = null;
+}
+
 // ======================================================================
 // 尾牙：大家上台、老闆致詞、小葵領年度 MVP → 繼續上班或搬到新辦公室
 // ======================================================================
@@ -1102,7 +1252,7 @@ const STAGE_AT = [-0.4, 2.1];
 let stage = null;
 function startFinale() {
   if (state.finaleDone || design.finale) return;
-  design.finale = true;
+  design.finale = true; clearVisitors();
   stage = stageLook(state.year); stage.g.position.set(STAGE_AT[0], 0, STAGE_AT[1]); scene.add(stage.g); popIn(stage.g, 1, 1.6);
   camFocus = V(STAGE_AT[0], 0, STAGE_AT[1] + 0.6);
   banner(`🎉 第 ${state.year} 年度 尾牙 🎉`, '全年業績達標，大家辛苦了！', 4, '#d9483b');
@@ -1110,7 +1260,13 @@ function startFinale() {
   const crew = Object.values(hires).filter(h => h.id !== 'vivi');
   player.actor.root.position.set(STAGE_AT[0], 0.26, STAGE_AT[1] + 0.2); player.actor.root.rotation.y = 0;
   crew.forEach((h, i) => { h.actor.root.position.set(STAGE_AT[0] + (i % 2 ? 1 : -1) * (0.75 + Math.floor(i / 2) * 0.6), 0.26, STAGE_AT[1] + 0.1); h.actor.root.rotation.y = 0; });
-  if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.2, 0.26, STAGE_AT[1] - 0.6); hires.vivi.actor.root.rotation.y = 0; }
+  if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.95, 0.26, STAGE_AT[1] + 0.05); hires.vivi.actor.root.rotation.y = -0.3; }   // 台上右前方，麥克風架前面，不會被擋
+  if (state.year >= 2 && kinds.kevin) {   // Kevin 只能在台下看
+    const k = makeActor(kinds.kevin, 0.98); k.root.position.set(STAGE_AT[0] + 2.5, 0, STAGE_AT[1] + 1.5); k.root.rotation.y = Math.PI + 0.5; scene.add(k.root); design.kevinDown = k;
+    const tag = labelSprite('特助 Kevin（台下）', { bg: '#2c3e57', size: 0.24 }); tag.position.y = 1.38; k.root.add(tag);
+    after(3.5, () => floatText(k.root.position.clone().setY(1.6), '（我也想上台……）', '#2c3e57', 0.8));
+    after(9.5, () => floatText(k.root.position.clone().setY(1.6), '明年用 AI 頒獎就好了', '#2c3e57', 0.8));
+  }
   const speaker = hires.vivi ? hires.vivi.actor : player.actor;
   const lines = hires.vivi ? ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', `${ME.name}！！！`] : ['今年大家辛苦了！', '業績破表！', '年度 MVP 是……', '我自己！（沒請老闆）'];
   lines.forEach((l, i) => after(1.5 + i * 1.6, () => floatText(speaker.root.position.clone().setY(1.8), l, '#d9483b', 1.1)));
@@ -1126,7 +1282,7 @@ function startFinale() {
 function showFinaleCard() {
   const S = state.stats, el = document.getElementById('finale');
   document.getElementById('finMvp').textContent = JIE ? '年度 MVP：老鳥 阿傑' : `年度 MVP：${RANKS[state.rank].title} 小葵`;
-  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip], ['🎡 遊樂設施', S.rides || 0]];
+  const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ...(state.year >= 3 ? [['🧋 早餐街', (S.tea || 0) + (S.sand || 0) + (S.cake || 0)]] : []), ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip], ['🎡 遊樂設施', S.rides || 0]];
   document.getElementById('finStats').innerHTML = rows.map(([k, v]) => `<div>${k}<b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('');
   const nb = 1 + state.year * 0.25;
   document.getElementById('finMove').textContent = `搬到新辦公室（第 ${state.year + 1} 年）`;
@@ -1137,6 +1293,7 @@ function endFinale() {
   document.getElementById('finale').classList.remove('on');
   design.finale = false; state.finaleDone = true; camFocus = null;
   if (stage) { scene.remove(stage.g); stage = null; }
+  if (design.kevinDown) { scene.remove(design.kevinDown.root); design.kevinDown = null; }
   if (design.cup) { player.actor.root.remove(design.cup); design.cup = null; }
   player.actor.root.position.y = 0; Object.values(hires).forEach(h => { h.actor.root.position.y = 0; });
   player.actor.root.position.set(STAGE_AT[0], 0, STAGE_AT[1] + 1.4);
@@ -1196,21 +1353,72 @@ function floorGuide() {
   return [null, '同事上來玩，玩完會付門票錢'];
 }
 
+// ---------- 第三年：後牆往後推，蓋早餐街 ----------
+function buildNorth() {
+  ENV.backWall.position.z = NORTH_Z; L.bounds.minZ = -13.1; FLOORS.f1.cam[2] = -11.6;
+  const tile = canvasTex(128, 128, (g) => { g.fillStyle = '#f7d9c4'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#efc8ad'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); g.strokeStyle = '#e2b796'; g.lineWidth = 3; g.strokeRect(0, 0, 128, 128); });
+  tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(15, 6.6);
+  const f = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.6), new THREE.MeshStandardMaterial({ map: tile, roughness: 0.85 })); f.rotation.x = -Math.PI / 2; f.position.set(0, 0.004, -10.0); f.receiveShadow = true; scene.add(f);
+  const tt = canvasTex(512, 96, (g, W, H) => { g.fillStyle = '#e0663a'; roundRect(g, 4, 4, W - 8, H - 8, 40); g.fill(); g.fillStyle = '#fff'; g.font = `900 58px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🥐 早餐街', W / 2, H / 2 + 3); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.56), new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false })); sign.rotation.x = -Math.PI / 2; sign.position.set(-2.1, 0.012, -8.4); scene.add(sign);
+  for (let z = -12.9; z <= -6.9; z += 1.3) if (Math.abs(z + 9.3) > 0.9) { rbox(0.14, 0.75, 1.24, 0x3fb6a8, -7.6, 0.375, z); rbox(0.14, 0.75, 1.24, 0x3fb6a8, 7.6, 0.375, z); }
+  for (const [x, t] of [[-7.4, '🚪 後門'], [7.4, '🚪 出口']]) { const l = labelSprite(t, { bg: '#2c3e57', size: 0.24 }); l.position.set(x, 1.4, -9.3); scene.add(l); }
+  // 小米辦公室原本靠後牆，後牆推走了要補一面玻璃
+  const O = MI_OFFICE, gl = new THREE.Mesh(new THREE.BoxGeometry(O.x1 - O.x0, 0.72, 0.03), new THREE.MeshStandardMaterial({ color: 0xcdeeff, transparent: true, opacity: 0.32, depthWrite: false }));
+  gl.position.set((O.x0 + O.x1) / 2, 0.5, O.z0); scene.add(gl); rbox(O.x1 - O.x0, 0.14, 0.08, 0x7b5cff, (O.x0 + O.x1) / 2, 0.07, O.z0);
+  aabb((O.x0 + O.x1) / 2, O.z0, (O.x1 - O.x0) / 2, 0.06);
+  for (const t of ['tea', 'sand', 'cake']) queueDecor(SHOPS_DEF[t]);
+}
+
+// ---------- 茶水站：兩台飲水機會慢慢被喝完，去搬桶裝水倒上去（Q1 達標後開） ----------
+const WATER = { units: [[6.95, 2.95], [6.95, 3.55]], pile: [5.4, 3.25], pickup: [4.75, 3.25], drain: 75, reward: 80 };
+const water = { on: false, units: [], pile: null };
+const waterEmpty = () => water.units.filter(u => u.level <= 0).length;
+function openWater(fancy) {
+  if (water.on) return; water.on = true;
+  WATER.units.forEach(([x, z], i) => {
+    const look = waterLook(); look.g.position.set(x, 0, z); look.g.rotation.y = -Math.PI / 2; scene.add(look.g); if (fancy) popIn(look.g);
+    const u = { look, level: i ? 0.6 : 1, at: [x - 0.62, z] }; look.setLevel(u.level); water.units.push(u);
+  });
+  aabb(6.95, 3.25, 0.25, 0.6);
+  water.pile = jugPileLook(); water.pile.position.set(...[WATER.pile[0], 0, WATER.pile[1]]); scene.add(water.pile); aabb(WATER.pile[0], WATER.pile[1], 0.45, 0.32);
+  zoneMark(WATER.pickup[0], WATER.pickup[1], 1.0, 0.9, '#9fd8ff');
+  if (fancy) { toast('💧 茶水站開了！飲水機沒水要去換'); }
+}
+function updateWater(dt) {
+  if (!water.on && (state.q >= 1 || JIE)) openWater(true);
+  if (!water.on || design.finale) return;
+  for (const u of water.units) { const was = u.level; u.level = Math.max(0, u.level - dt / WATER.drain); u.look.setLevel(u.level); if (was > 0 && u.level <= 0) toast('💧 飲水機沒水了！小費變少'); }
+  const p = player, need = water.units.some(u => u.level < 0.9);
+  if (!p.jug && need && nearAt(p.actor, WATER.pickup, 0.8)) {   // 頂一桶在頭上
+    p.jug = jugMesh(); p.jug.position.y = 1.2; p.actor.root.add(p.jug); popIn(p.jug, 1); sfx.pick();
+  }
+  if (p.jug) for (const u of water.units) if (u.level < 0.9 && nearAt(p.actor, u.at, 0.75)) {   // 倒上去
+    p.actor.root.remove(p.jug); p.jug = null; u.level = 1; u.look.setLevel(1); squash(u.look.g, 0.2);
+    const val = Math.round(WATER.reward * state.yearBonus); addMoney(val); gainXp(2); sfx.answer();
+    floatText(u.look.g.position.clone().setY(1.6), `咕嚕咕嚕 💧 +$${val}`, '#2f7fc4', 0.9);
+    break;
+  }
+}
+
 // ---------- 小米的接電話挑戰（站在總機旁邊就會出現按鈕） ----------
 const miBtn = document.getElementById('miBtn');
 function updateMiBtn() {
   const show = state.floor === 'f1' && phone.unlocked && !design.finale && nearAt(player.actor, PHONE_DEF.zone, 1.7);
   if (show !== (miBtn.style.display === 'block')) miBtn.style.display = show ? 'block' : 'none';
 }
-miBtn.onclick = () => {
+miBtn.onclick = () => startCallGame();
+function startCallGame(fromCover = false) {
   audioInit(); state.mini = true; miBtn.style.display = 'none';
   openCallGame({ sfx, best: state.miBest || 0, onEnd: (r) => {
     // 獎金：每一分＝現在總機一通價的 15%（老闆來電算 3 分），再乘年度加成；大約等於自己站總機接電話的收入，不會比主遊戲好賺
     const reward = Math.round(r.score * STATIONS.phone.levels[phone.lv].price * 0.15 * state.yearBonus);
-    addMoney(reward); state.miBest = r.best; state.stats.calls += r.answered; save();
-    return { reward, close: () => { state.mini = false; if (r.newBest) banner('🏆 接電話新紀錄！', `${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
+    addMoney(reward); state.miBest = r.best; state.stats.calls += r.answered; save(fromCover);
+    return { reward, close: () => { state.mini = false; if (r.newBest && !fromCover) banner('🏆 接電話新紀錄！', `${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
   } });
-};
+}
+// 封面也能玩（不用先開工）
+document.getElementById('coverCall').onclick = () => startCallGame(true);
 
 // ---------- 頂樓遊樂園 ----------
 const OXR = FLOORS.rf.ox, rw = ([x, z]) => [OXR + x, z];
@@ -1259,6 +1467,7 @@ function finishRide(r) {
     root.position.set(ex + (i % 3) * 0.35, 0, ez + Math.floor(i / 3) * 0.35); v.mode = 'leave';
   });
   state.stats.rides = (state.stats.rides || 0) + r.riders.length;
+  if (magnetMax()) { addMoney(total); floatText(V(rw(r.def.cash)[0], 1.1, rw(r.def.cash)[1]), '+$' + total, '#22a447'); r.riders = []; r.state = 'idle'; r.t = 0; r.run = 0; r.wait = 0; return; }
   const bills = Math.min(10, Math.max(1, Math.round(total / 20))), from = V(ex, 0.8, ez);
   for (let i = 0; i < bills; i++) after(i * 0.05, () => {
     if (r.cash.length >= 60) { r.cash[r.cash.length - 1].userData.v += total / bills; return; }
@@ -1297,6 +1506,7 @@ function updateRoof(dt) {
     r.look.tick(dt, r.run, state.t);
     // 收門票錢（磁鐵照樣有用）
     r.collectT += dt;
+    if (magnetMax() && r.cash.length) { let v = 0; while (r.cash.length) { const b = r.cash.pop(); v += b.userData.v; untrack(b); } addMoney(v); }
     const mag = GEAR.magnet.reach[state.gear.magnet];
     if (state.floor === 'rf' && r.cash.length && r.collectT > CFG.moveEvery && nearAt(player.actor, rw(r.def.cash), Math.min(mag, 6))) {
       r.collectT = 0;
@@ -1318,19 +1528,20 @@ const OXO = FLOORS.f2.ox;
 const room = { owned: {}, sel: {}, objs: {}, shell: null, pet: null };
 const comfort = () => Object.entries(room.owned).reduce((n, [slot, arr]) => n + arr.filter(i => FURN.find(f => f.slot === slot).opts[i].price > 0).length, 0);
 function setupRoom() {
-  buildOffice(OXO); room.shell = roomShell(OXO);
+  const office = buildOffice(OXO); room.shell = roomShell(OXO); buildKiosk(OXO);
+  for (const [x, z, hw, hd] of office.walls) aabb(OXO + x, z, hw, hd);   // 玻璃牆擋路，從門進去
   try { const d = JSON.parse(localStorage.getItem(ROOM_KEY)); if (d) { room.owned = d.owned || {}; room.sel = d.sel || {}; } } catch {}
-  const t = canvasTex(1024, 160, (g, W, H) => { g.fillStyle = '#ff7a45'; roundRect(g, 4, 4, W - 8, H - 8, 70); g.fill(); g.fillStyle = '#fff'; g.font = `900 92px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`🛋 ${ME.name}的辦公室`, W / 2, H / 2 + 6); });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 0.78), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); sign.rotation.x = -Math.PI / 2; sign.position.set(OXO + 1.2, 0.012, 3.6); scene.add(sign);
-  zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 1.0, '#ffb47a');
-  aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.4, 0.65);
+  roomPlate(OXO, -3.7, `🛋 ${ME.name}的辦公室`, '#ff7a45');
+  roomPlate(OXO, 3.7, JIE ? '💻 小葵的設計室' : '💻 阿傑的設計室', '#2c5bd9');
+  zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 0.9, '#ffb47a');
+  aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.65, 0.35);
   for (const f of FURN) { room.owned[f.slot] = [...new Set([0, ...(room.owned[f.slot] || [])])]; applySlot(f.slot, false); }
 }
 function applySlot(slot, fancy) {
-  const f = FURN.find(x => x.slot === slot), i = room.sel[slot] || 0, o = f.opts[i];
+  const f = FURN.find(x => x.slot === slot), i = room.sel[slot] || 0, o = f.opts[i], sh = room.shell[f.room];
   if (room.objs[slot]) { scene.remove(room.objs[slot]); room.objs[slot] = null; }
   if (slot === 'pet') room.pet = null;
-  if (o.tex) setRoomTex(slot === 'floor' ? room.shell.floor : room.shell.back, slot, o.tex);
+  if (o.tex) setRoomTex(/floor$/.test(slot) ? sh.floor : sh.back, /floor$/.test(slot) ? 'floor' : 'wall', o.tex);
   else if (o.make) { const g = o.make(OXO); g.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(g); room.objs[slot] = g; if (fancy) popIn(g); if (o.pet) room.pet = g; }
 }
 function buyFurn(slot, i) {
@@ -1349,7 +1560,8 @@ function renderRoom() {
   const key = JSON.stringify(room.sel) + JSON.stringify(room.owned) + '|' + Math.floor(state.money / 100);
   if (key === roomKey) return; roomKey = key;
   document.getElementById('roomComfort').textContent = `舒適度 +${comfort() * 2}%`;
-  roomList.innerHTML = FURN.map(f => `<div class="sec">${f.name}</div><div class="opts">` + f.opts.map((o, i) => {
+  const roomName = { a: `🛋 ${ME.name}的辦公室`, b: JIE ? '💻 小葵的設計室' : '💻 阿傑的設計室' };
+  roomList.innerHTML = FURN.map((f, k) => (k === 0 || FURN[k - 1].room !== f.room ? `<div class="hdr">${roomName[f.room]}</div>` : '') + `<div class="sec">${f.name}</div><div class="opts">` + f.opts.map((o, i) => {
     const own = room.owned[f.slot].includes(i), on = (room.sel[f.slot] || 0) === i;
     return `<button data-s="${f.slot}" data-i="${i}" class="${on ? 'on' : own ? 'own' : ''}" ${!own && state.money < o.price ? 'disabled' : ''}>${o.name}<small>${on ? '使用中' : own ? '換這個' : '$' + o.price.toLocaleString()}</small></button>`;
   }).join('') + '</div>').join('');
@@ -1362,11 +1574,12 @@ function updateRoom() {
   if (!near) { roomClosedHere = false; if (roomOpen) { roomOpen = false; roomEl.classList.remove('on'); } }
   if (roomOpen) renderRoom();
 }
-// 寵物：在地毯附近晃來晃去
+// 寵物在地毯附近晃來晃去；設計室的設備會動（全息投影轉、機櫃燈閃）
 function updatePet(dt) {
+  if (state.floor === 'f2') for (const o of Object.values(room.objs)) if (o && o.userData.tick) o.userData.tick(dt, state.t);
   const p = room.pet; if (!p) return;
   p.userData.t = (p.userData.t || 0) + dt;
-  const t = p.userData.t, x = OXO - 2.4 + Math.sin(t * 0.4) * 1.6, z = -3.2 + Math.sin(t * 0.27) * 1.0;
+  const t = p.userData.t, x = OXO + ROOM.petAt[0] + Math.sin(t * 0.4) * 1.4, z = ROOM.petAt[1] + Math.sin(t * 0.27) * 0.7;
   const dx = x - p.position.x, dz = z - p.position.z; if (Math.hypot(dx, dz) > 1e-4) p.rotation.y = Math.atan2(dx, dz);
   p.position.set(x, Math.abs(Math.sin(t * 6)) * 0.05, z);
 }
@@ -1377,8 +1590,8 @@ function updatePet(dt) {
 const SAVE_KEY = 'office-apocalypse-save-v1' + (JIE ? '-jie' : ''), YEAR_KEY = 'office-apocalypse-year' + (JIE ? '-jie' : '');   // 阿傑模式另存一份
 const ROOM_KEY = 'office-apocalypse-room' + (JIE ? '-jie' : '');   // 2F 家具：搬新辦公室也跟著走，不跟年度一起清
 let saveT = 0, noSave = false;   // 搬家／重來時關掉存檔，免得離開頁面時又把舊進度寫回去
-function save() {
-  if (!player || design.finale || !state.started || noSave) return;   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
+function save(force = false) {
+  if (!player || design.finale || (!state.started && !force) || noSave) return;   // force：封面玩小米挑戰拿到的獎金也要存   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
     v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
     gear: state.gear, decor: state.decor, stats: state.stats, miBest: state.miBest || 0,
@@ -1405,7 +1618,7 @@ function loadSave() {
   if (d.phone?.unlocked) { openPhone(); if (d.phone.lv) { phone.lv = d.phone.lv; setPhoneLook(phone.lv, false); } }
   for (const id of d.hires || []) { const h = HIRES.find(x => x.id === id); if (h) hire(h, true); }
   for (const r of Object.values(roof.rides)) { const o = d.roof?.[r.def.id]; if (o?.u) { r.lv = o.lv || 0; openRide(r, false); } }
-  if (state.q >= 1) openKiosk(false);
+  if (state.q >= 1) { openKiosk(false); openWater(false); }
   state.decor.forEach(id => placeDecor(DECOR.find(x => x.id === id), false));
   return true;
 }
@@ -1419,10 +1632,10 @@ function update(dt) {
   state.t += dt; runLater();
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
-  if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
+  if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
   else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateRoom(); updateMiBtn(); }
-  updateRoof(dt); updatePet(dt);
-  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateEvents(); updateSave(dt);
+  updateRoof(dt); updatePet(dt); updateWater(dt);
+  updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { metaT = 0; updateYear(); }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge, ...Object.values(roof.rides).map(r => r.badge)]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
 }
@@ -1480,8 +1693,9 @@ const G = window.G = {
     render();
   },
   playCall: () => miBtn.onclick(),
+  get water() { return water; }, WATER,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin })[n](); }, get kevin() { return kevin; },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun })[n](); }, get kevin() { return kevin; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -1492,10 +1706,12 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year', 'office-apocalypse-room']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
   loadYear();
+  if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
   const TH = [null, { wood: 0xffc9b8, cafe: 0xe4dcff, part: 0xff8a5c }, { wood: 0xcfe8ff, cafe: 0xfff0c2, part: 0x7b5cff }, { wood: 0xd8ffd0, cafe: 0xffd9ec, part: 0x2f7fc4 }][(state.year - 1) % 4];
   if (TH) { ENV.work.material.color.setHex(TH.wood); ENV.cafe.material.color.setHex(TH.cafe); mat(0x3fb6a8).color.setHex(TH.part); }
   for (const t of ['coffee', 'printer', 'vending', 'beef', 'chicken', 'fish']) makeShop(t);
+  if (state.year >= 3) { buildNorth(); for (const t of ['tea', 'sand', 'cake']) makeShop(t); }
   setupRoof(); setupRoom();
   const a = addJog(makeActor(kinds[ME.icon], 1), kinds[ME.icon + 'Jog']);
   a.root.position.set(L.start[0], 0, L.start[1]); a.root.rotation.y = Math.PI; scene.add(a.root);
@@ -1511,17 +1727,18 @@ const G = window.G = {
     if (!hires.jie) hire(HIRES.find(h => h.id === 'jie'), true);
     openKiosk(false);
   }
+  if (!loaded && state.year >= 3) for (const id of ['worker', 'worker2']) if (!hires[id]) hire(HIRES.find(h => h.id === id), true);   // 第三年起：工讀生直接來報到，咖啡和影印交給他們
   document.querySelector('#me .face').style.backgroundImage = `url(icons/${ME.icon}-180.png)`;
   player.carryMax = carryMaxNow(); setCart();
   setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
-  window.bootOk?.(); updateQBtn();
+  window.bootOk?.(); updateQBtn(); document.getElementById('coverCall').disabled = false;
   btn.disabled = false; btn.textContent = loaded ? '繼續上班' : state.year > 1 ? `第 ${state.year} 年開工` : '開始上班';
   const reset = document.getElementById('reset');
   if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); localStorage.removeItem(ROOM_KEY); } catch {} location.reload(); } }; }
   btn.onclick = () => {
     audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
-    if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}`, 0, '#2fb27a');
+    if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
     else if (!loaded && location.hash !== '#play') talk(JIE ? JIE_INTRO : INTRO);   // 第一次玩：打招呼、說明玩法
   };
   // 換角色按鈕：封面一顆、遊戲裡一顆

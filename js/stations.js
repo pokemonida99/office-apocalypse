@@ -1,6 +1,6 @@
 // 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.5.2';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.0';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -40,6 +40,28 @@ export const STATIONS = {
       { title: '發光販賣機牆', brew: 0.6, tray: 16, price: 45, cost: 6500 },
     ],
   },
+  // 第三年：一樓後面打通的早餐街（補貨類）
+  tea: {
+    name: '手搖飲', item: 'tea', unlock: 12000, restock: true, levels: [
+      { title: '手搖飲小攤', brew: 1.6, tray: 8, price: 110, cost: 0 },
+      { title: '人氣手搖店', brew: 1.15, tray: 12, price: 150, cost: 20000 },
+      { title: '排隊名店', brew: 0.8, tray: 16, price: 210, cost: 45000 },
+    ],
+  },
+  sand: {
+    name: '早餐店', item: 'sand', unlock: 22000, restock: true, levels: [
+      { title: '早餐小攤', brew: 1.8, tray: 8, price: 140, cost: 0 },
+      { title: '美而美早餐', brew: 1.3, tray: 12, price: 190, cost: 32000 },
+      { title: '早午餐名店', brew: 0.9, tray: 16, price: 260, cost: 70000 },
+    ],
+  },
+  cake: {
+    name: '甜點店', item: 'cake', unlock: 35000, restock: true, levels: [
+      { title: '甜點小攤', brew: 2.0, tray: 8, price: 180, cost: 0 },
+      { title: '法式甜點', brew: 1.45, tray: 12, price: 240, cost: 50000 },
+      { title: '米其林甜點', brew: 1.0, tray: 16, price: 330, cost: 110000 },
+    ],
+  },
   beef: {
     name: '牛肉飯', item: 'beef', unlock: 2500, restock: true, levels: [
       { title: '牛肉飯小攤', brew: 2.0, tray: 6, price: 60, cost: 0 },
@@ -69,9 +91,9 @@ const G = {
   ream: new THREE.BoxGeometry(0.26, 0.075, 0.19), band: new THREE.BoxGeometry(0.265, 0.077, 0.06),
   bill: new THREE.BoxGeometry(0.3, 0.04, 0.17), billBand: new THREE.BoxGeometry(0.08, 0.042, 0.172),
 };
-export const ITEM_H = { coffee: 0.13, doc: 0.08, drink: 0.15, beef: 0.1, chicken: 0.1, fish: 0.1 };
-export const ICON = { coffee: '☕', doc: '📄', drink: '🥤', beef: '🐮', chicken: '🐔', fish: '🐟' };
-const BENTO = { beef: [0xe0473a, '🐮'], chicken: [0xffb42e, '🐔'], fish: [0x3f9be0, '🐟'] };
+export const ITEM_H = { coffee: 0.13, doc: 0.08, drink: 0.15, beef: 0.1, chicken: 0.1, fish: 0.1, tea: 0.1, sand: 0.1, cake: 0.1 };
+export const ICON = { coffee: '☕', doc: '📄', drink: '🥤', beef: '🐮', chicken: '🐔', fish: '🐟', tea: '🧋', sand: '🥪', cake: '🍰' };
+const BENTO = { beef: [0xe0473a, '🐮'], chicken: [0xffb42e, '🐔'], fish: [0x3f9be0, '🐟'], tea: [0xa86b3c, '🧋'], sand: [0xf2b83a, '🥪'], cake: [0xff7ab8, '🍰'] };
 const iconTex = {};
 const getIcon = (e) => iconTex[e] ||= canvasTex(64, 64, (g, W) => { g.font = `48px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, W / 2, W / 2 + 3); });
 G.can = new THREE.CylinderGeometry(0.07, 0.07, 0.15, 16); G.canTop = new THREE.CylinderGeometry(0.06, 0.07, 0.02, 16);
@@ -285,6 +307,9 @@ export const STALL_STYLE = {
   beef: { base: 0xd9483b, top: 0xfff4e2, a: '#e0473a', b: '#fff4e2', sign: '🐮 牛肉飯', signBg: '#d9483b' },
   chicken: { base: 0xf2a33a, top: 0xfff8e8, a: '#ffb42e', b: '#fff8e8', sign: '🐔 雞肉飯', signBg: '#e8902a' },
   fish: { base: 0x3f9be0, top: 0xf0f8ff, a: '#3f9be0', b: '#f0f8ff', sign: '🐟 魚排飯', signBg: '#2f7fc4' },
+  tea: { base: 0xa86b3c, top: 0xfff4e2, a: '#a86b3c', b: '#fff4e2', sign: '🧋 手搖飲', signBg: '#8a5a32' },
+  sand: { base: 0xf2b83a, top: 0xfff8e8, a: '#f2b83a', b: '#ffffff', sign: '🥪 早餐店', signBg: '#d99a1a' },
+  cake: { base: 0xff7ab8, top: 0xfff0f7, a: '#ff7ab8', b: '#fff0f7', sign: '🍰 甜點店', signBg: '#e0559a' },
 };
 export function stallLook(type, lv = 0, fx = {}) {
   const st = STALL_STYLE[type], w = 2.4 + lv * 0.2, g = new THREE.Group();
@@ -357,17 +382,17 @@ export function sourceLook(type) {
     const s = labelSprite('🥤 飲料進貨', { bg: '#2c3e57', size: 0.24 }); s.position.set(0, 1.25, 0); g.add(s);
     return { g, out: V(0, 0.9, 0.3), tick: () => {} };
   }
-  const col = { beef: 0xe0473a, chicken: 0xffb42e, fish: 0x3f9be0 }[type];
+  const col = { beef: 0xe0473a, chicken: 0xffb42e, fish: 0x3f9be0, tea: 0xa86b3c, sand: 0xf2b83a, cake: 0xff7ab8 }[type];
   rbox(1.15, 1.25, 0.7, 0xf5f7fa, 0, 0.625, 0, g);
   // 前後都有彩色門板＋圖示（鏡頭看得到背面，不要一整片白）
   for (const z of [0.35, -0.35]) {
     rbox(1.0, 0.5, 0.04, col, 0, 0.88, z, g);
     box(0.08, 0.3, 0.05, 0xd8dde3, 0.4, 0.88, z * 1.12, g, { metalness: 0.7, roughness: 0.3 });
-    const ic = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: getIcon({ beef: '🐮', chicken: '🐔', fish: '🐟' }[type]), transparent: true }));
+    const ic = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: getIcon({ beef: '🐮', chicken: '🐔', fish: '🐟', tea: '🧋', sand: '🥪', cake: '🍰' }[type]), transparent: true }));
     ic.position.set(-0.15, 0.88, z * 1.09); if (z < 0) ic.rotation.y = Math.PI; g.add(ic);
   }
   rbox(1.17, 0.1, 0.72, col, 0, 1.28, 0, g);
-  const s = labelSprite({ beef: '🐮 牛肉進貨', chicken: '🐔 雞肉進貨', fish: '🐟 魚肉進貨' }[type], { bg: '#2c3e57', size: 0.24 }); s.position.set(0, 1.6, 0); g.add(s);
+  const s = labelSprite({ beef: '🐮 牛肉進貨', chicken: '🐔 雞肉進貨', fish: '🐟 魚肉進貨', tea: '🧋 茶葉珍珠', sand: '🥪 吐司蛋', cake: '🍰 甜點原料' }[type], { bg: '#2c3e57', size: 0.24 }); s.position.set(0, 1.6, 0); g.add(s);
   return { g, out: V(0, 0.8, 0.45), tick: () => {} };
 }
 

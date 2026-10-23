@@ -1,6 +1,6 @@
 // 外觀：採購部攤位、辦公室裝潢、小葵的推車、VIP 配件、尾牙舞台、生日蛋糕
 import * as THREE from 'three';
-import { rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.5.2';
+import { rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.6.0';
 
 const gold = { metalness: 0.9, roughness: 0.3 };
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
@@ -121,7 +121,8 @@ export function stageLook(year) {
   banner.position.set(0, 2.35, -0.7); g.add(banner);
   const lights = [];
   for (let i = 0; i < 12; i++) lights.push(sphere(0.06, glow([0xffe08a, 0xff9ad5, 0x9be7ff][i % 3]), -1.9 + i * 0.345, 2.72, -0.7, g));
-  const podium = rbox(0.6, 0.9, 0.45, 0x8a6a4c, 1.2, 0.7, -0.2, g);
+  // 老闆的麥克風架（細的，不會擋到人；以前的講台會把老闆整個擋住）
+  cyl(0.12, 0.14, 0.03, 0x2c3e57, 1.95, 0.28, 0.4, g); cyl(0.018, 0.018, 0.8, 0x2c3e57, 1.95, 0.68, 0.4, g); sphere(0.06, 0x2c3e57, 1.95, 1.1, 0.4, g);
   return { g, tick: (dt, tt) => lights.forEach((l, i) => { l.visible = Math.sin(tt * 6 + i) > -0.2; }) };
 }
 
@@ -134,4 +135,35 @@ export function cakeLook() {
   const flames = [];
   for (const x of [-0.08, 0, 0.08]) { cyl(0.012, 0.012, 0.12, 0x9be7ff, x, 0.92, 0, g); flames.push(sphere(0.025, glow(0xffb347), x, 1.0, 0, g)); }
   return { g, tick: (dt, t) => flames.forEach((f, i) => f.scale.setScalar(1 + Math.sin(t * 20 + i) * 0.25)) };
+}
+
+// 茶水站：飲水機（上面倒插一桶水，水位會下降）、桶裝水堆、頭上頂的那一桶
+export function jugMesh() {
+  const g = new THREE.Group();
+  const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.36, 18), new THREE.MeshStandardMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.55, roughness: 0.1 }));
+  g.add(bottle);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.32, 18), new THREE.MeshStandardMaterial({ color: 0x3fa7ff, transparent: true, opacity: 0.75, roughness: 0.2 }));
+  g.add(water);
+  cyl(0.07, 0.09, 0.08, 0x9fd8ff, 0, 0.22, 0, g); cyl(0.075, 0.075, 0.04, 0x2f7fc4, 0, 0.27, 0, g);
+  g.userData.water = water;
+  return g;
+}
+export function waterLook() {
+  const g = new THREE.Group();
+  rbox(0.46, 0.95, 0.42, 0xffffff, 0, 0.475, 0, g);
+  rbox(0.48, 0.06, 0.44, 0x2f7fc4, 0, 0.96, 0, g);
+  box(0.32, 0.2, 0.02, 0x2c3e57, 0, 0.62, 0.215, g);
+  for (const [x, c] of [[-0.08, 0x3fa7ff], [0.08, 0xff5d3a]]) { rbox(0.06, 0.05, 0.08, c, x, 0.58, 0.25, g); }
+  box(0.3, 0.02, 0.14, 0x9aa3ad, 0, 0.42, 0.24, g);
+  const jug = jugMesh(); jug.rotation.x = Math.PI; jug.position.y = 1.25; g.add(jug);   // 倒插在上面
+  const warn = labelSprite('💧 沒水了', { bg: '#3fa7ff', size: 0.22 }); warn.position.y = 1.85; warn.visible = false; g.add(warn);
+  const setLevel = (lv) => { const w = jug.userData.water; w.scale.y = Math.max(0.02, lv); w.position.y = -0.16 * (1 - lv); w.visible = lv > 0.02; warn.visible = lv <= 0.02; };
+  return { g, jug, setLevel, warn };
+}
+export function jugPileLook() {
+  const g = new THREE.Group();
+  rbox(0.9, 0.12, 0.62, 0x8a6a4c, 0, 0.06, 0, g);
+  for (const [x, z] of [[-0.2, -0.14], [0.2, -0.14], [-0.2, 0.16], [0.2, 0.16]]) { const j = jugMesh(); j.position.set(x, 0.32, z); g.add(j); }
+  const t = labelSprite('💧 桶裝水', { bg: '#2f7fc4', size: 0.2 }); t.position.y = 1.0; g.add(t);
+  return g;
 }

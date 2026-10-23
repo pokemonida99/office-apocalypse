@@ -118,6 +118,8 @@
   #finale .stay { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002; }
   #finale .move { background: #ff5d3a; color: #fff; box-shadow: 0 4px 0 #b8381c; }
   #finale small { display: block; margin-top: 8px; font-size: 11px; color: #8a6a4c; }
+  #cover #coverCall { font-size: 15px; padding: 8px 20px; background: #7b5cff; box-shadow: 0 4px 0 #4f37c4; }
+  #cover #coverCall:disabled { background: #c9bdf5; box-shadow: none; }
   #cover #qBtn { margin-top: -4px; background: #ffffffaa; color: #8a4b1f; box-shadow: none; font-size: 13px; padding: 5px 12px; }
   #reset { margin-top: 6px; background: none !important; box-shadow: none !important; color: #8a4b1f !important; font-size: 13px !important; padding: 4px 10px !important; text-decoration: underline; display: none; }
   #swapHud { position: absolute; right: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); pointer-events: auto; background: #ffffffe6; color: #2c3e57; border: 0; border-radius: 16px; font: inherit; font-size: 12px; font-weight: 900; padding: 6px 11px; box-shadow: 0 3px 0 #0002; }
@@ -142,6 +144,7 @@
   #room { max-height: 56vh; overflow: auto; touch-action: pan-y; }
   #room h3 small { font-size: 12px; color: #ff7a45; margin-left: 4px; }
   #room .sec { font-size: 12px; font-weight: 900; color: #8a6a4c; margin: 8px 4px 4px; }
+  #room .hdr { font-size: 14px; font-weight: 900; color: #fff; background: #2c3e57; border-radius: 10px; padding: 5px 10px; margin: 12px 0 2px; }
   #room .opts { display: flex; flex-wrap: wrap; gap: 6px; }
   #room .opts button { font: inherit; font-size: 13px; font-weight: 900; border: 0; border-radius: 12px; padding: 6px 9px; background: #36c35d; color: #fff; box-shadow: 0 3px 0 #1f8a3c; display: flex; flex-direction: column; align-items: center; min-width: 72px; }
   #room .opts button small { font-size: 11px; opacity: .9; }
@@ -277,6 +280,7 @@
   <p id="coverTxt">新人小葵報到第一天，什麼雜事都要做。<br>煮咖啡、印文件、補貨、接電話，把破爛茶水間升級成產線！</p>
   <button id="start" disabled>載入中…</button>
   <button id="swap">😎 操控阿傑老鳥</button>
+  <button id="coverCall" disabled>📞 小米的接電話挑戰</button>
   <button id="reset">從頭開始</button>
   <button id="qBtn">🎨 畫質：自動</button>
   <div id="iconBox">
@@ -313,6 +317,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.5.2"></script>
+<script type="module" src="js/main.js?v=0.6.0"></script>
 </body>
 </html>
