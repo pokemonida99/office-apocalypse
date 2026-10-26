@@ -3,8 +3,10 @@
 // 第 6 年起的年度主題放在 THEMES（v0.13），開場也走這裡
 export const THEMES = [
   { id: 'typhoon', name: '颱風季', icon: '🌀', desc: '風會把手上的貨吹掉幾個，窗外下大雨；颱風假那天收入 ×1.5' },
+  { id: 'winter', name: '景氣寒冬', icon: '❄️', desc: '景氣不好，所有收入減半；年度目標也降成 7 成' },
   { id: 'anniv', name: '週年慶', icon: '🎉', desc: '客人一直湧進來，售價 ×1.5，但進貨要跑更快' },
   { id: 'robot', name: 'AI 機器人導入', icon: '🤖', desc: 'Kevin 帶來兩台 AI 機器人，會幫忙搬貨，也會把貨送錯店' },
+  { id: 'complain', name: '小米客訴週', icon: '😡', desc: '常有客人回來客訴：走過去選「退款」或「重做」，放著不管小米會幫你加倍賠錢' },
   { id: 'trip', name: '員工旅遊年', icon: '🏖️', desc: '頂樓變海灘，遊樂設施門票 ×2' },
   { id: 'night', name: '加班地獄', icon: '🌙', desc: '辦公室變夜景，咖啡和便當大賣（售價 ×1.3），走路慢一點' },
 ];
@@ -68,11 +70,13 @@ export function yearScript(year, ctx = {}) {
   const th = themeOf(year);
   if (th) return {
     title: `第 ${year} 年　${th.icon} ${th.name}`,
-    wall: { typhoon: 0xdfe6ee, anniv: 0xffeede, robot: 0xe6ecf5, trip: 0xe8f7ff, night: 0x2a3550 }[th.id],
+    wall: { typhoon: 0xdfe6ee, winter: 0xe4ecf4, anniv: 0xffeede, robot: 0xe6ecf5, complain: 0xfdeeee, trip: 0xe8f7ff, night: 0x2a3550 }[th.id],
     floor: th.id === 'night' ? 0x6b5a48 : undefined,
-    cast: { kui: { x: -1.2 }, ...(th.id === 'robot' ? { kevin: { x: 1.2 } } : th.id === 'anniv' || th.id === 'trip' ? { vivi: { x: 1.2 } } : { jie: { x: 1.2 } }) },
+    cast: { kui: { x: -1.2 }, ...(th.id === 'robot' ? { kevin: { x: 1.2 } } : ['anniv', 'trip', 'winter'].includes(th.id) ? { vivi: { x: 1.2 } } : th.id === 'complain' ? { mi: { x: 1.2 } } : { jie: { x: 1.2 } }) },
     steps: ({
       typhoon: [{ who: 'kui', face: 'shock', text: '颱風要來了！外面風好大！', act: [['shake'], ['emote', 'kui', '🌀']] }, { who: 'jie', face: 'tired', text: '手上的貨抱緊一點，會被吹掉喔。' }],
+      winter: [{ who: 'vivi', face: 'tired', text: '今年景氣寒冬……大家的收入都要先打對折了。', act: [['emote', 'vivi', '❄️']] }, { who: 'kui', face: 'cry', text: '年終呢？', act: [['emote', 'kui', '💧']] }, { who: 'vivi', face: 'smug', text: '目標我也降一點啦，撐過今年就好！' }],
+      complain: [{ who: 'mi', face: 'angry', text: '這禮拜客訴電話爆炸了！客人還會直接跑回來找你。', act: [['shake'], ['emote', 'mi', '😡']] }, { who: 'kui', face: 'shock', text: '那要怎麼辦？' }, { who: 'mi', face: 'tired', text: '走過去看是要退錢，還是重做一份給他。放著不管，我只好加倍賠了……' }],
       anniv: [{ who: 'vivi', face: 'smug', text: '今年是週年慶！客人會多到爆～', act: [['emote', 'vivi', '🎉']] }, { who: 'kui', face: 'tired', text: '（又要跑更快了……）', act: [['emote', 'kui', '💦']] }],
       robot: [{ who: 'kevin', face: 'smug', text: '我帶了兩台 AI 機器人，以後搬貨交給它們就好。', act: [['emote', 'kevin', '🤖']] }, { who: 'kui', face: 'angry', text: '上次它把咖啡送去印表機欸……', act: [['emote', 'kui', '💢']] }],
       trip: [{ who: 'vivi', face: 'happy', text: '今年員工旅遊！頂樓直接變海灘～', act: [['emote', 'vivi', '🏖️']] }, { who: 'kui', face: 'happy', text: '那我們還要上班嗎？', act: [['jump', 'kui']] }],

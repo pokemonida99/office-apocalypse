@@ -3,20 +3,20 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.13.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.13.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.13.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.13.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.13.0';
-import { CHANGES } from './changelog.js?v=0.13.0';
-import { makeTheater } from './theater.js?v=0.13.0';
-import { makeEnding, seenEndings } from './ending.js?v=0.13.0';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.13.0';
-import { makeIntro } from './intro.js?v=0.13.0';
-import { openCallGame } from './callgame.js?v=0.13.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, buildJieSeat } from './floors.js?v=0.13.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.14.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.14.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.14.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.14.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.14.0';
+import { CHANGES } from './changelog.js?v=0.14.0';
+import { makeTheater } from './theater.js?v=0.14.0';
+import { makeEnding, seenEndings } from './ending.js?v=0.14.0';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.14.0';
+import { makeIntro } from './intro.js?v=0.14.0';
+import { openCallGame } from './callgame.js?v=0.14.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, buildJieSeat } from './floors.js?v=0.14.0';
 
-const VERSION = 'v0.13.0';
+const VERSION = 'v0.14.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -230,9 +230,9 @@ const stars = () => state.decor.length;
 const rushOn = () => state.t < state.rushUntil;
 let cai = null;   // 黑財神（坐雲撒錢事件）
 const incomeMult = () => (1 + 0.05 * stars()) * (1 + 0.02 * comfort()) * (1 - 0.05 * waterEmpty()) * state.yearBonus * (rushOn() ? 2 : 1) * (cai ? 2 : 1) * themeMult();
-// 第 6 年起的年度主題（stories.js THEMES）：週年慶全部 ×1.5、颱風假那 60 秒 ×1.5
+// 第 6 年起的年度主題（stories.js THEMES）：週年慶全部 ×1.5、颱風假那 60 秒 ×1.5、景氣寒冬全部 ×0.5
 let THEME = null, holidayUntil = 0;
-const themeMult = () => (THEME?.id === 'anniv' ? 1.5 : 1) * (state.t < holidayUntil ? 1.5 : 1);   // 黑財神在場收益 ×2；飲水機沒水：每台小費 -5%   // 舒適度：2F 每買一件家具 +2%
+const themeMult = () => (THEME?.id === 'anniv' ? 1.5 : THEME?.id === 'winter' ? 0.5 : 1) * (state.t < holidayUntil ? 1.5 : 1);   // 黑財神在場收益 ×2；飲水機沒水：每台小費 -5%   // 舒適度：2F 每買一件家具 +2%
 let kinds, player;
 const carriers = [];
 const shops = {};
@@ -383,7 +383,7 @@ function updateCustomers(s, dt) {
   }
   s.serveT += dt;
   const f = s.queue[0];
-  if (f && f.ready && s.stack.length && f.got.length < f.want && s.serveT >= CFG.serveEvery) {
+  if (f && f.ready && !(f.complain && !f.decided) && s.stack.length && f.got.length < f.want && s.serveT >= CFG.serveEvery) {   // 客訴的客人選好之前不收貨
     s.serveT = 0;
     const m = s.stack.pop(), n = f.got.length; f.got.push(m);
     retarget(m, () => handSlot(f, n));
@@ -395,8 +395,9 @@ function updateCustomers(s, dt) {
 }
 function pay(s, c) {
   s.queue.shift(); c.mode = 'leave'; state.served++; state.stats[s.item] += c.want;
-  const total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1) * (THEME?.id === 'night' && ['coffee', 'beef', 'chicken', 'fish'].includes(s.type) ? 1.3 : 1));   // 加班地獄：咖啡、便當 ×1.3
+  let total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1) * (THEME?.id === 'night' && ['coffee', 'beef', 'chicken', 'fish'].includes(s.type) ? 1.3 : 1));   // 加班地獄：咖啡、便當 ×1.3
   if (c.vip) vipPaid(s, c, total);
+  if (c.complain) { total *= 2; floatText(c.actor.root.position.clone().setY(2.0), `客訴變好評！付款 ×2`, '#22a447', 1.1); sfx.upgrade(); }
   if (magnetMax()) { addMoney(total); sfx.coin(); floatText(V(s.d.cash[0], 1.1, s.d.cash[1]), '+$' + total, '#22a447'); return; }
   const bills = Math.min(12, Math.max(1, Math.round(total / 10)));
   const from = c.actor.root.position.clone().setY(0.8);
@@ -670,6 +671,11 @@ const robots = [];
 function setupTheme() {
   THEME = themeOf(state.year); if (!THEME) return;
   if (THEME.id === 'typhoon') document.body.classList.add('rain');
+  if (THEME.id === 'winter') {   // 景氣寒冬：下雪、光線偏冷
+    document.body.classList.add('snow');
+    scene.traverse(o => { if (o.isHemisphereLight) o.color.setHex(0xdfe9ff); });
+    sun.color.setHex(0xe6eeff);
+  }
   if (THEME.id === 'night') {   // 夜景：燈光調暗、天空變深
     scene.traverse(o => { if (o.isHemisphereLight) { o.color.setHex(0x8fa6d6); o.groundColor.setHex(0x6b5a7a); o.intensity = 0.9; } });
     sun.intensity *= 0.45; sun.color.setHex(0xb8c6ff); scene.background = new THREE.Color(0x1d2540); document.body.classList.add('night');
@@ -699,7 +705,9 @@ function setupTheme() {
   }
 }
 function updateTheme(dt) {
-  if (!THEME || design.finale) return;
+  if (!THEME) return;
+  if (design.finale) { if (cpl) cplShow(null); return; }
+  if (THEME.id === 'complain') complainUpdate(dt);
   if (THEME.id === 'typhoon') {
     gustT -= dt;
     if (gustT <= 0) {
@@ -718,6 +726,55 @@ function updateTheme(dt) {
     if (r.err && r.mode === 'deliver' && r.carry.length) { r.errT += dt; if (r.errT > 1.2) { floatText(r.actor.root.position.clone().setY(1.6), 'ERROR 404：貨品不見了', '#ff3b3b', 0.9); r.carry.forEach(m => { puff(m.position.clone()); untrack(m); }); r.carry = []; r.type = null; r.mode = 'fetch'; r.job = null; r.err = false; r.errT = 0; } }
     updateActor(r.actor, dt, state.t);
   }
+}
+// ---------- 小米客訴週：客人回來客訴，插隊到櫃台前擋住（不收貨），走過去選退款或重做 ----------
+// 退款：馬上扣錢走人；重做：照他要的數量再送一份，付款 ×2（客訴變好評）；30 秒沒理，小米幫你道歉、賠 1.5 倍
+let cplT = 30, cpl = null;
+const cplBar = document.getElementById('cplBar');
+function cplShow(c) {
+  if (!c) { if (cplBar.dataset.on) { cplBar.dataset.on = ''; cplBar.style.display = 'none'; } return; }
+  if (cplBar.dataset.on === '1') return;
+  cplBar.dataset.on = '1'; cplBar.style.display = 'block';
+  cplBar.innerHTML = `<p>😡 ${c.shop.def.name}的客人：「上次的${ICON[c.shop.item] || ''}不對啦！」</p><div><button class="a4btn" data-k="refund">💸 退款 $${c.refund.toLocaleString()}</button><button class="a4btn main" data-k="redo">🔁 重做 ${c.want} 份（付款 ×2）</button></div>`;
+}
+cplBar.onclick = (e) => {
+  const k = e.target.closest('button')?.dataset.k, c = cpl; if (!k || !c || c.decided) return;
+  c.decided = true; cplShow(null);
+  const at = c.actor.root.position.clone().setY(1.8);
+  if (k === 'refund') {
+    const x = Math.min(c.refund, state.money); state.money -= x; bumpMoney();
+    floatText(at, `退款 -$${x.toLocaleString()}　「哼，算了」`, '#d9483b', 1); sfx.pick?.(); cplLeave(c);
+  } else {
+    scene.remove(c.cTag); c.cTag = labelSprite('🔁 重做中', { bg: '#2f7fc4', size: 0.22 }); scene.add(c.cTag);
+    floatText(at, '「好，我再等一下」', '#2f7fc4', 0.9); sfx.pick?.();
+  }
+};
+function cplLeave(c) { const i = c.shop.queue.indexOf(c); if (i >= 0) c.shop.queue.splice(i, 1); c.mode = 'leave'; cplDone(); }
+function cplDone() { if (cpl?.cTag) scene.remove(cpl.cTag); cpl = null; cplShow(null); }
+function complainUpdate(dt) {
+  if (cpl) {
+    const c = cpl;
+    if (!c.shop.crowd.includes(c) || c.mode === 'leave') return cplDone();
+    c.cT += dt; c.cTag.position.copy(c.actor.root.position).setY(1.62 + Math.sin(state.t * 6) * 0.04);
+    if (c.decided) return;
+    const p = player.actor.root.position, q = c.actor.root.position;
+    cplShow(state.floor === 'f1' && !state.mini && Math.hypot(p.x - q.x, p.z - q.z) < 1.8 ? c : null);
+    if (c.cT > 30) {   // 沒人理：小米出面道歉、賠 1.5 倍
+      const x = Math.min(Math.round(c.refund * 1.5), state.money); state.money -= x; bumpMoney();
+      floatText(q.clone().setY(1.8), `小米：「真的很抱歉！」賠 -$${x.toLocaleString()}`, '#7b5cff', 1);
+      cplLeave(c);
+    }
+    return;
+  }
+  if (state.q < 1 || (cplT -= dt) > 0) return;
+  cplT = 35 + Math.random() * 25;
+  const cands = Object.values(shops).filter(s => s.unlocked && s.queue && s.item); if (!cands.length) return;
+  const s = cands[Math.floor(Math.random() * cands.length)], c = spawnCustomer(s);
+  c.complain = true; c.want = 2 + Math.floor(Math.random() * 2); c.cT = 0;
+  c.refund = Math.round(c.want * s.def.levels[s.lv].price * incomeMult());
+  s.queue.splice(s.queue.indexOf(c), 1); s.queue.splice(Math.min(1, s.queue.length), 0, c);   // 插到第二個，前一個買完就擋在櫃台前
+  c.cTag = labelSprite('😡 客訴！', { bg: '#d9483b', size: 0.24 }); scene.add(c.cTag);
+  cpl = c; toast(`😡 ${s.def.name}有客人回來客訴！`);
 }
 // ---------- 第 4 年：綠茶三人組（行銷企劃部） ----------
 // 茶茶：去拿一批貨，走到阿強旁邊整批丟給他（「阿強～幫人家送一下嘛💕」），自己回座位
@@ -1118,8 +1175,8 @@ const QUARTERS = [
 const yearEl = document.getElementById('year'), yearTitle = document.getElementById('yearTitle'), yearNum = document.getElementById('yearNum'), yearBar = document.getElementById('yearBar');
 const yearQs = [...yearEl.querySelectorAll('.qs b')];
 yearQs.forEach((b, i) => { b.textContent = 'Q' + (i + 1); });   // 打卡卡的四格
-// 新辦公室：每一年目標放大一點
-const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0.6));
+// 新辦公室：每一年目標放大一點（景氣寒冬收入減半，目標降成 7 成）
+const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0.6) * (THEME?.id === 'winter' ? 0.7 : 1));
 function updateYear() {
   yearEl.style.display = 'block';
   yearQs.forEach((b, i) => { b.classList.toggle('on', i < state.q); b.classList.toggle('cur', i === state.q); });
@@ -2228,7 +2285,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.13.0'); music.load('office', 'audio/bgm_office.m4a?v=0.13.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.14.0'); music.load('office', 'audio/bgm_office.m4a?v=0.14.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
