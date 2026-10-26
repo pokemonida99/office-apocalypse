@@ -1,8 +1,8 @@
 /* 上班啟示錄 UI（v0.7）：A＝員工證／打卡鐘（骨架、數據、面板）、B＝綜藝字卡（事件瞬間）、C＝手帳（故事收藏）
    跟 GPT 討論後的定案：米白紙＋藏青墨＋警示紅，字用 Noto Sans TC（子集，tools/build_font.py）＋Bungee 數字
    這支檔案蓋在 index.html 原本的樣式上面：版面位置沿用，外觀換掉 */
-@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.7.1) format('woff2'); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.7.1) format('woff2'); font-display: swap; }
+@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.7.2) format('woff2'); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.7.2) format('woff2'); font-display: swap; }
 :root {
   --paper: #f5e7c8; --paper2: #fffdf8; --kraft: #e9c98f; --ink: #142b45; --ink2: #2c4566;
   --gold: #ffc343; --red: #ef443c; --green: #32b95a; --pink: #ff3d6e; --line: #e3d2b2;
@@ -42,7 +42,12 @@ html, body, button { font-family: var(--sans); }
 #cover .tabs button::before { content: ''; position: absolute; left: 10px; top: -7px; width: 44%; height: 9px; border-radius: 6px 6px 0 0; background: inherit; }
 #cover .tabs button:disabled { opacity: .55; }
 #cover .tabs #swap { background: var(--gold); box-shadow: 0 3px 0 #d39a1a; }
-#cover #coverVer { margin-top: auto; padding-top: 18px; font: 400 11px var(--num); color: #b9a684; letter-spacing: 2px; opacity: 1; }
+#cover #coverVer { margin-top: auto; margin-bottom: 0; padding: 8px 14px; border: 0; background: transparent; box-shadow: none; border-radius: 10px; font: 700 12px var(--sans); color: #8a7a62; letter-spacing: 1px; text-decoration: underline; text-underline-offset: 3px; min-height: 40px; }
+#cover #coverVer .num { text-decoration: none; }
+/* 修改歷程：版本時間軸（跟往年回顧同一套） */
+#changelog .yr b { display: flex; justify-content: space-between; align-items: baseline; } #changelog .yr b em { font: 400 11px var(--num); color: #8a7a62; font-style: normal; }
+#changelog .yr ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: #3b4a5c; font-weight: 700; }
+#changelog .yr.new { box-shadow: 0 0 0 2px var(--red), 0 3px 0 var(--ink); } #changelog .yr.new::before { background: var(--red); color: #fff; }
 #cover p#coverTxt { display: none; }
 
 /* ================= 共用：紙卡面板（設定、存檔、選單、採購部…） ================= */

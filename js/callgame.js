@@ -1,6 +1,7 @@
 // 小米的接電話挑戰：三關，響了就點。金色＝老闆（3 分），紫色 🤖＝Kevin 的 AI 推銷（別接！）
 // 第 2 關多了 😡 客訴（要連點兩下）；第 3 關 4×4 最快，還有 🧧 黑財神來電（點到 4 秒內分數 ×2）
-// 遊戲暫停主畫面，用真實時間跑（反應遊戲）。一關打完呼叫 onEnd({ level, score, best, newBest, unlocked, ... })
+// 遊戲暫停主畫面，用真實時間跑（反應遊戲）。一關打完呼叫 onEnd({ level, score, best, newBest, unlocked, ... })；中途離開呼叫 onEnd(null)
+// 玩到一半可按右上 ⏸ 叫出選單（繼續／重來／選關／離開），切到別的 App 也會自動暫停
 export const LEVELS = [
   { name: '新人總機', icon: '☎', desc: '3×3，響了就點', cols: 3, cells: 9, dur: 30, gap: [0.85, 0.45], life: [1.5, 0.65], kevin: 0.13, vip: 0.1, angry: 0, cai: 0, pass: 25 },
   { name: '午休搶線', icon: '😡', desc: '3×4、更快，😡 客訴要連點兩下', cols: 3, cells: 12, dur: 30, gap: [0.68, 0.32], life: [1.2, 0.55], kevin: 0.16, vip: 0.09, angry: 0.14, cai: 0, pass: 35 },
@@ -62,7 +63,19 @@ export function openCallGame({ sfx, bests = [], onEnd, level = null }) {
       grid.appendChild(b); cells.push(c);
     }
     const st = { t: -3, points: 0, answered: 0, vip: 0, angry: 0, cai: 0, missed: 0, wrong: 0, combo: 0, maxCombo: 0, nextAt: 0, running: true, frenzy: -1 };
-    let last = performance.now(), raf = 0;
+    let last = performance.now(), raf = 0, paused = false;
+    const pzBtn = el.querySelector('.cgpause'), pzEl = el.querySelector('.cgmenu');
+    pzBtn.style.display = ''; pzEl.classList.remove('on');
+    const pause = () => { if (!st.running || paused) return; paused = true; pzEl.classList.add('on'); talk('先喘口氣～電話我先擋著！'); };
+    const resume = () => { paused = false; pzEl.classList.remove('on'); last = performance.now(); };
+    const quit = () => { st.running = false; cancelAnimationFrame(raf); pzEl.classList.remove('on'); pzBtn.style.display = 'none'; document.removeEventListener('visibilitychange', onHide); };
+    const onHide = () => { if (document.hidden) pause(); };
+    document.addEventListener('visibilitychange', onHide);
+    pzBtn.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); pause(); };
+    pzEl.querySelector('[data-k="go"]').onclick = resume;
+    pzEl.querySelector('[data-k="again"]').onclick = () => { quit(); play(lvI); };
+    pzEl.querySelector('[data-k="pick"]').onclick = () => { quit(); showLevels(); };
+    pzEl.querySelector('[data-k="out"]').onclick = () => { quit(); el.classList.remove('on'); onEnd(null)?.close?.(); };   // 中途離開不算分
     talk(pick([LINES.start, LINES.start2, LINES.start3][lvI]));
     const frenzy = () => st.t < st.frenzy;
     function setCell(c, kind) {
@@ -99,6 +112,7 @@ export function openCallGame({ sfx, bests = [], onEnd, level = null }) {
     }
     function loop(now) {
       const dt = Math.min(.1, (now - last) / 1000); last = now;
+      if (paused) { raf = requestAnimationFrame(loop); return; }   // 暫停中：時間不往前走
       if (step(dt)) raf = requestAnimationFrame(loop);
     }
     // 推進 dt 秒；回傳 false＝結束了（測試可以直接呼叫 el.__step 推時間）
@@ -128,7 +142,7 @@ export function openCallGame({ sfx, bests = [], onEnd, level = null }) {
     }
     el.__step = step;
     function finish() {
-      st.running = false; cells.forEach(c => setCell(c, null)); el.classList.remove('frenzy');
+      st.running = false; cells.forEach(c => setCell(c, null)); el.classList.remove('frenzy'); pzBtn.style.display = 'none'; document.removeEventListener('visibilitychange', onHide);
       const score = st.points, nb = Math.max(best, score), before = unlockedUpTo(bests);
       bests = bests.slice(); bests[lvI] = nb;
       const unlocked = unlockedUpTo(bests) > before ? unlockedUpTo(bests) : -1;

@@ -3,16 +3,17 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.1';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.1';
-import { makeIntro } from './intro.js?v=0.7.1';
-import { openCallGame } from './callgame.js?v=0.7.1';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.2';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.2';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.2';
+import { CHANGES } from './changelog.js?v=0.7.2';
+import { makeIntro } from './intro.js?v=0.7.2';
+import { openCallGame } from './callgame.js?v=0.7.2';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.2';
 
-const VERSION = 'v0.7.1';
+const VERSION = 'v0.7.2';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -880,7 +881,14 @@ function updateHud(dt) {
   }
 }
 document.getElementById('ver').textContent = VERSION;
-document.getElementById('coverVer').textContent = VERSION;
+document.getElementById('coverVer').innerHTML = `📝 修改歷程・<span class="num">${VERSION}</span>`;
+// 修改歷程面板：版本時間軸，最新一版標紅
+document.getElementById('coverVer').onclick = () => {
+  document.getElementById('changeList').innerHTML = '<div class="years">' + CHANGES.map(([v, d, items], i) =>
+    `<div class="yr${i ? '' : ' new'}" data-n="${CHANGES.length - i}"><b>${v}${i ? '' : '　最新'}<em>${d}</em></b><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('') + '</div>';
+  document.getElementById('changelog').classList.add('on');
+};
+{ const cl = document.getElementById('changelog'); cl.onpointerdown = (e) => { if (e.target === cl) cl.classList.remove('on'); }; cl.querySelector('[data-x]').onclick = () => cl.classList.remove('on'); }
 
 // ======================================================================
 // A. 年度業績：Q1～Q4 里程碑（看累積收入）→ 尾牙
@@ -1952,7 +1960,7 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
-  music.load('title', 'audio/bgm_title.m4a?v=0.7.1'); music.load('office', 'audio/bgm_office.m4a?v=0.7.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.7.2'); music.load('office', 'audio/bgm_office.m4a?v=0.7.2'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）

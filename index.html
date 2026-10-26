@@ -245,6 +245,16 @@
   #callgame .lv .tx b { font-size: 16px; color: #4f37c4; } #callgame .lv .tx small { font-size: 12px; font-weight: 700; opacity: .8; }
   #callgame .lv .bs { font-size: 12px; font-weight: 900; color: #ff7a45; flex: none; }
   #callgame .lv.lock { background: #ffffff99; box-shadow: 0 5px 0 #0002; } #callgame .lv.lock .tx b { color: #6b6b80; }
+  /* 玩到一半的暫停鈕與選單 */
+  #callgame .cgpause { position: absolute; right: -4px; top: -46px; width: 40px; height: 40px; border: 0; border-radius: 12px; background: #ffffffdd; color: #4f37c4; font-size: 18px; font-weight: 900; box-shadow: 0 3px 0 #0003; display: none; }
+  #callgame.picking .cgpause { display: none !important; }
+  #callgame .cgmenu { position: absolute; inset: -6px; display: none; align-items: center; justify-content: center; background: #3a2690cc; border-radius: 24px; z-index: 3; }
+  #callgame .cgmenu.on { display: flex; }
+  #callgame .cgmenu .card { width: min(300px, 90%); background: #fffdf7; border-radius: 20px; padding: 16px; box-shadow: 0 10px 30px #0005; animation: talkIn .3s cubic-bezier(.2,1.4,.4,1); }
+  #callgame .cgmenu h3 { margin: 0 0 6px; text-align: center; color: #4f37c4; font-size: 20px; }
+  #callgame .cgmenu button { display: block; width: 100%; margin-top: 10px; min-height: 48px; border: 0; border-radius: 14px; font: inherit; font-weight: 900; font-size: 16px; background: #efeaff; color: #4f37c4; box-shadow: 0 4px 0 #c9bdf5; }
+  #callgame .cgmenu button.main { background: #7b5cff; color: #fff; box-shadow: 0 4px 0 #4f37c4; }
+  #callgame .cgmenu button.out { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002; }
   #callgame .lvback { border: 0; border-radius: 16px; padding: 10px; font: inherit; font-weight: 900; background: #ffffff33; color: #fff; }
   /* 第 2、3 關的新電話 */
   #callgame .grid.g4 { gap: 8px; } #callgame .grid.g4 .cell .ph { font-size: 34px; } #callgame .grid.g4 .cell { border-radius: 18px; }
@@ -280,7 +290,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.7.1">
+<link rel="stylesheet" href="css/a4.css?v=0.7.2">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -312,6 +322,8 @@
   <div class="legend">☎ 響了就點　👑 老闆 3 倍　🤖 AI 推銷別接！</div>
   <div class="big"></div>
   <div class="levels"></div>
+  <button class="cgpause" aria-label="暫停">⏸</button>
+  <div class="cgmenu"><div class="card"><h3>⏸ 暫停</h3><button data-k="go" class="main">▶ 繼續</button><button data-k="again">↻ 重來這關</button><button data-k="pick">☰ 選關卡</button><button data-k="out" class="out">✕ 離開挑戰（這關不算分）</button></div></div>
   <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="next">下一關 ▶</button><button class="again">再玩一次</button></div><div class="btns"><button class="pick">選關卡</button><button class="back">回去上班</button></div></div>
 </div></div>
 <div id="intro"></div>
@@ -348,7 +360,7 @@
     <button id="saveBtn">🗂 存檔／往年回顧</button>
     <button id="setBtn">⚙ 設定</button>
   </div>
-  <small id="coverVer"></small>
+  <button id="coverVer">📝 修改歷程</button>
 </div>
 <!-- 設定：畫質、音效、主畫面圖示、片頭 -->
 <div id="settings" class="a4sheet"><div class="card">
@@ -360,6 +372,11 @@
   <h4>主畫面圖示</h4>
   <div class="icons" id="iconPick"></div>
   <p class="a4note" id="iconTip">選好後，iPhone 用 Safari「分享 → 加入主畫面」；Android 用選單「加到主畫面」</p>
+</div></div>
+<!-- 修改歷程 -->
+<div id="changelog" class="a4sheet"><div class="card">
+  <div class="a4label"><b>📝 修改歷程</b><button data-x>✕</button></div>
+  <div id="changeList"></div>
 </div></div>
 <!-- 存檔（三格）＋往年回顧 -->
 <div id="saves" class="a4sheet"><div class="card">
@@ -394,6 +411,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.7.1"></script>
+<script type="module" src="js/main.js?v=0.7.2"></script>
 </body>
 </html>
