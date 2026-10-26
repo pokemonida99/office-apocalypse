@@ -1,6 +1,6 @@
 // 特效與音效：飄字、彩帶、光柱、地面衝擊波、彈出放大、合成音效
 import * as THREE from 'three';
-import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.6.4';
+import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.7.0';
 
 const fxList = [];   // 每個特效自己有 update(dt) 回傳 false 就移除
 export function updateFx(dt) { for (let i = fxList.length - 1; i >= 0; i--) if (!fxList[i](dt)) fxList.splice(i, 1); }
@@ -187,5 +187,11 @@ export const sfx = {
   upgrade() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.22, 'triangle', 0.7, i * 0.06)); tone(2093, 0.5, 'sine', 0.4, 0.38); },
   punch() { tone(150, 0.09, 'square', 0.7); tone(95, 0.14, 'sawtooth', 0.45, 0.02); },   // 揍 Kevin
   alarm() { for (let i = 0; i < 3; i++) { tone(880, 0.14, 'square', 0.22, i * 0.32); tone(660, 0.14, 'square', 0.22, i * 0.32 + 0.16); } },   // Kevin 來了
+  // 片頭用：時鐘滴答、腳步、咻、蓋章、上班鈴
+  tick() { tone(1568, 0.04, 'square', 0.25); },
+  step() { tone(120 + Math.random() * 40, 0.05, 'sine', 0.5); },
+  whoosh() { tone(240, 0.28, 'sawtooth', 0.12, 0, 4); tone(480, 0.22, 'triangle', 0.1, 0.03, 3); },
+  stamp() { tone(110, 0.12, 'square', 0.7); tone(70, 0.22, 'sine', 0.8, 0.01); },
+  bell() { [1318, 1046, 1318, 1046].forEach((f, i) => tone(f, 0.35, 'sine', 0.45, i * 0.16)); },
   promote() { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.2, 'square', 0.3, i * 0.09)); [1046, 1318, 1568].forEach((f) => tone(f, 0.6, 'triangle', 0.45, 0.4)); },
 };

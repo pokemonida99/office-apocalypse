@@ -3,17 +3,18 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.6.4';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted } from './fx.js?v=0.6.4';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.6.4';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.6.4';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.6.4';
-import { openCallGame } from './callgame.js?v=0.6.4';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.6.4';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted } from './fx.js?v=0.7.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.0';
+import { makeIntro } from './intro.js?v=0.7.0';
+import { openCallGame } from './callgame.js?v=0.7.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.0';
 
-const VERSION = 'v0.6.4';
+const VERSION = 'v0.7.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
-const JIE = location.hash === '#jie';
+const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
 
 // ---------- 數值 ----------
@@ -892,18 +893,20 @@ const QUARTERS = [
 ];
 const yearEl = document.getElementById('year'), yearTitle = document.getElementById('yearTitle'), yearNum = document.getElementById('yearNum'), yearBar = document.getElementById('yearBar');
 const yearQs = [...yearEl.querySelectorAll('.qs b')];
+yearQs.forEach((b, i) => { b.textContent = 'Q' + (i + 1); });   // 打卡卡的四格
 // 新辦公室：每一年目標放大一點
 const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0.6));
 function updateYear() {
   yearEl.style.display = 'block';
-  yearQs.forEach((b, i) => b.classList.toggle('on', i < state.q));
+  yearQs.forEach((b, i) => { b.classList.toggle('on', i < state.q); b.classList.toggle('cur', i === state.q); });
   const done = state.q >= 4 && state.finaleDone && !design.finale;   // 尾牙辦完、選了繼續上班：隨時可以搬家
   if (done !== yearEl.classList.contains('done')) { yearEl.classList.toggle('done', done); chipsEl.classList.toggle('low', done); moveBtn.textContent = `🚚 搬到新辦公室（第 ${state.year + 1} 年）`; }
   if (state.q >= 4) { yearTitle.textContent = `第 ${state.year} 年　全年達標 ✓`; yearNum.textContent = '$' + state.earned.toLocaleString(); yearBar.style.width = '100%'; return; }
   const prev = state.q ? qTarget(state.q - 1) : 0, tgt = qTarget(state.q);
-  yearTitle.textContent = `第 ${state.year} 年　Q${state.q + 1} 業績`;
+  yearTitle.textContent = `第 ${state.year} 年${REPLAY ? '（回顧）' : ''}　Q${state.q + 1} 業績`;
   yearNum.textContent = `${Math.min(state.earned, tgt).toLocaleString()} / ${tgt.toLocaleString()}`;
-  yearBar.style.width = `${Math.min(100, (state.earned - prev) / (tgt - prev) * 100)}%`;
+  const pct = Math.min(100, (state.earned - prev) / (tgt - prev) * 100);
+  yearBar.style.width = `${pct}%`; yearQs[state.q]?.style.setProperty('--p', pct.toFixed(1) + '%');
   if (state.earned >= tgt) quarterDone(state.q);
 }
 function quarterDone(i) {
@@ -1105,6 +1108,7 @@ function updateEvents() {
   let chips = '';
   if (waterEmpty()) chips += `<span class="rush">💧 飲水機沒水 小費 -${waterEmpty() * 5}%</span>`;
   if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
+  if (REPLAY) chips += `<span>📼 回顧第 ${REPLAY} 年</span>`;
   if (cai) chips += `<span class="rush">🧧 黑財神降臨 收益 ×2　${Math.max(0, Math.ceil(cai.until - state.t))} 秒</span>`;
   if (state.t < poopUntil) chips += `<span class="rush">💩 被屎砸到，走路變慢</span>`;
   if (yan && yan.phase === 'wait') chips += `<span class="rush">📋 小燕急件 ${needText(yan.need)}　${Math.max(0, Math.ceil(yan.t))} 秒</span>`;
@@ -1366,7 +1370,7 @@ function showFinaleCard() {
   const rows = [['年度業績', '$' + state.earned.toLocaleString()], ['☕ 咖啡', S.coffee], ['📄 文件', S.doc], ['🥤 飲料', S.drink], ['🍱 便當', S.beef + S.chicken + S.fish], ...(state.year >= 3 ? [['🧋 早餐街', (S.tea || 0) + (S.sand || 0) + (S.cake || 0)]] : []), ['☎ 電話', S.calls], [JIE ? '🎨 小葵交稿' : '🎨 阿傑交稿', S.drafts], ['👑 VIP 大單', S.vip], ['🎡 遊樂設施', S.rides || 0]];
   document.getElementById('finStats').innerHTML = rows.map(([k, v]) => `<div>${k}<b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('');
   const nb = 1 + state.year * 0.25;
-  document.getElementById('finMove').textContent = `搬到新辦公室（第 ${state.year + 1} 年）`;
+  document.getElementById('finMove').textContent = REPLAY ? '⏹ 結束回顧，回主線' : `搬到新辦公室（第 ${state.year + 1} 年）`;
   document.getElementById('finNote').textContent = `搬家：設施和錢重新開始，但所有收入永久 ×${nb.toFixed(2)}；留下來：繼續在這裡上班`;
   el.classList.add('on');
 }
@@ -1385,6 +1389,7 @@ document.getElementById('finMove').onclick = () => moveToNextYear();
 // 搬家：存下年度與加成，其他歸零，重新載入（尾牙的按鈕、之後進度條下面的按鈕都走這裡）
 const nextBonus = () => 1 + state.year * 0.25;
 function moveToNextYear() {
+  if (REPLAY) return endReplay();   // 回顧模式：尾牙後回主線
   noSave = true;
   // 新年度：存下年度與加成，其他歸零，重新載入
   try {
@@ -1681,13 +1686,20 @@ function updatePet(dt) {
 // ======================================================================
 // 存檔（瀏覽器本機）：每 5 秒、離開頁面時存
 // ======================================================================
-const SAVE_KEY = 'office-apocalypse-save-v1' + (JIE ? '-jie' : ''), YEAR_KEY = 'office-apocalypse-year' + (JIE ? '-jie' : '');   // 阿傑模式另存一份
-const ROOM_KEY = 'office-apocalypse-room' + (JIE ? '-jie' : '');   // 2F 家具：搬新辦公室也跟著走，不跟年度一起清
+// 三格存檔：第 1 格沿用原本的鍵（舊存檔不用搬），第 2、3 格加 -s2／-s3；阿傑模式各格另存一份（-jie）
+// 往年回顧：另一組鍵（-replay），玩到的東西不寫回主線
+const SLOT_KEY = 'office-apocalypse-slot', REPLAY_KEY = 'office-apocalypse-replay';
+const SLOT = (() => { try { const n = +localStorage.getItem(SLOT_KEY); return n >= 1 && n <= 3 ? n : 1; } catch { return 1; } })();
+const REPLAY = (() => { try { return +sessionStorage.getItem(REPLAY_KEY) || 0; } catch { return 0; } })();   // 回顧第幾年（0＝主線）
+const slotSuf = (n, jie = JIE) => (jie ? '-jie' : '') + (n > 1 ? '-s' + n : '');
+const SUF = REPLAY ? (JIE ? '-jie' : '') + '-replay' : slotSuf(SLOT);
+const KEYS = (suf) => ['office-apocalypse-save-v1' + suf, 'office-apocalypse-year' + suf, 'office-apocalypse-room' + suf];
+const [SAVE_KEY, YEAR_KEY, ROOM_KEY] = KEYS(SUF);   // ROOM：2F 家具，搬新辦公室也跟著走，不跟年度一起清
 let saveT = 0, noSave = false;   // 搬家／重來時關掉存檔，免得離開頁面時又把舊進度寫回去
 function save(force = false) {
   if (!player || design.finale || (!state.started && !force) || noSave) return;   // force：封面玩小米挑戰拿到的獎金也要存   // 還在封面沒開工就不存（不然第一次玩的開場對話會被跳過）
   const data = {
-    v: 1, money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
+    v: 1, at: Date.now(), money: state.money, xp: state.xp, rank: state.rank, earned: state.earned, q: state.q, finaleDone: state.finaleDone,
     gear: state.gear, decor: state.decor, stats: state.stats, miBests: state.miBests,
     shops: Object.fromEntries(Object.values(shops).map(s => [s.type, { unlocked: s.unlocked, lv: s.lv }])),
     phone: { unlocked: phone.unlocked, lv: phone.lv }, hires: Object.keys(hires),
@@ -1697,8 +1709,82 @@ function save(force = false) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
 }
 function loadYear() {
+  if (REPLAY) { state.year = REPLAY; state.yearBonus = 1 + (REPLAY - 1) * 0.25; return; }   // 回顧：那一年的加成
   try { const y = JSON.parse(localStorage.getItem(YEAR_KEY)); if (y && y.year > 1) { state.year = y.year; state.yearBonus = y.bonus; } } catch {}
 }
+// ---------- 存檔面板：三格存檔＋往年回顧 ----------
+const YEAR_INFO = {
+  1: ['破茶水間', '咖啡、影印、販賣機、員工餐廳、電話總機'],
+  2: ['電梯與頂樓', '2F 辦公室、頂樓遊樂園，特助 Kevin 出現'],
+  3: ['早餐街', '後牆打通三攤、PM 小燕急件、業務黑輪'],
+  4: ['綠茶三人組', '茶茶、阿強、學姊入職（製作中）'],
+  5: ['遞辭呈之年', '尾牙可以選擇離職（製作中）'],
+};
+const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+function slotInfo(n, jie = false) {
+  const [sk, yk] = KEYS(slotSuf(n, jie)), d = readJSON(sk), y = readJSON(yk);
+  if (!d && !y) return null;
+  return { year: y?.year || 1, q: d?.q || 0, rank: d?.rank || 0, money: d?.money || 0, at: d?.at || 0 };
+}
+const savesEl = document.getElementById('saves');
+function goReload(hash = '') { save(); noSave = true; history.replaceState(null, '', location.pathname + hash); location.reload(); }
+function switchSlot(n) { try { localStorage.setItem(SLOT_KEY, n); sessionStorage.removeItem(REPLAY_KEY); } catch {} goReload(); }
+function startReplay(y) {
+  try {
+    for (const k of KEYS((JIE ? '-jie' : '') + '-replay')) localStorage.removeItem(k);
+    const room = localStorage.getItem(ROOM_KEY); if (room && !REPLAY) localStorage.setItem('office-apocalypse-room' + (JIE ? '-jie' : '') + '-replay', room);   // 家具借主線的來看
+    sessionStorage.setItem(REPLAY_KEY, y);
+  } catch {}
+  goReload(JIE ? '#jie' : '');
+}
+function endReplay() { try { sessionStorage.removeItem(REPLAY_KEY); } catch {} goReload(JIE ? '#jie' : ''); }
+function openSaves(tab = 'slots') {
+  savesEl.classList.add('on'); renderSaves(tab);
+}
+function renderSaves(tab) {
+  const body = document.getElementById('savesBody');
+  document.getElementById('tabSlots').className = 'a4btn' + (tab === 'slots' ? ' main' : '');
+  document.getElementById('tabYears').className = 'a4btn' + (tab === 'years' ? ' main' : '');
+  document.getElementById('savesTitle').textContent = tab === 'slots' ? '🗂 存檔' : '📼 往年回顧';
+  const fmt = (t) => { if (!t) return ''; const d = new Date(t); return `上次 ${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  if (tab === 'slots') {
+    let h = REPLAY ? `<p class="a4note">📼 正在回顧第 ${REPLAY} 年（不會覆蓋主線）</p><button class="a4btn red" data-act="endReplay">⏹ 結束回顧，回主線</button>` : '';
+    for (let n = 1; n <= 3; n++) {
+      const k = slotInfo(n), j = slotInfo(n, true), cur = n === SLOT && !REPLAY;
+      if (!k && !j) { h += `<button class="slot empty" data-tag="檔案 0${n}" data-act="new" data-n="${n}">＋ 開新檔</button>`; continue; }
+      const m = k || j, who = k ? ['小葵', 'kui'] : ['阿傑', 'jie'];
+      h += `<div class="slot${cur ? ' cur' : ''}" data-tag="檔案 0${n}"><div class="pic" style="background-image:url(icons/${who[1]}-180.png)"></div><div class="tx"><b>${who[0]}</b>
+        <span>第 ${m.year} 年　${m.q >= 4 ? '全年達標' : 'Q' + (m.q + 1)}　Lv${m.rank + 1} ${RANKS[m.rank].title}</span><span class="money">$${m.money.toLocaleString()}</span>
+        ${k && j ? `<small>阿傑：第 ${j.year} 年</small> ` : ''}<small>${fmt(Math.max(k?.at || 0, j?.at || 0))}</small></div>${cur ? '<div class="stamp">使用中</div>' : ''}</div>
+        <div class="slot-acts">${cur ? '' : `<button class="a4btn main" data-act="load" data-n="${n}">▶ 切換到這格</button>`}<button class="a4btn ghost" data-act="del" data-n="${n}">🗑 刪除</button></div>`;
+    }
+    body.innerHTML = h + '<p class="a4note">每一格是一輪獨立的公司人生：年份、錢、裝潢、小葵和阿傑各自的進度都分開存。</p>';
+  } else {
+    const main = REPLAY ? (readJSON(KEYS(slotSuf(SLOT))[1])?.year || 1) : state.year;
+    let h = REPLAY ? `<p class="a4note">📼 正在回顧第 ${REPLAY} 年</p><button class="a4btn red" data-act="endReplay">⏹ 結束回顧，回主線</button>` : '';
+    h += '<div class="years">';
+    for (let n = 1; n <= Math.max(main + 1, 5); n++) {
+      const [name, desc] = YEAR_INFO[n] || ['年度主題', '每年一個新規則（製作中）'], lock = n > main;
+      h += `<div class="yr${lock ? ' lock' : ''}" data-n="${n}"><b>第 ${n} 年　${name}${n === 5 ? ' <span class="star">★</span>' : ''}</b><small>${lock ? '🔒 還沒玩到' : desc}</small>
+        ${lock ? '' : `<div class="a4row"><button class="a4btn" data-act="clip" data-n="${n}" ${n === 1 ? '' : 'disabled'}>▶ ${n === 1 ? '看短片' : '短片製作中'}</button><button class="a4btn main" data-act="replay" data-n="${n}">📖 回顧遊玩</button></div>`}</div>`;
+    }
+    body.innerHTML = h + '</div><p class="a4note">回顧遊玩：從那一年的開頭重玩（加成照那年算），不會覆蓋主線存檔，賺到的錢也不會帶回主線。</p>';
+  }
+  body.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+    const n = +b.dataset.n, act = b.dataset.act;
+    if (act === 'new' || act === 'load') switchSlot(n);
+    else if (act === 'del') {
+      if (!confirm(`確定要刪除檔案 0${n}？小葵和阿傑在這格的進度都會清掉。`) || !confirm('真的要刪嗎？刪掉就救不回來了。')) return;
+      try { for (const j of [false, true]) for (const k of KEYS(slotSuf(n, j))) localStorage.removeItem(k); } catch {}
+      if (n === SLOT && !REPLAY) { noSave = true; location.reload(); } else renderSaves('slots');
+    }
+    else if (act === 'replay') startReplay(n);
+    else if (act === 'endReplay') endReplay();
+    else if (act === 'clip') { savesEl.classList.remove('on'); playIntro(state.started ? null : showCover); }
+  });
+}
+document.getElementById('tabSlots').onclick = () => renderSaves('slots');
+document.getElementById('tabYears').onclick = () => renderSaves('years');
 function loadSave() {
   let d = null; try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch {}
   if (!d || d.v !== 1) return false;
@@ -1748,6 +1834,23 @@ const qBtn = document.getElementById('qBtn'), Q_NAME = { auto: '自動', high: '
 function updateQBtn() { qBtn.textContent = `🎨 畫質：${Q_NAME[quality.pref]}` + (quality.pref === 'auto' ? `（現在${Q_NAME[quality.level]}）` : ''); }
 qBtn.onclick = () => { setQualityPref({ auto: 'high', high: 'low', low: 'auto' }[quality.pref]); fpsMon.bad = 0; updateQBtn(); };
 
+// ---------- 片頭 ----------
+const INTRO_KEY = 'office-apocalypse-intro-seen';
+let intro = null;
+// after：播完要做什麼（開工／回封面／回到遊戲）。按「打卡上班」才播，順便拿到播音效的許可
+function playIntro(after) {
+  const cover = document.getElementById('cover'), hud = document.getElementById('hud'); cover.style.display = 'none'; hud.style.visibility = 'hidden';
+  player.actor.root.visible = false; audioInit();
+  intro = makeIntro({ THREE, scene, camera, render, sun, kinds, makeActor, addJog, updateActor, jugMesh, cartLook, rbox, sfx, onDone: () => {
+    intro = null; player.actor.root.visible = true; hud.style.visibility = '';
+    try { localStorage.setItem(INTRO_KEY, '1'); } catch {}
+    if (location.hash.includes('intro')) history.replaceState(null, '', location.pathname + (JIE ? '#jie' : ''));
+    updateCamera(camFocusOf(player.actor.root.position), 1);
+    after && after();
+  } });
+}
+function showCover() { const c = document.getElementById('cover'); c.style.display = ''; c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); }
+
 // ---------- 選單：遊戲裡隨時可以暫停、調音效畫質、玩接電話挑戰、換角色、搬家、存檔回標題 ----------
 const menuEl = document.getElementById('menu');
 function openMenu() {
@@ -1762,7 +1865,9 @@ function renderMenu() {
     ['sound', isMuted() ? '🔇 音效：關（點一下打開）' : '🔊 音效：開（點一下關掉）'],
     ['quality', qBtn.textContent],
     ['call', '📞 小米的接電話挑戰'],
-    ['swap', JIE ? '🙋 存檔，換回小葵' : '😎 存檔，換阿傑老鳥'],
+    ['intro', '🎬 重看片頭'],
+    ['saves', '🗂 存檔／往年回顧'],
+    ...(REPLAY ? [['endReplay', `⏹ 結束回顧第 ${REPLAY} 年`, 'move']] : [['swap', JIE ? '🙋 存檔，換回小葵' : '😎 存檔，換阿傑老鳥']]),
     ...(yearEl.classList.contains('done') ? [['move', moveBtn.textContent, 'move']] : []),
     ['title', '🏠 存檔，回到標題畫面', 'out'],
   ];
@@ -1775,6 +1880,9 @@ function menuAction(k) {
   else if (k === 'sound') { setMuted(!isMuted()); renderMenu(); sfx.pick?.(); }
   else if (k === 'quality') { qBtn.onclick(); renderMenu(); }
   else if (k === 'call') { closeMenu(); startCallGame(); }
+  else if (k === 'intro') { closeMenu(); save(); playIntro(); }
+  else if (k === 'saves') { closeMenu(); save(); openSaves('slots'); }
+  else if (k === 'endReplay') endReplay();
   else if (k === 'swap') swapMode();
   else if (k === 'move') { closeMenu(); moveBtn.click(); }
   else if (k === 'title') {   // 存好檔重新載入回到封面（封面的「繼續上班」接著玩）
@@ -1791,6 +1899,7 @@ function frame(now) {
   if (G.hold) { last = now; return; }   // 錄影用：由 G.tick 一格一格推
   watchFps((now - last) / 1000);
   const dt = Math.min((now - last) / 1000, 0.05) * (G.speedUp || 1); last = now;
+  if (intro) { try { intro.step(dt); render(); } catch (err) { console.error(err); intro?.skip(); } return; }   // 片頭播放中：只跑片頭
   try {
     if (state.started && !state.mini && !state.paused) update(dt);   // 玩小米的挑戰、開選單時主遊戲暫停
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
@@ -1825,6 +1934,7 @@ const G = window.G = {
     render();
   },
   playCall: () => miBtn.onclick(),
+  introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
   get water() { return water; }, WATER,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
@@ -1836,7 +1946,7 @@ const G = window.G = {
     const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
     kinds = Object.fromEntries(ks);
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
-  if (/[?&]fresh/.test(location.search)) { try { for (const k of ['office-apocalypse-save-v1', 'office-apocalypse-year', 'office-apocalypse-room']) for (const t of ['', '-jie']) localStorage.removeItem(k + t); } catch {} }   // 測試用：網址加 ?fresh 兩個角色都從頭開始
+  if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
@@ -1866,20 +1976,40 @@ const G = window.G = {
   setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
   window.bootOk?.(); updateQBtn(); document.getElementById('coverCall').disabled = false;
-  btn.disabled = false; btn.textContent = loaded ? '繼續上班' : state.year > 1 ? `第 ${state.year} 年開工` : '開始上班';
-  const reset = document.getElementById('reset');
-  if (loaded || state.year > 1) { reset.style.display = 'inline-block'; reset.onclick = () => { if (confirm('確定要從頭開始嗎？存檔和年度都會清掉。')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(YEAR_KEY); localStorage.removeItem(ROOM_KEY); } catch {} location.reload(); } }; }
-  btn.onclick = () => {
-    audioInit(); document.getElementById('cover').style.display = 'none'; state.started = true;
-    if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
+  // 封面員工證：誰、職稱、第幾年、哪一格存檔
+  document.getElementById('idPic').style.backgroundImage = `url(icons/${ME.icon}-180.png)`;
+  document.getElementById('idName').textContent = ME.name;
+  document.getElementById('idRank').textContent = (JIE ? '設計部老鳥・' : '') + RANKS[state.rank].title;
+  document.getElementById('idYear').textContent = `第 ${state.year} 年` + (REPLAY ? '（回顧）' : '');
+  document.getElementById('idNo').textContent = `NO. A4-${String(SLOT).padStart(2, '0')}${JIE ? 'J' : 'K'}${String(state.year).padStart(2, '0')}`;
+  btn.disabled = false; document.getElementById('startTxt').textContent = '打卡上班 ▶';
+  document.getElementById('startSub').textContent = REPLAY ? `往年回顧・第 ${REPLAY} 年` : loaded ? `繼續第 ${state.year} 年・${state.q >= 4 ? '全年達標' : 'Q' + (state.q + 1)}` : state.year > 1 ? `第 ${state.year} 年，新辦公室開工` : '新人報到第一天';
+  const startGame = () => {
+    document.getElementById('cover').style.display = 'none'; state.started = true;
+    if (REPLAY && !loaded) banner(`📼 往年回顧：第 ${state.year} 年`, '不會覆蓋主線存檔', 0, '#142b45');
+    else if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
     else if (!loaded && location.hash !== '#play') talk(JIE ? JIE_INTRO : INTRO);   // 第一次玩：打招呼、說明玩法
   };
+  btn.onclick = () => {   // 打卡：蓋章 → 第一次播片頭（這一下也解鎖音效）→ 開工
+    audioInit(); const st = document.getElementById('idStamp'); st.innerHTML = '09:00<br>已打卡'; st.classList.add('ok'); sfx.drop?.();
+    let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === '1'; } catch {}
+    if (seen || location.hash === '#play') startGame(); else playIntro(startGame);
+  };
+  // 封面的設定、存檔
+  const setEl = document.getElementById('settings'), muteBtn = document.getElementById('muteBtn');
+  const muteTxt = () => { muteBtn.textContent = isMuted() ? '🔇 音效：關' : '🔊 音效：開'; };
+  document.getElementById('setBtn').onclick = () => { muteTxt(); updateQBtn(); setEl.classList.add('on'); };
+  muteBtn.onclick = () => { setMuted(!isMuted()); muteTxt(); audioInit(); sfx.pick?.(); };
+  document.getElementById('introBtn').onclick = () => { setEl.classList.remove('on'); playIntro(showCover); };
+  document.getElementById('saveBtn').onclick = () => openSaves('slots');
+  for (const el of [setEl, savesEl]) { el.onpointerdown = (e) => { if (e.target === el) el.classList.remove('on'); }; el.querySelector('[data-x]').onclick = () => el.classList.remove('on'); }
+  if (REPLAY) document.getElementById('swapHud').style.display = 'none';
   // 換角色按鈕：封面一顆、遊戲裡一顆
   const swap = document.getElementById('swap'), swapHud = document.getElementById('swapHud');
-  swap.textContent = JIE ? '🌻 換小葵玩' : '😎 操控阿傑老鳥'; swap.style.display = 'inline-block'; swap.onclick = swapMode;
+  swap.textContent = JIE ? '🌻 換小葵' : '😎 換阿傑老鳥'; swap.onclick = swapMode; swap.disabled = !!REPLAY;
   swapHud.textContent = JIE ? '💾 存檔離開・換小葵' : '😎 換阿傑'; swapHud.onclick = swapMode;
-  if (JIE) document.getElementById('coverTxt').innerHTML = '老鳥阿傑出動！素質全滿、所有店都開好了，<br>小葵去設計部學畫圖，雜事交給我！';
   let go = false; try { go = sessionStorage.getItem(GO_KEY) === '1'; sessionStorage.removeItem(GO_KEY); } catch {}
-  if (location.hash === '#play' || go) btn.onclick();
+  if (location.hash === '#play' || go) startGame();
+  else if (location.hash.includes('intro')) playIntro(showCover);   // 錄片頭用：網址 #intro 直接播
 })();
 requestAnimationFrame(frame);
