@@ -3,19 +3,19 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.8.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.8.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.8.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.8.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.8.0';
-import { CHANGES } from './changelog.js?v=0.8.0';
-import { makeTheater } from './theater.js?v=0.8.0';
-import { yearScript, yearEndScript, themeOf } from './stories.js?v=0.8.0';
-import { makeIntro } from './intro.js?v=0.8.0';
-import { openCallGame } from './callgame.js?v=0.8.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.8.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.9.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.9.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.9.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.9.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.9.0';
+import { CHANGES } from './changelog.js?v=0.9.0';
+import { makeTheater } from './theater.js?v=0.9.0';
+import { yearScript, yearEndScript, themeOf } from './stories.js?v=0.9.0';
+import { makeIntro } from './intro.js?v=0.9.0';
+import { openCallGame } from './callgame.js?v=0.9.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, buildJieSeat } from './floors.js?v=0.9.0';
 
-const VERSION = 'v0.8.0';
+const VERSION = 'v0.9.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -59,7 +59,7 @@ const L = {
 // 樓層：同一個世界的不同區域（2F 在 x-40、頂樓在 x+40），搭電梯就是瞬移；1F 照常運轉
 const FLOORS = {
   f1: { name: '1F 辦公室', icon: '🏢', ox: 0, bounds: L.bounds, cam: [-4.8, 4.8, -4.4, 9.0] },
-  f2: { name: '2F 我的辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 1.9 }, cam: [-44.8, -35.2, -4.4, -0.6] },   // 縮小：後面兩間辦公室＋前面走廊
+  f2: { name: '2F 辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 6.6 }, cam: [-44.8, -35.2, -4.4, 4.0] },   // 後排：小葵、Kevin；走廊；前排：老闆、阿傑的座位
   rf: { name: 'RF 頂樓遊樂園', icon: '🎡', ox: 40, bounds: { minX: 32.8, maxX: 47.2, minZ: -6.5, maxZ: 7.0 }, cam: [35.2, 44.8, -4.4, 4.6] },
 };
 const camFocusOf = (p) => { const c = FLOORS[state.floor].cam; return V(THREE.MathUtils.clamp(p.x, c[0], c[1]), 0, THREE.MathUtils.clamp(p.z, c[2], c[3])); };
@@ -640,6 +640,7 @@ function updateHires(dt) {
       const k = kevin.a.root.position;
       if (walkTo(a, k.x + 0.6, k.z + 0.35, 1.25, dt)) viviScold(); else if (Math.random() < dt * 0.4) floatText(a.root.position.clone().setY(1.6), 'Kevin！你給我過來！', '#ff4fa3', 0.7);
     }
+    else if (h.id === 'vivi' && vivi2F(h, dt)) {}   // 老闆偶爾搭電梯上 2F 自己的辦公室待一下
     else if (h.id === 'vivi') {   // 老闆巡視：走來走去幫大家加油（沒有實際效果）
       const pts = [[-1.0, -1.2], [-2.0, 3.8], [2.6, 5.0], [3.0, 0.2], [0.4, -3.2], [-5.0, 4.6]];
       h.wp = h.wp ?? 0; h.wait = (h.wait ?? 0) - dt;
@@ -648,6 +649,24 @@ function updateHires(dt) {
     } else hauler(h, dt);
     updateActor(a, dt, state.t);
   }
+}
+// Vivi 上 2F：每 70～110 秒走去電梯 → 出現在 2F 老闆辦公室逛（推桿、看魚、坐皮椅）→ 30 秒後下樓。Kevin 來鬧事就馬上下來
+const VIVI_2F_LINES = ['進了！🏌️', '小魚今天也很可愛～', '這張椅子坐起來就是不一樣', '業績報表……先放著', '招財貓，再招一點！', '今天的會議取消好了'];
+function vivi2F(h, dt) {
+  const a = h.actor, p = a.root.position;
+  if (kevin && kevin.phase !== 'flee') { if (h.trip === 'up') { const e = L.elevator; p.set(e[0] + 0.6, 0, e[1]); } h.trip = null; return false; }
+  h.tripT = (h.tripT ?? 70 + Math.random() * 40) - dt;
+  if (!h.trip) { if (h.tripT > 0 || !room.boss) return false; h.trip = 'go'; floatText(p.clone().setY(1.6), '我上樓一下～', '#ff4fa3', 0.8); }
+  if (h.trip === 'go') { if (walkTo(a, L.elevator[0] + 0.4, L.elevator[1], 1.2, dt)) { const e = elevAt('f2'); p.set(e[0] + 0.8, 0, e[1]); h.trip = 'up'; h.upT = 30; h.wp2 = 0; h.wait2 = 0; } return true; }
+  if (h.trip === 'up') {
+    h.upT -= dt; const sp = room.boss.spots;
+    if (h.upT <= 0) { if (walkTo(a, elevAt('f2')[0] + 0.4, elevAt('f2')[1], 1.2, dt)) { const e = L.elevator; p.set(e[0] + 0.6, 0, e[1]); h.trip = null; h.tripT = 70 + Math.random() * 40; } return true; }
+    h.wait2 -= dt;
+    if (h.wait2 <= 0 && walkTo(a, OXO + sp[h.wp2][0], sp[h.wp2][1], 1.0, dt)) { h.wp2 = (h.wp2 + 1) % sp.length; h.wait2 = 3; if (state.floor === 'f2') floatText(p.clone().setY(1.6), VIVI_2F_LINES[Math.floor(Math.random() * VIVI_2F_LINES.length)], '#ff4fa3', 0.8); }
+    else if (h.wait2 > 0) a.speed = 0;
+    return true;
+  }
+  return false;
 }
 // 搬運工：去出貨口拿滿 → 送櫃台。自己的站變產線（不用人搬）就自己找事做：
 // 挑最缺貨（排隊多、櫃台空）、出貨口有貨、另一個工讀生沒在搬的店（販賣機、三個攤位也算）
@@ -1392,7 +1411,7 @@ function endFinale() {
   if (stage) { scene.remove(stage.g); stage = null; }
   if (design.kevinDown) { scene.remove(design.kevinDown.root); design.kevinDown = null; }
   if (design.cup) { player.actor.root.remove(design.cup); design.cup = null; }
-  player.actor.root.position.y = 0; Object.values(hires).forEach(h => { h.actor.root.position.y = 0; });
+  player.actor.root.position.y = 0; Object.values(hires).forEach(h => { h.actor.root.position.y = 0; h.trip = null; h.tripT = undefined; });   // 尾牙後老闆從 1F 重新開始
   player.actor.root.position.set(STAGE_AT[0], 0, STAGE_AT[1] + 1.4);
   save();
 }
@@ -1636,14 +1655,27 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 
 // ---------- 2F 我的辦公室 ----------
 const OXO = FLOORS.f2.ox;
-const room = { owned: {}, sel: {}, objs: {}, shell: null, pet: null };
+const room = { owned: {}, sel: {}, objs: {}, shell: null, pet: null, boss: null, kevin: null, refund: 0 };
 const comfort = () => Object.entries(room.owned).reduce((n, [slot, arr]) => n + arr.filter(i => FURN.find(f => f.slot === slot).opts[i].price > 0).length, 0);
 function setupRoom() {
   const office = buildOffice(OXO); room.shell = roomShell(OXO); buildKiosk(OXO);
   for (const [x, z, hw, hd] of office.walls) aabb(OXO + x, z, hw, hd);   // 玻璃牆擋路，從門進去
   try { const d = JSON.parse(localStorage.getItem(ROOM_KEY)); if (d) { room.owned = d.owned || {}; room.sel = d.sel || {}; } } catch {}
+  // v0.9：阿傑的設計室拿掉了，以前買的家具照原價退錢（開機讀完存檔後才加進錢裡）
+  for (const slot of Object.keys(room.owned)) if (slot.startsWith('j_')) {
+    const f = FURN_B_OLD.find(x => x.slot === slot); if (f) for (const i of room.owned[slot]) room.refund += f.opts[i]?.price || 0;
+    delete room.owned[slot]; delete room.sel[slot];
+  }
   roomPlate(OXO, -3.7, `🛋 ${ME.name}的辦公室`, '#ff7a45');
-  roomPlate(OXO, 3.7, JIE ? '💻 小葵的設計室' : '💻 阿傑的設計室', '#2c5bd9');
+  const kevinOn = state.year >= 2;
+  roomPlate(OXO, 3.7, kevinOn ? '🤖 特助 Kevin 辦公室' : '空辦公室', kevinOn ? '#142b45' : '#9aa3ad');
+  room.kevin = buildKevinOffice(OXO, kevinOn);
+  if (kevinOn) { setRoomTex(room.shell.b.floor, 'floor', 'grid'); setRoomTex(room.shell.b.back, 'wall', 'circuit'); } else { setRoomTex(room.shell.b.floor, 'floor', 'dark'); setRoomTex(room.shell.b.back, 'wall', 'navy'); }
+  room.boss = buildBossOffice(OXO);
+  for (const [x, z, hw, hd] of room.boss.walls) aabb(OXO + x, z, hw, hd);
+  roomPlate(OXO, -1.3, '👑 Vivi 老闆辦公室', '#d9a63a', 2.2);
+  const seat = buildJieSeat(OXO); for (const [x, z, hw, hd] of seat.walls) aabb(OXO + x, z, hw, hd);
+  roomPlate(OXO, 5.0, JIE ? '💻 小葵的座位' : '💻 阿傑的座位', '#5b6676', 3.3);
   zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 0.9, '#ffb47a');
   aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.65, 0.35);
   for (const f of FURN) { room.owned[f.slot] = [...new Set([0, ...(room.owned[f.slot] || [])])]; applySlot(f.slot, false); }
@@ -1671,7 +1703,7 @@ function renderRoom() {
   const key = JSON.stringify(room.sel) + JSON.stringify(room.owned) + '|' + Math.floor(state.money / 100);
   if (key === roomKey) return; roomKey = key;
   document.getElementById('roomComfort').textContent = `舒適度 +${comfort() * 2}%`;
-  const roomName = { a: `🛋 ${ME.name}的辦公室`, b: JIE ? '💻 小葵的設計室' : '💻 阿傑的設計室' };
+  const roomName = { a: `🛋 ${ME.name}的辦公室（只有這間可以自己布置）` };
   roomList.innerHTML = FURN.map((f, k) => (k === 0 || FURN[k - 1].room !== f.room ? `<div class="hdr">${roomName[f.room]}</div>` : '') + `<div class="sec">${f.name}</div><div class="opts">` + f.opts.map((o, i) => {
     const own = room.owned[f.slot].includes(i), on = (room.sel[f.slot] || 0) === i;
     return `<button data-s="${f.slot}" data-i="${i}" class="${on ? 'on' : own ? 'own' : ''}" ${!own && state.money < o.price ? 'disabled' : ''}>${o.name}<small>${on ? '使用中' : own ? '換這個' : '$' + o.price.toLocaleString()}</small></button>`;
@@ -1687,7 +1719,7 @@ function updateRoom() {
 }
 // 寵物在地毯附近晃來晃去；設計室的設備會動（全息投影轉、機櫃燈閃）
 function updatePet(dt) {
-  if (state.floor === 'f2') for (const o of Object.values(room.objs)) if (o && o.userData.tick) o.userData.tick(dt, state.t);
+  if (state.floor === 'f2') { for (const o of Object.values(room.objs)) if (o && o.userData.tick) o.userData.tick(dt, state.t); room.boss?.tick(dt, state.t); room.kevin?.tick(dt, state.t); }
   const p = room.pet; if (!p) return;
   p.userData.t = (p.userData.t || 0) + dt;
   const t = p.userData.t, x = OXO + ROOM.petAt[0] + Math.sin(t * 0.4) * 1.4, z = ROOM.petAt[1] + Math.sin(t * 0.27) * 0.7;
@@ -1972,7 +2004,7 @@ const G = window.G = {
   theater = makeTheater({ THREE, renderer, kinds, makeActor, updateActor, addJog, rbox, canvasTex, sfx,
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.8.0'); music.load('office', 'audio/bgm_office.m4a?v=0.8.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.9.0'); music.load('office', 'audio/bgm_office.m4a?v=0.9.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
@@ -1987,6 +2019,7 @@ const G = window.G = {
   carriers.push(player);
   cam.target.set(L.start[0], 0, L.start[1]);
   const loaded = loadSave();
+  if (room.refund) { state.money += room.refund; after(1.5, () => toast(`阿傑的設計室家具已退錢 +$${room.refund.toLocaleString()}`)); save(true); }
   if (JIE) {   // 老鳥模式：職等、裝備全滿，店全開，小葵已經坐在設計部
     state.rank = RANKS.length - 1;
     for (const k in GEAR) state.gear[k] = GEAR[k].price.length;

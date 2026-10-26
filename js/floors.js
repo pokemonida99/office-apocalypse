@@ -1,7 +1,7 @@
 // 其他樓層的外觀：頂樓遊樂園（環境＋四個設施）、2F 我的辦公室（房間＋家具樣式）
 // 樓層放在同一個世界的不同區域：頂樓在 x+40、2F 在 x-40，搭電梯就是瞬移過去
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.8.0';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.9.0';
 
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
 const gold = { metalness: 0.9, roughness: 0.3 };
@@ -139,17 +139,22 @@ export function rideLook(id, lv) {
 
 // ================= 2F 我的辦公室 =================
 export const ROOM = { kiosk: [0, 0.15], zone: [0, 1.0], petAt: [-3.4, -3.3] };
-// 2F：後面兩間辦公室（左：我的辦公室、右：阿傑的設計室，矮玻璃牆、前面有門），前面一條走廊放型錄台
-const OFF = { z0: -6.5, z1: -2.0, doorA: [-4.3, -3.1], doorB: [3.1, 4.3] };
+// 2F（v0.9）：後排左＝小葵的辦公室（唯一能自己布置）、後排右＝特助 Kevin 的辦公室（第 2 年起，科技風固定擺設）
+// 中間走廊放型錄台；前排左＝Vivi 老闆的大辦公室（擺滿老闆的東西）、前排右＝阿傑的座位（只有一台筆電）
+// 2F 不跟著年度重置（家具存在 ROOM_KEY，搬家不清）
+const OFF = { z0: -6.5, z1: -2.0, doorA: [-4.3, -3.1], doorB: [3.1, 4.3], f0: 2.6, f1: 6.6, bossX: 2.6, doorF: [-1.9, -0.7] };
 export function buildOffice(ox) {
   const winTex = canvasTex(256, 192, (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#ffb489'); gr.addColorStop(1, '#ffe2b8'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#ffffffcc'; g.beginPath(); g.arc(190, 60, 26, 0, 7); g.fill(); g.fillStyle = '#c99a8a'; for (let i = 0; i < 9; i++) { const h = 40 + (i * 29) % 60; g.fillRect(i * 30, H - h, 24, h); } });
   for (const x of [-2.6, 5.6]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBasicMaterial({ map: winTex, toneMapped: false })); w.position.set(ox + x, 1.85, -6.82); scene.add(w); rbox(2.15, 0.1, 0.16, 0xffffff, ox + x, 1.12, -6.78); rbox(0.08, 1.45, 0.1, 0xffffff, ox + x, 1.85, -6.78); }
   elevatorDoor(ox, -0.6, '▲▼ 電梯');
-  for (let z = -6.3; z <= 1.5; z += 1.3) if (Math.abs(z + 0.6) > 0.9) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox - 7.6, 0.375, z);
-  for (let z = -6.3; z <= 1.5; z += 1.3) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox + 7.6, 0.375, z);
-  for (let x = -7.0; x <= 7.0; x += 1.4) rbox(1.34, 0.6, 0.14, 0xd9c2a5, ox + x, 0.3, 2.3);
-  // 走廊地毯
-  const hall = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 4.4), new THREE.MeshStandardMaterial({ color: 0xe9e2d6, roughness: 0.9 })); hall.rotation.x = -Math.PI / 2; hall.position.set(ox, 0.002, 0.15); hall.receiveShadow = true; scene.add(hall);
+  for (let z = -6.3; z <= 6.4; z += 1.3) if (Math.abs(z + 0.6) > 0.9) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox - 7.6, 0.375, z);
+  for (let z = -6.3; z <= 6.4; z += 1.3) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox + 7.6, 0.375, z);
+  for (let x = -7.0; x <= 7.0; x += 1.4) rbox(1.34, 0.6, 0.14, 0xd9c2a5, ox + x, 0.3, OFF.f1 + 0.3);
+  // 走廊地毯＋前排地板（老闆辦公室大理石、阿傑那邊灰地毯）
+  const hall = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 4.6), new THREE.MeshStandardMaterial({ color: 0xe9e2d6, roughness: 0.9 })); hall.rotation.x = -Math.PI / 2; hall.position.set(ox, 0.002, 0.3); hall.receiveShadow = true; scene.add(hall);
+  const mt = floorTex.marble(); mt.wrapS = mt.wrapT = THREE.RepeatWrapping; mt.repeat.set(4, 2);
+  const bf = new THREE.Mesh(new THREE.PlaneGeometry(OFF.bossX + 7.2, OFF.f1 - OFF.f0), new THREE.MeshStandardMaterial({ map: mt, roughness: 0.35 })); bf.rotation.x = -Math.PI / 2; bf.position.set(ox + (OFF.bossX - 7.2) / 2, 0.003, (OFF.f0 + OFF.f1) / 2); bf.receiveShadow = true; scene.add(bf);
+  const jf = new THREE.Mesh(new THREE.PlaneGeometry(7.2 - OFF.bossX, OFF.f1 - OFF.f0), new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.95 })); jf.rotation.x = -Math.PI / 2; jf.position.set(ox + (OFF.bossX + 7.2) / 2, 0.003, (OFF.f0 + OFF.f1) / 2); jf.receiveShadow = true; scene.add(jf);
   // 矮玻璃牆：中間隔間＋兩間的前牆（留門）
   const glass = new THREE.MeshStandardMaterial({ color: 0xcdeeff, transparent: true, opacity: 0.3, roughness: 0.1, depthWrite: false });
   const wall = (ax, az, bx, bz, rail) => {
@@ -159,13 +164,76 @@ export function buildOffice(ox) {
   wall(0, OFF.z0, 0, OFF.z1, 0x8a6a4c);
   wall(-7.25, OFF.z1, OFF.doorA[0], OFF.z1, 0xff7a45); wall(OFF.doorA[1], OFF.z1, -0.05, OFF.z1, 0xff7a45);
   wall(0.05, OFF.z1, OFF.doorB[0], OFF.z1, 0x2fe3ff); wall(OFF.doorB[1], OFF.z1, 7.25, OFF.z1, 0x2fe3ff);
-  // 門口地上的名牌
-  return { walls: [[0, (OFF.z0 + OFF.z1) / 2, 0.06, (OFF.z1 - OFF.z0) / 2], [(-7.25 + OFF.doorA[0]) / 2, OFF.z1, (OFF.doorA[0] + 7.25) / 2, 0.06], [(OFF.doorA[1] - 0.05) / 2, OFF.z1, (-0.05 - OFF.doorA[1]) / 2, 0.06],
+  // 前排：老闆辦公室的玻璃牆（金色扶手、門在中間偏左）＋右邊隔間
+  wall(-7.25, OFF.f0, OFF.doorF[0], OFF.f0, 0xd9a63a); wall(OFF.doorF[1], OFF.f0, OFF.bossX, OFF.f0, 0xd9a63a); wall(OFF.bossX, OFF.f0, OFF.bossX, OFF.f1, 0xd9a63a);
+  return { walls: [[(-7.25 + OFF.doorF[0]) / 2, OFF.f0, (OFF.doorF[0] + 7.25) / 2, 0.06], [(OFF.doorF[1] + OFF.bossX) / 2, OFF.f0, (OFF.bossX - OFF.doorF[1]) / 2, 0.06], [OFF.bossX, (OFF.f0 + OFF.f1) / 2, 0.06, (OFF.f1 - OFF.f0) / 2],[0, (OFF.z0 + OFF.z1) / 2, 0.06, (OFF.z1 - OFF.z0) / 2], [(-7.25 + OFF.doorA[0]) / 2, OFF.z1, (OFF.doorA[0] + 7.25) / 2, 0.06], [(OFF.doorA[1] - 0.05) / 2, OFF.z1, (-0.05 - OFF.doorA[1]) / 2, 0.06],
     [(0.05 + OFF.doorB[0]) / 2, OFF.z1, (OFF.doorB[0] - 0.05) / 2, 0.06], [(OFF.doorB[1] + 7.25) / 2, OFF.z1, (7.25 - OFF.doorB[1]) / 2, 0.06]], doors: OFF };
 }
-export function roomPlate(ox, x, text, bg) {
+export function roomPlate(ox, x, text, bg, z = -1.45) {
   const t = canvasTex(512, 96, (g, W, H) => { g.fillStyle = bg; g.beginPath(); g.roundRect(4, 4, W - 8, H - 8, 40); g.fill(); g.fillStyle = '#fff'; g.font = `900 52px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, W / 2, H / 2 + 3); });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.45), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(ox + x, 0.012, -1.45); scene.add(m);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.45), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(ox + x, 0.012, z); scene.add(m);
+}
+// Vivi 老闆的大辦公室：擺滿老闆的東西（玩家不能改）。回傳 { g, tick, spots }，spots＝老闆逛的地方
+export function buildBossOffice(ox) {
+  const g = new THREE.Group(); g.position.set(ox, 0, 0); scene.add(g);
+  const z0 = OFF.f0, z1 = OFF.f1;
+  // 紅地毯
+  const edge = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), new THREE.MeshStandardMaterial({ color: 0xd9a63a, metalness: 0.6, roughness: 0.4 })); edge.rotation.x = -Math.PI / 2; edge.position.set(-2.4, 0.005, 4.6); g.add(edge);   // 金邊在下面
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.4), new THREE.MeshStandardMaterial({ color: 0xb8232f, roughness: 0.9 })); rug.rotation.x = -Math.PI / 2; rug.position.set(-2.4, 0.008, 4.6); g.add(rug);
+  // 大辦公桌（L 型、金邊）＋皮椅＋名牌
+  rbox(2.4, 0.08, 1.0, 0x5a3220, -2.4, 0.78, 5.2, g); rbox(2.4, 0.74, 0.12, 0x4a2818, -2.4, 0.38, 4.75, g); rbox(2.45, 0.04, 1.05, 0xd9a63a, -2.4, 0.83, 5.2, g, gold);
+  for (const x of [-3.5, -1.3]) rbox(0.1, 0.74, 0.9, 0x4a2818, x, 0.37, 5.2, g);
+  const plate = labelSprite('CEO　Vivi', { bg: '#d9a63a', size: 0.22 }); plate.position.set(-2.4, 1.05, 4.72); g.add(plate);
+  rbox(0.5, 0.35, 0.3, 0x111111, -1.9, 1.02, 5.3, g); box(0.44, 0.28, 0.01, new THREE.MeshBasicMaterial({ color: 0xffc0e0, toneMapped: false }), -1.9, 1.02, 5.14, g);   // 螢幕（粉紅桌布）
+  const chair = new THREE.Group(); chair.position.set(-2.4, 0, 5.95); g.add(chair);
+  rbox(0.8, 0.16, 0.7, 0x2a1a12, 0, 0.5, 0, chair); rbox(0.8, 1.1, 0.18, 0x2a1a12, 0, 1.05, 0.3, chair); rbox(0.84, 0.06, 0.2, 0xd9a63a, 0, 1.62, 0.3, chair, gold); cyl(0.06, 0.06, 0.42, 0xd9a63a, 0, 0.22, 0, chair, gold);
+  // 獎盃牆（後面那排櫃子）
+  rbox(2.6, 1.6, 0.4, 0x6b3e26, -5.6, 0.8, 6.2, g);
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) { const x = -6.5 + k * 0.6, y = 0.3 + r * 0.5; cyl(0.06, 0.09, 0.14, 0xd9a63a, x, y, 6.05, g, gold); sphere(0.08, 0xffd34d, x, y + 0.14, 6.05, g, gold); }
+  // 高爾夫推桿墊（旗子、球）
+  const green = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x3aa65a, roughness: 0.9 })); green.rotation.x = -Math.PI / 2; green.position.set(-5.4, 0.01, 3.4); g.add(green);
+  cyl(0.06, 0.06, 0.01, 0x111111, -4.4, 0.012, 3.4, g); cyl(0.012, 0.012, 0.7, 0xffffff, -4.4, 0.35, 3.4, g); box(0.25, 0.15, 0.01, 0xff3b3b, -4.28, 0.62, 3.4, g);
+  const ball = sphere(0.04, 0xffffff, -6.4, 0.04, 3.4, g);
+  // 魚缸（魚會游）
+  rbox(1.5, 0.6, 0.5, 0x2c3e57, 1.3, 0.3, 6.1, g);
+  const tank = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.45), new THREE.MeshStandardMaterial({ color: 0x7fd1ff, transparent: true, opacity: 0.45, depthWrite: false })); tank.position.set(1.3, 1.0, 6.1); g.add(tank);
+  const fish = [0xff7a45, 0xffd34d, 0xff4fa3].map((c, i) => { const f = sphere(0.06, c, 1.3, 0.85 + i * 0.15, 6.1, g); f.scale.set(1.6, 1, 0.7); return f; });
+  // 金色招財貓
+  const cat = new THREE.Group(); cat.position.set(-0.4, 0, 6.15); g.add(cat);
+  sphere(0.26, 0xffd34d, 0, 0.3, 0, cat, gold).scale.set(1, 1.1, 0.9); sphere(0.2, 0xffd34d, 0, 0.72, 0, cat, gold); const paw = sphere(0.08, 0xffffff, 0.2, 0.82, 0.08, cat);
+  for (const x of [-0.1, 0.1]) { const e = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.12, 4), new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 0.8, roughness: 0.3 })); e.position.set(x, 0.92, 0); cat.add(e); }
+  // 牆上的大名畫（抽象畫）＋沙發組
+  const art = canvasTex(256, 160, (c, W, H) => { const gr = c.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#ff7ab8'); gr.addColorStop(.5, '#ffd34d'); gr.addColorStop(1, '#3fa7ff'); c.fillStyle = gr; c.fillRect(0, 0, W, H); c.fillStyle = '#ffffffaa'; c.beginPath(); c.arc(90, 80, 40, 0, 7); c.fill(); c.fillStyle = '#142b45'; c.fillRect(150, 40, 60, 80); });
+  const pic = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshBasicMaterial({ map: art, toneMapped: false })); pic.position.set(-6.9, 1.5, 4.6); pic.rotation.y = Math.PI / 2; g.add(pic);
+  rbox(0.08, 1.12, 1.72, 0xd9a63a, -6.95, 1.5, 4.6, g, gold);
+  rbox(0.7, 0.4, 1.8, 0xfff1dd, -6.6, 0.2, 4.6, g); rbox(0.25, 0.45, 1.8, 0xfff1dd, -6.95, 0.6, 4.6, g);   // 沙發
+  rbox(0.8, 0.3, 1.0, 0x5a3220, -5.6, 0.15, 4.6, g);   // 茶几
+  cyl(0.06, 0.06, 0.12, 0xffffff, -5.6, 0.36, 4.3, g); cyl(0.06, 0.06, 0.12, 0xffffff, -5.5, 0.36, 4.9, g);
+  for (const x of [-7.0, 2.2]) { cyl(0.26, 0.2, 0.45, 0xd9a63a, x, 0.22, 2.95, g, gold); for (let i = 0; i < 5; i++) { const l = sphere(0.24, 0x2f9a4a, x + Math.cos(i * 1.3) * 0.15, 0.7 + (i % 2) * 0.25, 2.95 + Math.sin(i * 1.3) * 0.15, g); l.scale.y = 1.3; } }
+  g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  const tick = (dt, t) => { fish.forEach((f, i) => { f.position.x = 1.3 + Math.sin(t * (0.7 + i * 0.2) + i) * 0.5; f.position.y = 0.85 + i * 0.15 + Math.sin(t * 1.3 + i) * 0.05; f.rotation.y = Math.cos(t * (0.7 + i * 0.2) + i) > 0 ? 0 : Math.PI; }); paw.position.y = 0.82 + Math.sin(t * 5) * 0.06; ball.position.x = -6.4 + ((t * 0.5) % 2); };
+  // 老闆逛的點：辦公桌、魚缸、推桿墊、沙發、名畫前
+  return { g, tick, spots: [[-2.4, 4.3], [1.3, 5.4], [-5.8, 3.2], [-5.4, 4.0], [-6.2, 5.2], [0.0, 3.5]], walls: [[-2.4, 5.0, 1.25, 0.35], [-5.6, 6.2, 1.3, 0.25], [1.3, 6.1, 0.75, 0.3]] };
+}
+// 特助 Kevin 的辦公室（第 2 年起）：科技風固定擺設（拿阿傑舊設計室的家具來擺）＋「AI 就好」霓虹招牌
+export function buildKevinOffice(ox, on) {
+  const g = new THREE.Group(); scene.add(g);
+  if (!on) { const l = labelSprite('（空辦公室）', { bg: '#9aa3ad', size: 0.26 }); l.position.set(ox + 3.7, 1.2, -4.2); g.add(l); return { g, tick: () => {} }; }
+  const pick = (slot, i) => { const o = FURN_B.find(f => f.slot === slot).opts[i]; const m = o.make(ox); g.add(m); return m; };
+  const objs = [pick('j_desk', 1), pick('j_chair', 1), pick('j_light', 1), pick('j_rack', 1), pick('j_figure', 2), pick('j_plant', 2)];
+  const t = canvasTex(512, 160, (c, W, H) => { c.clearRect(0, 0, W, H); c.font = `900 96px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = '#2fe3ff'; c.shadowBlur = 24; c.fillStyle = '#d6fbff'; c.fillText('AI 就好', W / 2, H / 2 + 4); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.6), new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false })); sign.position.set(ox + 2.0, 2.15, -6.78); g.add(sign);
+  g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  return { g, tick: (dt, tt) => objs.forEach(o => o.userData.tick && o.userData.tick(dt, tt)) };
+}
+// 阿傑的座位：一張桌子、一台筆電，什麼都沒有（梗）
+export function buildJieSeat(ox) {
+  const g = P(ox, 5.0, 4.4); scene.add(g);
+  rbox(1.2, 0.06, 0.6, 0xe9e2d6, 0, 0.72, 0, g); for (const x of [-0.55, 0.55]) rbox(0.05, 0.7, 0.55, 0x9aa3ad, x, 0.36, 0, g);
+  rbox(0.42, 0.02, 0.3, 0x9aa3ad, 0, 0.76, 0.02, g); const lid = rbox(0.42, 0.28, 0.02, 0x9aa3ad, 0, 0.9, -0.12, g); lid.rotation.x = -0.25;
+  box(0.36, 0.22, 0.005, new THREE.MeshBasicMaterial({ color: 0xbfe6ff, toneMapped: false }), 0, 0.9, -0.105, g).rotation.x = -0.25;
+  const ch = P(ox, 5.0, 5.0, Math.PI); scene.add(ch); rbox(0.45, 0.08, 0.45, 0x5b6676, 0, 0.45, 0, ch); rbox(0.43, 0.5, 0.05, 0x5b6676, 0, 0.75, 0.2, ch); cyl(0.04, 0.04, 0.4, 0x666666, 0, 0.22, 0, ch);
+  return { walls: [[5.0, 4.4, 0.65, 0.35]] };
 }
 export function buildKiosk(ox) {
   const k = new THREE.Group(); k.position.set(ox + ROOM.kiosk[0], 0, ROOM.kiosk[1]); scene.add(k);
@@ -267,7 +335,8 @@ const FURN_B = [
     { name: '多肉盆栽', price: 800, make: (ox) => { const g = P(ox, 0.8, -3.0); cyl(0.2, 0.16, 0.25, 0x2c3e57, 0, 0.12, 0, g); for (let i = 0; i < 6; i++) { const l = sphere(0.09, 0x6fcf97, Math.cos(i) * 0.1, 0.3 + (i % 2) * 0.05, Math.sin(i) * 0.1, g); l.scale.y = 1.4; } return g; } },
     { name: '霓虹仙人掌燈', price: 2000, make: (ox) => { const g = P(ox, 0.8, -3.0); cyl(0.18, 0.16, 0.2, 0x111111, 0, 0.1, 0, g); cyl(0.09, 0.09, 0.6, glowM(0x6fff9e), 0, 0.5, 0, g); for (const s of [-1, 1]) { const arm = cyl(0.06, 0.06, 0.25, glowM(0x6fff9e), s * 0.14, 0.55, 0, g); const up = cyl(0.06, 0.06, 0.2, glowM(0x6fff9e), s * 0.2, 0.68, 0, g); arm.rotation.z = Math.PI / 2; } return g; } }] },
 ];
-export const FURN = [...FURN_A, ...FURN_B];
+export const FURN = FURN_A;   // v0.9：家具型錄只剩小葵的辦公室
+export const FURN_B_OLD = FURN_B;   // 舊的阿傑設計室家具：退錢用、Kevin 辦公室拿來擺
 export function setRoomTex(mesh, kind, key) {
   const t = (kind === 'floor' ? floorTex : wallTex)[key](); t.wrapS = t.wrapT = THREE.RepeatWrapping;
   if (kind === 'floor') t.repeat.set(3, 2.2); else t.repeat.set(4, 1.5);
