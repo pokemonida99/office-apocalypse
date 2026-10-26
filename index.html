@@ -280,7 +280,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.7.0">
+<link rel="stylesheet" href="css/a4.css?v=0.7.1">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -355,6 +355,7 @@
   <div class="a4label"><b>⚙ 設定</b><button data-x>✕</button></div>
   <button class="a4btn" id="qBtn">🎨 畫質：自動</button>
   <button class="a4btn" id="muteBtn">🔊 音效：開</button>
+  <label class="a4btn vol">🎵 音樂音量 <input type="range" id="musicVol" min="0" max="100" step="5"><span id="musicVolTxt"></span></label>
   <button class="a4btn" id="introBtn">🎬 重看片頭</button>
   <h4>主畫面圖示</h4>
   <div class="icons" id="iconPick"></div>
@@ -393,6 +394,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.7.0"></script>
+<script type="module" src="js/main.js?v=0.7.1"></script>
 </body>
 </html>

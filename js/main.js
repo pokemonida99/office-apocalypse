@@ -3,16 +3,16 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted } from './fx.js?v=0.7.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.0';
-import { makeIntro } from './intro.js?v=0.7.0';
-import { openCallGame } from './callgame.js?v=0.7.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.1';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.1';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.1';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.1';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.1';
+import { makeIntro } from './intro.js?v=0.7.1';
+import { openCallGame } from './callgame.js?v=0.7.1';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.1';
 
-const VERSION = 'v0.7.0';
+const VERSION = 'v0.7.1';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -1507,13 +1507,13 @@ function updateMiBtn() {
 }
 miBtn.onclick = () => startCallGame();
 function startCallGame(fromCover = false) {
-  audioInit(); state.mini = true; miBtn.style.display = 'none';
+  audioInit(); state.mini = true; miBtn.style.display = 'none'; music.duck(0.3);
   openCallGame({ sfx, bests: state.miBests, onEnd: (r) => {
-    if (!r) return { close: () => { state.mini = false; } };   // 選關畫面直接按回去
+    if (!r) return { close: () => { state.mini = false; music.duck(1); } };   // 選關畫面直接按回去
     // 獎金：每一分＝現在總機一通價的 15%（老闆來電算 3 分），再乘年度加成；後面的關卡每分多一點（×1.3、×1.6）
     const reward = Math.round(r.score * STATIONS.phone.levels[phone.lv].price * 0.15 * [1, 1.3, 1.6][r.level] * state.yearBonus);
     addMoney(reward); state.miBests = r.bests; state.stats.calls += r.answered; save(fromCover);
-    return { reward, close: () => { state.mini = false; if ((r.newBest || r.unlocked >= 0) && !fromCover) banner(r.unlocked >= 0 ? `🔓 接電話第 ${r.unlocked + 1} 關開放！` : '🏆 接電話新紀錄！', `第 ${r.level + 1} 關 ${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
+    return { reward, close: () => { state.mini = false; music.duck(1); if ((r.newBest || r.unlocked >= 0) && !fromCover) banner(r.unlocked >= 0 ? `🔓 接電話第 ${r.unlocked + 1} 關開放！` : '🏆 接電話新紀錄！', `第 ${r.level + 1} 關 ${r.score} 分　獎金 +$${reward.toLocaleString()}`, 0, '#7b5cff'); } };
   } });
 }
 // 封面也能玩（不用先開工）
@@ -1840,30 +1840,33 @@ let intro = null;
 // after：播完要做什麼（開工／回封面／回到遊戲）。按「打卡上班」才播，順便拿到播音效的許可
 function playIntro(after) {
   const cover = document.getElementById('cover'), hud = document.getElementById('hud'); cover.style.display = 'none'; hud.style.visibility = 'hidden';
-  player.actor.root.visible = false; audioInit();
+  player.actor.root.visible = false; audioInit(); music.duck(0, 0.4);
   intro = makeIntro({ THREE, scene, camera, render, sun, kinds, makeActor, addJog, updateActor, jugMesh, cartLook, rbox, sfx, onDone: () => {
     intro = null; player.actor.root.visible = true; hud.style.visibility = '';
     try { localStorage.setItem(INTRO_KEY, '1'); } catch {}
     if (location.hash.includes('intro')) history.replaceState(null, '', location.pathname + (JIE ? '#jie' : ''));
     updateCamera(camFocusOf(player.actor.root.position), 1);
+    music.duck(1, 1.2);
     after && after();
   } });
 }
-function showCover() { const c = document.getElementById('cover'); c.style.display = ''; c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); }
+function showCover() { const c = document.getElementById('cover'); c.style.display = ''; c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); music.play('title'); }
 
 // ---------- 選單：遊戲裡隨時可以暫停、調音效畫質、玩接電話挑戰、換角色、搬家、存檔回標題 ----------
 const menuEl = document.getElementById('menu');
 function openMenu() {
   if (!state.started || design.finale || state.mini || state.talking || menuEl.classList.contains('on')) return;
-  audioInit(); sfx.pick?.(); state.paused = true; save(); renderMenu(); menuEl.classList.add('on');
+  audioInit(); sfx.pick?.(); state.paused = true; save(); renderMenu(); menuEl.classList.add('on'); music.duck(0.35);
 }
-function closeMenu() { state.paused = false; menuEl.classList.remove('on'); }
+function closeMenu() { state.paused = false; menuEl.classList.remove('on'); music.duck(1); }
+const volTxt = () => music.vol <= 0 ? '關' : Math.round(music.vol * 100) + '%';
 function renderMenu() {
   document.getElementById('menuInfo').textContent = `第 ${state.year} 年　${state.q >= 4 ? '全年達標' : 'Q' + (state.q + 1)}　・已自動存檔`;
   const items = [
     ['resume', '▶ 繼續上班', 'main'],
     ['sound', isMuted() ? '🔇 音效：關（點一下打開）' : '🔊 音效：開（點一下關掉）'],
     ['quality', qBtn.textContent],
+    ['music', `🎵 音樂音量：${volTxt()}`],
     ['call', '📞 小米的接電話挑戰'],
     ['intro', '🎬 重看片頭'],
     ['saves', '🗂 存檔／往年回顧'],
@@ -1879,6 +1882,7 @@ function menuAction(k) {
   if (k === 'resume') closeMenu();
   else if (k === 'sound') { setMuted(!isMuted()); renderMenu(); sfx.pick?.(); }
   else if (k === 'quality') { qBtn.onclick(); renderMenu(); }
+  else if (k === 'music') { const L = [0, 0.3, 0.6, 1]; music.setVol(L[(L.findIndex(v => v >= music.vol - 0.01) + 1) % L.length]); renderMenu(); }
   else if (k === 'call') { closeMenu(); startCallGame(); }
   else if (k === 'intro') { closeMenu(); save(); playIntro(); }
   else if (k === 'saves') { closeMenu(); save(); openSaves('slots'); }
@@ -1935,7 +1939,7 @@ const G = window.G = {
   },
   playCall: () => miBtn.onclick(),
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
-  get water() { return water; }, WATER,
+  get water() { return water; }, WATER, music,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
@@ -1948,6 +1952,7 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
+  music.load('title', 'audio/bgm_title.m4a?v=0.7.1'); music.load('office', 'audio/bgm_office.m4a?v=0.7.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
@@ -1985,7 +1990,7 @@ const G = window.G = {
   btn.disabled = false; document.getElementById('startTxt').textContent = '打卡上班 ▶';
   document.getElementById('startSub').textContent = REPLAY ? `往年回顧・第 ${REPLAY} 年` : loaded ? `繼續第 ${state.year} 年・${state.q >= 4 ? '全年達標' : 'Q' + (state.q + 1)}` : state.year > 1 ? `第 ${state.year} 年，新辦公室開工` : '新人報到第一天';
   const startGame = () => {
-    document.getElementById('cover').style.display = 'none'; state.started = true;
+    document.getElementById('cover').style.display = 'none'; state.started = true; music.play('office');
     if (REPLAY && !loaded) banner(`📼 往年回顧：第 ${state.year} 年`, '不會覆蓋主線存檔', 0, '#142b45');
     else if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
     else if (!loaded && location.hash !== '#play') talk(JIE ? JIE_INTRO : INTRO);   // 第一次玩：打招呼、說明玩法
@@ -1993,13 +1998,17 @@ const G = window.G = {
   btn.onclick = () => {   // 打卡：蓋章 → 第一次播片頭（這一下也解鎖音效）→ 開工
     audioInit(); const st = document.getElementById('idStamp'); st.innerHTML = '09:00<br>已打卡'; st.classList.add('ok'); sfx.drop?.();
     let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === '1'; } catch {}
-    if (seen || location.hash === '#play') startGame(); else playIntro(startGame);
+    if (seen || location.hash === '#play') startGame(); else { music.stop(0.5); playIntro(startGame); }
   };
   // 封面的設定、存檔
   const setEl = document.getElementById('settings'), muteBtn = document.getElementById('muteBtn');
   const muteTxt = () => { muteBtn.textContent = isMuted() ? '🔇 音效：關' : '🔊 音效：開'; };
   document.getElementById('setBtn').onclick = () => { muteTxt(); updateQBtn(); setEl.classList.add('on'); };
   muteBtn.onclick = () => { setMuted(!isMuted()); muteTxt(); audioInit(); sfx.pick?.(); };
+  const volIn = document.getElementById('musicVol'), volOut = document.getElementById('musicVolTxt');
+  volIn.value = Math.round(music.vol * 100); volOut.textContent = volTxt();
+  volIn.oninput = () => { audioInit(); music.setVol(volIn.value / 100); volOut.textContent = volTxt(); };
+  document.getElementById('cover').addEventListener('pointerdown', () => audioInit());   // 封面第一次點擊：解鎖聲音，標題曲開始
   document.getElementById('introBtn').onclick = () => { setEl.classList.remove('on'); playIntro(showCover); };
   document.getElementById('saveBtn').onclick = () => openSaves('slots');
   for (const el of [setEl, savesEl]) { el.onpointerdown = (e) => { if (e.target === el) el.classList.remove('on'); }; el.querySelector('[data-x]').onclick = () => el.classList.remove('on'); }

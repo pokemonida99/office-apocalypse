@@ -1,6 +1,6 @@
 // 特效與音效：飄字、彩帶、光柱、地面衝擊波、彈出放大、合成音效
 import * as THREE from 'three';
-import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.7.0';
+import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.7.1';
 
 const fxList = [];   // 每個特效自己有 update(dt) 回傳 false 就移除
 export function updateFx(dt) { for (let i = fxList.length - 1; i >= 0; i--) if (!fxList[i](dt)) fxList.splice(i, 1); }
@@ -160,13 +160,65 @@ let ac = null, master = null;
 const MUTE_KEY = 'office-apocalypse-mute';
 let muted = false; try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch {}
 export const isMuted = () => muted;
-export function setMuted(m) { muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch {} if (master) master.gain.value = m ? 0 : 0.16; }
+export function setMuted(m) { muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch {} if (master) master.gain.value = m ? 0 : 0.16; music.apply(); }
 export function audioInit() {
-  if (ac) return; try {
+  if (ac) { if (ac.state === 'suspended' && !document.hidden) ac.resume(); return; } try {
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = muted ? 0 : 0.16; master.connect(ac.destination);
+    music.init();
   } catch { ac = null; }
 }
+// 切到別的 App／分頁：聲音整個暫停，回來再接著放
+document.addEventListener('visibilitychange', () => { if (!ac) return; document.hidden ? ac.suspend() : ac.resume(); });
+
+// ---------- 背景音樂（使用者用 Suno 做的，audio/*.m4a） ----------
+// 每首解碼一次；循環時尾巴跟開頭交叉淡化（Suno 的歌結尾會收一個和弦，直接接回開頭很自然）
+// 換曲：舊的淡出、新的淡入。選單／小遊戲時壓小聲（duck），音量記在這台裝置
+const MUSIC_KEY = 'office-apocalypse-music';
+export const music = {
+  vol: (() => { try { const v = localStorage.getItem(MUSIC_KEY); return v == null ? 0.6 : +v; } catch { return 0.6; } })(),
+  gain: null, duckK: 1, bufs: {}, raw: {}, cur: null, want: null, timer: 0,
+  init() { this.gain = ac.createGain(); this.gain.connect(ac.destination); this.apply(); for (const n in this.raw) this.decode(n); if (this.want) this.play(this.want); },
+  level() { return muted ? 0 : this.vol * this.vol * 0.55 * this.duckK; },   // 平方：滑桿低的地方比較好調
+  apply(t = 0.25) { if (!this.gain) return; const g = this.gain.gain, now = ac.currentTime; g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(this.level(), now + t); },
+  setVol(v) { this.vol = v; try { localStorage.setItem(MUSIC_KEY, v); } catch {} this.apply(); },
+  duck(k, t = 0.4) { this.duckK = k; this.apply(t); },
+  // 先抓檔（不用等點擊），有 AudioContext 才解碼
+  load(name, url) { if (this.raw[name] || this.bufs[name]) return; this.raw[name] = fetch(url).then(r => r.arrayBuffer()); if (ac) this.decode(name); },
+  decode(name) {
+    const p = this.raw[name]; if (!p || this.bufs[name]) return;
+    this.bufs[name] = p.then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no)));   // 舊版 Safari 只吃 callback 寫法
+  },
+  play(name, xf = 1.2) {
+    this.want = name;
+    if (!ac || !this.bufs[name] || (this.cur && this.cur.name === name)) return;
+    this.bufs[name].then(buf => {
+      if (this.want !== name || (this.cur && this.cur.name === name)) return;
+      this.stop(xf);
+      this.cur = { name, buf, srcs: [], next: 0 };
+      this.loopFrom(this.cur, ac.currentTime + 0.05, xf);
+    }).catch(() => {});
+  },
+  // 從 when 開始放一遍；在結尾前 XF 秒排好下一遍，兩遍交疊淡化
+  loopFrom(c, when, fadeIn, XF = 0.8) {
+    if (this.cur !== c) return;
+    const src = ac.createBufferSource(), g = ac.createGain(), dur = c.buf.duration;
+    src.buffer = c.buf; src.connect(g); g.connect(this.gain);
+    g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(1, when + Math.max(0.05, fadeIn));
+    g.gain.setValueAtTime(1, when + dur - XF); g.gain.linearRampToValueAtTime(0.0001, when + dur);
+    src.start(when); src.stop(when + dur + 0.05);
+    c.srcs.push({ src, g }); if (c.srcs.length > 3) c.srcs.shift();
+    const nextAt = when + dur - XF;
+    clearTimeout(this.timer);
+    const wait = () => { if (this.cur !== c) return; if (ac.currentTime >= nextAt - 1.5) this.loopFrom(c, nextAt, XF, XF); else this.timer = setTimeout(wait, 500); };
+    this.timer = setTimeout(wait, 500);
+  },
+  stop(t = 1.0) {
+    const c = this.cur; if (!c) return; this.cur = null; clearTimeout(this.timer);
+    const now = ac.currentTime;
+    for (const { src, g } of c.srcs) { try { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); g.gain.linearRampToValueAtTime(0.0001, now + t); src.stop(now + t + 0.05); } catch {} }
+  },
+};
 function tone(freq, dur = 0.12, type = 'sine', vol = 1, when = 0, slide = 0) {
   if (!ac) return;
   const t0 = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
