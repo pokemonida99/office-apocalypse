@@ -100,6 +100,6 @@ export function install() {
   };
   B.allMax = () => Object.values(S).every(s => s.unlocked && s.lv >= s.def.levels.length - 1) && G.phone.lv >= 4 && Object.keys(G.hires).length >= 5;
   B.allDone = () => B.allMax() && G.state.finaleDone && G.shopItems().every(i => i.price == null) && G.state.q >= 4;
-  window.BOT = B; G.force = null;
+  window.BOT = B; G.force = null; G.autoTheater = true;   // 小劇場、獲得卡自動跳過（bot 不會點）
   return B;
 }

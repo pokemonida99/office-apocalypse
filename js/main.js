@@ -3,17 +3,19 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.3';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.3';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.3';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.3';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.3';
-import { CHANGES } from './changelog.js?v=0.7.3';
-import { makeIntro } from './intro.js?v=0.7.3';
-import { openCallGame } from './callgame.js?v=0.7.3';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.3';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.8.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.8.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.8.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.8.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.8.0';
+import { CHANGES } from './changelog.js?v=0.8.0';
+import { makeTheater } from './theater.js?v=0.8.0';
+import { yearScript, yearEndScript, themeOf } from './stories.js?v=0.8.0';
+import { makeIntro } from './intro.js?v=0.8.0';
+import { openCallGame } from './callgame.js?v=0.8.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.8.0';
 
-const VERSION = 'v0.7.3';
+const VERSION = 'v0.8.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -558,7 +560,7 @@ function setupPads() {
     if (s.def.unlock) addPad({
       kind: 'unlock', at: s.d.unlockPad, price: () => s.def.unlock, title: () => s.def.name,
       cond: s.d.need || (() => true), done: () => s.unlocked,
-      complete: () => { openShop(s); celebrate(at(), '解鎖！' + s.def.name, UNLOCK_SUB[s.type] || '', 1, SHOP_COLOR[s.type]); },
+      complete: () => { openShop(s); celebrate(at(), '解鎖！' + s.def.name, UNLOCK_SUB[s.type] || '', 1, SHOP_COLOR[s.type]); gainCard(s.def.name, UNLOCK_SUB[s.type], previewOf(s.type), at()); },
     });
     addPad({
       kind: 'upgrade', at: s.d.upPad, price: () => s.def.levels[Math.min(maxLv(s), s.lv + 1)].cost, title: () => s.def.levels[Math.min(maxLv(s), s.lv + 1)].title,
@@ -573,7 +575,7 @@ function setupPads() {
   addPad({
     kind: 'unlock', at: PHONE_DEF.unlockPad, price: () => STATIONS.phone.unlock, title: () => '電話總機',
     cond: () => shops.printer.unlocked, done: () => phone.unlocked,
-    complete: () => { openPhone(); celebrate(V(PHONE_DEF.desk[0], 0, PHONE_DEF.desk[1]), '解鎖！電話總機', '站到紫色框裡接電話，一通 $' + STATIONS.phone.levels[0].price, 1, '#7b5cff'); },
+    complete: () => { openPhone(); celebrate(V(PHONE_DEF.desk[0], 0, PHONE_DEF.desk[1]), '解鎖！電話總機', '站到紫色框裡接電話，一通 $' + STATIONS.phone.levels[0].price, 1, '#7b5cff'); gainCard('電話總機', '站到紫色框裡就會接電話', LOOKS.phone(0, {}).g, V(PHONE_DEF.desk[0], 0, PHONE_DEF.desk[1])); },
   });
   addPad({
     kind: 'upgrade', at: PHONE_DEF.upPad, price: () => STATIONS.phone.levels[Math.min(4, phone.lv + 1)].cost, title: () => STATIONS.phone.levels[Math.min(4, phone.lv + 1)].title,
@@ -582,10 +584,21 @@ function setupPads() {
   });
   for (const h of HIRES) addPad({
     kind: 'hire', at: h.at, price: () => h.price, title: () => h.name, cond: h.need, done: () => !!hires[h.id],
-    complete: () => { hire(h); },
+    complete: () => { hire(h); gainCard(h.name.replace(/（.*）/, ''), (HIRE_SUB[h.id] || '加入團隊！'), makeActor(kinds[h.kind] || kinds.npcF, 1).root, V(h.at[0], 0, h.at[1]), 1.9); },
   });
 }
 
+// 「獲得」卡（小劇場）：新設施／新夥伴的模型在框裡轉，「去看看」把鏡頭帶過去
+function previewOf(type) {
+  const fx = { puff: () => {}, sparkle: () => {} };
+  if (type === 'vending') return vendingLook(0, fx).g;
+  if (LOOKS[type]) return LOOKS[type](0, fx).g;
+  return stallLook(type, 0, fx).g;
+}
+function gainCard(name, desc, model, at, scale = 1.15) {
+  if (!theater) return;
+  theater.gain({ name, desc, model, scale, go: at && (() => { if (design.finale) return; camFocus = at.clone(); after(2.2, () => { if (!design.finale) camFocus = null; }); }) });
+}
 // ---------- 夥伴 ----------
 const HIRE_SUB = {
   worker: '幫忙搬咖啡', worker2: '幫忙搬文件',
@@ -1327,7 +1340,14 @@ function clearVisitors() {
 // ======================================================================
 const STAGE_AT = [-0.4, 2.1];
 let stage = null;
+// 尾牙：先演一段年度結尾小劇場，再上台
+let finaleScene = false;
 function startFinale() {
+  if (state.finaleDone || design.finale || finaleScene) return;
+  if (!theater || G.autoTheater) return beginFinale();
+  finaleScene = true; theater.play(yearEndScript(state.year)).then(() => { finaleScene = false; beginFinale(); });
+}
+function beginFinale() {
   if (state.finaleDone || design.finale) return;
   design.finale = true; clearVisitors();
   stage = stageLook(state.year); stage.g.position.set(STAGE_AT[0], 0, STAGE_AT[1]); scene.add(stage.g); popIn(stage.g, 1, 1.6);
@@ -1705,6 +1725,7 @@ function loadYear() {
   try { const y = JSON.parse(localStorage.getItem(YEAR_KEY)); if (y && y.year > 1) { state.year = y.year; state.yearBonus = y.bonus; } } catch {}
 }
 // ---------- 存檔面板：三格存檔＋往年回顧 ----------
+let theater = null;   // 小劇場（開機載完角色後建立）
 const YEAR_INFO = {
   1: ['破茶水間', '咖啡、影印、販賣機、員工餐廳、電話總機'],
   2: ['電梯與頂樓', '2F 辦公室、頂樓遊樂園，特助 Kevin 出現'],
@@ -1759,7 +1780,7 @@ function renderSaves(tab) {
     for (let n = 1; n <= Math.max(main + 1, 5); n++) {
       const [name, desc] = YEAR_INFO[n] || ['年度主題', '每年一個新規則（製作中）'], lock = n > main;
       h += `<div class="yr${lock ? ' lock' : ''}" data-n="${n}"><b>第 ${n} 年　${name}${n === 5 ? ' <span class="star">★</span>' : ''}</b><small>${lock ? '🔒 還沒玩到' : desc}</small>
-        ${lock ? '' : `<div class="a4row"><button class="a4btn" data-act="clip" data-n="${n}" ${n === 1 ? '' : 'disabled'}>▶ ${n === 1 ? '看短片' : '短片製作中'}</button><button class="a4btn main" data-act="replay" data-n="${n}">📖 回顧遊玩</button></div>`}</div>`;
+        ${lock ? '' : `<div class="a4row"><button class="a4btn" data-act="clip" data-n="${n}" ${n === 1 || yearScript(n) ? '' : 'disabled'}>▶ ${n === 1 || yearScript(n) ? '看短片' : '短片製作中'}</button><button class="a4btn main" data-act="replay" data-n="${n}">📖 回顧遊玩</button></div>`}</div>`;
     }
     body.innerHTML = h + '</div><p class="a4note">回顧遊玩：從那一年的開頭重玩（加成照那年算），不會覆蓋主線存檔，賺到的錢也不會帶回主線。</p>';
   }
@@ -1773,7 +1794,11 @@ function renderSaves(tab) {
     }
     else if (act === 'replay') startReplay(n);
     else if (act === 'endReplay') endReplay();
-    else if (act === 'clip') { savesEl.classList.remove('on'); playIntro(state.started ? null : showCover); }
+    else if (act === 'clip') {
+      savesEl.classList.remove('on');
+      if (n === 1) playIntro(state.started ? null : showCover);
+      else { const cover = document.getElementById('cover'), onCover = !state.started; if (onCover) cover.style.display = 'none'; theater.play(yearScript(n, { bonus: 1 + (n - 1) * 0.25 })).then(() => { if (onCover) showCover(); }); }
+    }
   });
 }
 document.getElementById('tabSlots').onclick = () => renderSaves('slots');
@@ -1899,6 +1924,7 @@ function frame(now) {
     const p = player ? player.actor.root.position : V(L.start[0], 0, L.start[1]);
     updateCamera(camFocus || camFocusOf(p), dt);
     render();
+    if (theater?.active) theater.update(dt, now / 1000);   // 小劇場：畫在紙框挖空那一塊
   } catch (err) { console.error(err); }
 }
 
@@ -1926,10 +1952,11 @@ const G = window.G = {
     const p = player.actor.root.position;
     updateCamera(G.camAt ? V(G.camAt[0], 0, G.camAt[1]) : camFocus || camFocusOf(p), dt);
     render();
+    if (theater?.active) theater.update(dt, state.t);
   },
   playCall: () => miBtn.onclick(),
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
-  get water() { return water; }, WATER, music,
+  get water() { return water; }, WATER, music, get theater() { return theater; }, yearScript, autoTheater: false,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
@@ -1942,7 +1969,10 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
-  music.load('title', 'audio/bgm_title.m4a?v=0.7.3'); music.load('office', 'audio/bgm_office.m4a?v=0.7.3'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  theater = makeTheater({ THREE, renderer, kinds, makeActor, updateActor, addJog, rbox, canvasTex, sfx,
+    onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
+    onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
+  music.load('title', 'audio/bgm_title.m4a?v=0.8.0'); music.load('office', 'audio/bgm_office.m4a?v=0.8.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
@@ -1982,7 +2012,11 @@ const G = window.G = {
   const startGame = () => {
     document.getElementById('cover').style.display = 'none'; state.started = true; music.play('office');
     if (REPLAY && !loaded) banner(`📼 往年回顧：第 ${state.year} 年`, '不會覆蓋主線存檔', 0, '#142b45');
-    else if (state.year > 1 && !loaded) banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
+    else if (state.year > 1 && !loaded) {   // 新年度：先演開場小劇場（今年哪裡不一樣），再出加成橫幅
+      const sc = yearScript(state.year, { bonus: state.yearBonus });
+      const bn = () => banner(`🏢 第 ${state.year} 年：新辦公室！`, `所有收入永久 ×${state.yearBonus.toFixed(2)}` + (state.year >= 3 ? '　兩個工讀生直接報到' : ''), 0, '#2fb27a');
+      if (sc && theater) theater.play(sc).then(bn); else bn();
+    }
     else if (!loaded && location.hash !== '#play') talk(JIE ? JIE_INTRO : INTRO);   // 第一次玩：打招呼、說明玩法
   };
   btn.onclick = () => {   // 打卡：蓋章 → 第一次播片頭（這一下也解鎖音效）→ 開工
