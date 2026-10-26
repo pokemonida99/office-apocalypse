@@ -3,17 +3,17 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.2';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.2';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.2';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.2';
-import { CHANGES } from './changelog.js?v=0.7.2';
-import { makeIntro } from './intro.js?v=0.7.2';
-import { openCallGame } from './callgame.js?v=0.7.2';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.2';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.7.3';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.7.3';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.7.3';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.7.3';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.7.3';
+import { CHANGES } from './changelog.js?v=0.7.3';
+import { makeIntro } from './intro.js?v=0.7.3';
+import { openCallGame } from './callgame.js?v=0.7.3';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, setRoomTex, roomShell } from './floors.js?v=0.7.3';
 
-const VERSION = 'v0.7.2';
+const VERSION = 'v0.7.3';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -399,11 +399,7 @@ function pay(s, c) {
 }
 
 // ---------- 電話總機 ----------
-const ringTex = canvasTex(128, 128, (g, W) => {
-  g.fillStyle = '#ff3b5c'; g.beginPath(); g.arc(W / 2, W / 2, 56, 0, 7); g.fill();
-  g.lineWidth = 8; g.strokeStyle = '#fff'; g.stroke();
-  g.fillStyle = '#fff'; g.font = `900 64px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☎', W / 2, W / 2 + 4);
-});
+// 主遊戲的電話完全不提醒（不響鈴、不冒紅泡泡、話筒不抖、底下不提示），站進紫框就會接；要玩反應的去小米的接電話挑戰
 function openPhone() {
   phone.unlocked = true;
   const [x, z] = PHONE_DEF.desk;
@@ -421,8 +417,7 @@ function setPhoneLook(lv, fancy = true) {
   const old = phone.lines; phone.lines = [];
   for (let i = 0; i < n; i++) {
     const keep = old[i];
-    const bub = keep?.bub || (() => { const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, transparent: true, depthTest: false })); b.scale.set(0.42, 0.42, 1); b.renderOrder = 9; scene.add(b); return b; })();
-    phone.lines.push({ ringing: keep?.ringing || false, t: keep ? keep.t : 1 + Math.random() * 2, bub });
+    phone.lines.push({ ringing: keep?.ringing || false, t: keep ? keep.t : 1 + Math.random() * 2 });
   }
   if (lv >= 3) {   // 第 4、5 階：小米有自己的辦公室
     const O = MI_OFFICE;
@@ -439,28 +434,19 @@ function setPhoneLook(lv, fancy = true) {
 function updatePhone(dt) {
   if (!phone.unlocked) return;
   const P = STATIONS.phone.levels[phone.lv];
-  phone.lines.forEach((ln, i) => {
-    const ph = phone.look.phones[i];
-    if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) ln.ringing = true; }   // 不放響鈴聲（使用者覺得吵），看紅色泡泡就好
-    const wp = ph.g.getWorldPosition(V());
-    ln.bub.visible = ln.ringing;
-    if (ln.ringing) {
-      ph.hand.position.y = 0.09 + Math.abs(Math.sin(state.t * 22 + i)) * 0.05; ph.hand.rotation.z = Math.sin(state.t * 30 + i) * 0.25;
-      ln.bub.position.set(wp.x, 1.25 + Math.sin(state.t * 6 + i) * 0.05, wp.z); ln.bub.material.rotation = Math.sin(state.t * 14 + i) * 0.15;
-    } else { ph.hand.position.y = 0.09; ph.hand.rotation.z = 0; }
-  });
+  phone.lines.forEach((ln) => { if (!ln.ringing) { ln.t -= dt; if (ln.t <= 0) ln.ringing = true; } });   // 有人打來，但畫面上不提醒
   // 誰在接電話：小葵站在框裡，或小米坐鎮
   phone.answerT += dt;
   const near = (a) => Math.hypot(a.root.position.x - PHONE_DEF.zone[0], a.root.position.z - PHONE_DEF.zone[1]) < 0.9;
   const kuiOn = player && near(player.actor), miOn = hires.mi && near(hires.mi.actor);
   const every = kuiOn ? CFG.answerEvery : (miOn ? CFG.miAnswerEvery : Infinity);
   if (phone.answerT >= every) {
-    const ln = phone.lines.find(l => l.ringing);
+    const i = phone.lines.findIndex(l => l.ringing), ln = phone.lines[i];
     if (ln) {
       phone.answerT = 0; ln.ringing = false; ln.t = P.ringEvery * (0.6 + Math.random() * 0.8);
       const val = Math.round(P.price * state.yearBonus * (rushOn() ? 2 : 1)); state.stats.calls++;
       addMoney(val);
-      floatText(ln.bub.position.clone().setY(1.5), '+$' + val, '#7b5cff', 0.8);
+      floatText(phone.look.phones[i].g.getWorldPosition(V()).setY(1.5), '+$' + val, '#7b5cff', 0.8);
       sfx.answer(); if (kuiOn) gainXp(1);
     }
   }
@@ -739,7 +725,7 @@ const JIE_INTRO = [
 // 換角色：先存檔，網址換成另一個模式（#jie／沒有）後重新載入，直接開工
 const GO_KEY = 'office-apocalypse-go';
 function swapMode() {
-  save(); try { sessionStorage.setItem(GO_KEY, '1'); } catch {}
+  save(); try { sessionStorage.setItem(GO_KEY, '1'); sessionStorage.setItem('office-apocalypse-skip-splash', '1'); } catch {}
   history.replaceState(null, '', location.pathname + (JIE ? '' : '#jie')); location.reload();
 }
 function talk(lines, done) {
@@ -844,7 +830,6 @@ function updateGuide() {
   const open = Object.values(shops).filter(s => s.unlocked);
   const cashShop = open.filter(s => s.cash.length).sort((a, b) => dist(a.d.cash) - dist(b.d.cash))[0];
   const padReady = pads.filter(p => p.shown && (p.floor || 'f1') === state.floor && state.money >= p.price() - p.paid).sort((a, b) => a.price() - b.price())[0];
-  const ringing = phone.unlocked && !hires.mi && phone.lines.some(l => l.ringing);
   if (kevin && kevin.phase !== 'flee') { const k = kevin.a.root.position; at = state.floor === 'f1' ? [k.x, k.z] : elevAt(); text = state.floor === 'f1' ? '👊 快去揍 Kevin，叫他滾！' : '👊 Kevin 在 1F 鬧事！快搭電梯下去'; }   // 最優先
   else if (cai && !cai.leaving && state.floor !== 'f1') { at = elevAt(); text = '🧧 黑財神在 1F 撒錢！快搭電梯下去'; }
   else if (state.floor !== 'f1') [at, text] = floorGuide();
@@ -855,7 +840,6 @@ function updateGuide() {
   else if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
-  else if (ringing && phone.lines.filter(l => l.ringing).length >= 2) { at = PHONE_DEF.zone; text = '電話響了！去接電話'; }
   else {
     // 櫃台快沒貨的優先補
     const s = open.filter(s => !isLine(s) && s.tray.length).sort((a, b) => (a.stack.length - b.stack.length) || (b.tray.length - a.tray.length))[0];
@@ -1735,7 +1719,8 @@ function slotInfo(n, jie = false) {
   return { year: y?.year || 1, q: d?.q || 0, rank: d?.rank || 0, money: d?.money || 0, at: d?.at || 0 };
 }
 const savesEl = document.getElementById('saves');
-function goReload(hash = '') { save(); noSave = true; history.replaceState(null, '', location.pathname + hash); location.reload(); }
+const SKIP_SPLASH = 'office-apocalypse-skip-splash';   // 遊戲裡重新載入（換存檔、回標題、換角色）不再看 START
+function goReload(hash = '') { save(); noSave = true; try { sessionStorage.setItem(SKIP_SPLASH, '1'); } catch {} history.replaceState(null, '', location.pathname + hash); location.reload(); }
 function switchSlot(n) { try { localStorage.setItem(SLOT_KEY, n); sessionStorage.removeItem(REPLAY_KEY); } catch {} goReload(); }
 function startReplay(y) {
   try {
@@ -1897,10 +1882,7 @@ function menuAction(k) {
   else if (k === 'endReplay') endReplay();
   else if (k === 'swap') swapMode();
   else if (k === 'move') { closeMenu(); moveBtn.click(); }
-  else if (k === 'title') {   // 存好檔重新載入回到封面（封面的「繼續上班」接著玩）
-    save(); noSave = true;
-    history.replaceState(null, '', location.pathname + (JIE ? '#jie' : '')); location.reload();
-  }
+  else if (k === 'title') goReload(JIE ? '#jie' : '');   // 存好檔重新載入回到封面（封面的「打卡上班」接著玩）
 }
 document.getElementById('menuBtn').onclick = (e) => { e.stopPropagation(); openMenu(); };
 menuEl.onpointerdown = (e) => { if (e.target === menuEl) closeMenu(); };   // 點外面＝繼續
@@ -1960,7 +1942,7 @@ const G = window.G = {
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
-  music.load('title', 'audio/bgm_title.m4a?v=0.7.2'); music.load('office', 'audio/bgm_office.m4a?v=0.7.2'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.7.3'); music.load('office', 'audio/bgm_office.m4a?v=0.7.3'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）
@@ -2026,7 +2008,19 @@ const G = window.G = {
   swap.textContent = JIE ? '🌻 換小葵' : '😎 換阿傑老鳥'; swap.onclick = swapMode; swap.disabled = !!REPLAY;
   swapHud.textContent = JIE ? '💾 存檔離開・換小葵' : '😎 換阿傑'; swapHud.onclick = swapMode;
   let go = false; try { go = sessionStorage.getItem(GO_KEY) === '1'; sessionStorage.removeItem(GO_KEY); } catch {}
-  if (location.hash === '#play' || go) startGame();
-  else if (location.hash.includes('intro')) playIntro(showCover);   // 錄片頭用：網址 #intro 直接播
+  // 開場 START：第一次開才有；點了才進標題（識別證掉下來），這一下也解鎖音效、開始放標題曲
+  const splash = document.getElementById('splash'), splashBtn = document.getElementById('splashBtn');
+  let skipSplash = false; try { skipSplash = sessionStorage.getItem(SKIP_SPLASH) === '1'; sessionStorage.removeItem(SKIP_SPLASH); } catch {}
+  const enterTitle = (anim = true) => {
+    splash.classList.add('out'); setTimeout(() => { splash.style.display = 'none'; }, 460);
+    const c = document.getElementById('cover'); c.classList.remove('enter'); void c.offsetWidth; if (anim) { c.classList.add('enter'); setTimeout(() => sfx.drop?.(), 700); }
+  };
+  if (location.hash === '#play' || go) { splash.style.display = 'none'; startGame(); }
+  else if (location.hash.includes('intro')) { splash.style.display = 'none'; playIntro(showCover); }   // 錄片頭用：網址 #intro 直接播
+  else if (skipSplash) enterTitle(false);
+  else {
+    splashBtn.disabled = false; splashBtn.textContent = '▶ START'; document.getElementById('splashTip').textContent = '點一下開始上班';
+    splash.onclick = () => { audioInit(); sfx.pick?.(); enterTitle(); };
+  }
 })();
 requestAnimationFrame(frame);

@@ -1,8 +1,8 @@
 /* 上班啟示錄 UI（v0.7）：A＝員工證／打卡鐘（骨架、數據、面板）、B＝綜藝字卡（事件瞬間）、C＝手帳（故事收藏）
    跟 GPT 討論後的定案：米白紙＋藏青墨＋警示紅，字用 Noto Sans TC（子集，tools/build_font.py）＋Bungee 數字
    這支檔案蓋在 index.html 原本的樣式上面：版面位置沿用，外觀換掉 */
-@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.7.2) format('woff2'); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.7.2) format('woff2'); font-display: swap; }
+@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.7.3) format('woff2'); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.7.3) format('woff2'); font-display: swap; }
 :root {
   --paper: #f5e7c8; --paper2: #fffdf8; --kraft: #e9c98f; --ink: #142b45; --ink2: #2c4566;
   --gold: #ffc343; --red: #ef443c; --green: #32b95a; --pink: #ff3d6e; --line: #e3d2b2;
@@ -15,6 +15,26 @@ html, body, button { font-family: var(--sans); }
 
 /* ================= 標題：掛著吊繩的員工識別證 ＋ 打卡上班 ================= */
 #cover { background: var(--paper) var(--grid); color: var(--ink); justify-content: flex-start; gap: 0; padding: calc(env(safe-area-inset-top) + 0px) 22px calc(env(safe-area-inset-bottom) + 18px); overflow: hidden auto; touch-action: pan-y; }
+/* ================= 開場 START ================= */
+#splash { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='M22 0H0v22' fill='none' stroke='%23ffffff10' stroke-width='1'/%3E%3C/svg%3E"); color: var(--paper); text-align: center; padding: 24px; transition: opacity .45s, transform .45s; }
+#splash.out { opacity: 0; transform: scale(1.06); pointer-events: none; }
+#splash .logo small { font: 400 11px var(--num); letter-spacing: 4px; color: #9fb1cf; }
+#splash h1 { margin: 10px 0 6px; font-size: min(17vw, 84px); font-weight: 900; color: var(--paper2); letter-spacing: 2px; text-shadow: 0 6px 0 var(--red); line-height: 1.05; }
+#splash .en { font: 400 14px var(--num); color: var(--gold); letter-spacing: 3px; }
+#splashBtn { min-width: 220px; min-height: 60px; border: 3px solid var(--paper2); border-radius: 16px; background: var(--red); color: #fff; font: 400 28px var(--num); letter-spacing: 3px; box-shadow: 0 6px 0 #0b1322; }
+#splashBtn:not(:disabled) { animation: splashBlink 1.1s ease-in-out infinite; }
+#splashBtn:disabled { background: transparent; border-color: #ffffff44; color: #9fb1cf; font-size: 18px; box-shadow: none; }
+@keyframes splashBlink { 50% { transform: scale(1.06); filter: brightness(1.15); } }
+#splash p { margin: 0; font-size: 13px; color: #9fb1cf; font-weight: 700; }
+/* 標題進場：識別證從上面掉下來、彈一下、晃幾下，按鈕依序滑上來 */
+#cover .badge { display: flex; flex-direction: column; align-items: center; flex: none; width: 100%; }
+#cover.enter .badge { animation: badgeDrop 1s cubic-bezier(.3, 1.3, .5, 1) both; }
+@keyframes badgeDrop { 0% { transform: translateY(-110vh); } 100% { transform: translateY(0); } }
+#cover.enter .idcard { animation: idSwingIn 1.8s .55s ease-out both, idSwing 3.2s 2.35s ease-in-out infinite; }
+@keyframes idSwingIn { 0% { transform: rotate(-2.5deg); } 15% { transform: rotate(-13deg); } 35% { transform: rotate(8deg); } 55% { transform: rotate(-7deg); } 75% { transform: rotate(2deg); } 100% { transform: rotate(-2.5deg); } }
+#cover.enter #start, #cover.enter .tabs, #cover.enter #coverVer { animation: coverUp .5s cubic-bezier(.3, 1.4, .5, 1) both; }
+#cover.enter #start { animation-delay: .8s; } #cover.enter .tabs { animation-delay: 1s; } #cover.enter #coverVer { animation-delay: 1.2s; }
+@keyframes coverUp { from { opacity: 0; transform: translateY(40px); } }
 #cover .lanyard { width: 46px; height: clamp(70px, 17vh, 170px); flex: none; background: repeating-linear-gradient(90deg, var(--ink) 0 6px, var(--ink2) 6px 12px); position: relative; }
 #cover .lanyard::after { content: 'A4 OFFICE · A4 OFFICE'; position: absolute; inset: 0; writing-mode: vertical-rl; color: var(--gold); font: 400 10px var(--num); letter-spacing: 3px; text-align: center; padding-top: 6px; overflow: hidden; }
 #cover .clip { width: 34px; height: 26px; margin-top: -4px; flex: none; background: linear-gradient(#e2e6ec, #9aa3ad); border-radius: 6px; box-shadow: 0 2px 0 #6f7882; z-index: 1; }

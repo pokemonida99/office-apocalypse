@@ -290,7 +290,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.7.2">
+<link rel="stylesheet" href="css/a4.css?v=0.7.3">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -343,15 +343,18 @@
   <div class="bubble"><span class="name">小葵</span><span id="talkTxt"></span><div class="dots" id="talkDots"></div><span class="next">點一下繼續 ▶</span></div>
 </div></div>
 <!-- 標題：掛著吊繩的員工識別證（v0.7 A 風格） -->
+<!-- 開場：START（點一下才進標題，順便解鎖音效） -->
+<div id="splash"><div class="logo"><small>A4 OFFICE PRESENTS</small><h1>上班啟示錄</h1><div class="en">OFFICE APOCALYPSE</div></div>
+  <button id="splashBtn" disabled>LOADING…</button><p id="splashTip">遊戲載入中，請稍等</p></div>
 <div id="cover">
-  <div class="lanyard"></div><div class="clip"></div>
+  <div class="badge"><div class="lanyard"></div><div class="clip"></div>
   <div class="idcard">
     <div class="hd"><b>員工識別證</b><span id="idNo">NO. A4-0001</span></div>
     <div class="bd"><div class="pic" id="idPic"></div><div class="info"><h1>上班<br>啟示錄</h1><div class="en">OFFICE APOCALYPSE</div>
       <dl><div><dt>姓名</dt><dd id="idName">小葵</dd></div><div><dt>職稱</dt><dd id="idRank">打雜實習生</dd></div><div><dt>到職</dt><dd id="idYear">第 1 年</dd></div></dl></div></div>
     <div class="barcode"></div>
     <div class="stamp" id="idStamp">今日<br>未打卡</div>
-  </div>
+  </div></div>
   <p id="coverTxt"></p>
   <button id="start" disabled><span class="clk">08:59</span><span class="tx"><b id="startTxt">載入中…</b><small id="startSub">新人小葵報到第一天</small></span></button>
   <div class="tabs">
@@ -411,6 +414,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.7.2"></script>
+<script type="module" src="js/main.js?v=0.7.3"></script>
 </body>
 </html>
