@@ -135,6 +135,16 @@
   #cover #coverCall:disabled { background: #c9bdf5; box-shadow: none; }
   #cover #qBtn { margin-top: -4px; background: #ffffffaa; color: #8a4b1f; box-shadow: none; font-size: 13px; padding: 5px 12px; }
   #reset { margin-top: 6px; background: none !important; box-shadow: none !important; color: #8a4b1f !important; font-size: 13px !important; padding: 4px 10px !important; text-decoration: underline; display: none; }
+  #menuBtn { position: absolute; left: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); pointer-events: auto; background: #2c3e57e6; color: #fff; border: 0; border-radius: 16px; font: inherit; font-size: 12px; font-weight: 900; padding: 6px 12px; box-shadow: 0 3px 0 #0003; }
+  #menu { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: #2c3e57aa; z-index: 7; padding: 18px; }
+  #menu.on { display: flex; }
+  #menu .card { background: #fffdf7; border-radius: 24px; padding: 18px 16px 16px; width: min(340px, 92vw); box-shadow: 0 10px 40px #0005; animation: talkIn .3s cubic-bezier(.2,1.4,.4,1); }
+  #menu h2 { margin: 0; text-align: center; color: #2c3e57; font-size: 22px; }
+  #menu .info { text-align: center; color: #7a8794; font-weight: 800; font-size: 12px; margin: 4px 0 10px; }
+  #menu button { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 14px; padding: 11px; font: inherit; font-weight: 900; font-size: 15px; background: #efeaff; color: #4f37c4; box-shadow: 0 3px 0 #c9bdf5; }
+  #menu button.main { background: #36c35d; color: #fff; box-shadow: 0 4px 0 #1f8a3c; font-size: 17px; }
+  #menu button.move { background: linear-gradient(90deg, #ff7a45, #ff4fa3); color: #fff; box-shadow: 0 3px 0 #b8381c; }
+  #menu button.out { background: #fff; color: #2c3e57; box-shadow: 0 3px 0 #0002; }
   #swapHud { position: absolute; right: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); pointer-events: auto; background: #ffffffe6; color: #2c3e57; border: 0; border-radius: 16px; font: inherit; font-size: 12px; font-weight: 900; padding: 6px 11px; box-shadow: 0 3px 0 #0002; }
   #cover #swap { display: none; font-size: 16px; padding: 9px 26px; background: #6b4cff; box-shadow: 0 5px 0 #4229b8; }
   #stick { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: #ffffff55; border: 3px solid #ffffffaa; display: none; pointer-events: none; z-index: 3; }
@@ -283,7 +293,7 @@
   <div id="banner"></div>
   <div id="year"><div class="row"><span id="yearTitle">第 1 年　Q1 業績</span><span id="yearNum">0 / 0</span></div><div class="bar"><i id="yearBar"></i></div><div class="qs"><b></b><b></b><b></b><b></b></div><button id="moveBtn"></button></div>
   <div id="chips"></div>
-  <button id="swapHud"></button>
+  <button id="menuBtn">⏸ 選單</button><button id="swapHud"></button>
   <button id="miBtn">🎮 小米的接電話挑戰</button>
 </div>
 <div id="elev"><h3><span>🛗 搭電梯</span><button id="elevX">✕</button></h3><div id="elevList"></div></div>
@@ -299,6 +309,7 @@
   <div class="levels"></div>
   <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="next">下一關 ▶</button><button class="again">再玩一次</button></div><div class="btns"><button class="pick">選關卡</button><button class="back">回去上班</button></div></div>
 </div></div>
+<div id="menu"><div class="card"><h2>⏸ 暫停</h2><div class="info" id="menuInfo"></div><div id="menuList"></div></div></div>
 <div id="moveAsk"><div class="card"><h2>🚚 搬到新辦公室？</h2><p id="moveTxt"></p><p class="big" id="moveBonus"></p><button class="go" id="moveGo">搬家！</button><button class="no" id="moveNo">再待一下</button></div></div>
 <div id="shop"><h3><span>🛒 採購部</span><button id="shopX">✕</button></h3><div id="shopList"></div></div>
 <div id="finale"><div class="card">
@@ -355,6 +366,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.6.3"></script>
+<script type="module" src="js/main.js?v=0.6.4"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // 特效與音效：飄字、彩帶、光柱、地面衝擊波、彈出放大、合成音效
 import * as THREE from 'three';
-import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.6.3';
+import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.6.4';
 
 const fxList = [];   // 每個特效自己有 update(dt) 回傳 false 就移除
 export function updateFx(dt) { for (let i = fxList.length - 1; i >= 0; i--) if (!fxList[i](dt)) fxList.splice(i, 1); }
@@ -156,10 +156,15 @@ export function banner(title, sub = '', stars = 0, color = '#ff7a45') {
 
 // ---------- 音效（WebAudio 合成，音量小） ----------
 let ac = null, master = null;
+// 靜音（選單切換，記在這台裝置上）
+const MUTE_KEY = 'office-apocalypse-mute';
+let muted = false; try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch {}
+export const isMuted = () => muted;
+export function setMuted(m) { muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch {} if (master) master.gain.value = m ? 0 : 0.16; }
 export function audioInit() {
   if (ac) return; try {
     ac = new (window.AudioContext || window.webkitAudioContext)();
-    master = ac.createGain(); master.gain.value = 0.16; master.connect(ac.destination);
+    master = ac.createGain(); master.gain.value = muted ? 0 : 0.16; master.connect(ac.destination);
   } catch { ac = null; }
 }
 function tone(freq, dur = 0.12, type = 'sine', vol = 1, when = 0, slide = 0) {
