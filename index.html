@@ -290,7 +290,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.10.0">
+<link rel="stylesheet" href="css/a4.css?v=0.13.0">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -327,6 +327,7 @@
   <div class="end"><h2>📞 小米的接電話挑戰</h2><div class="rows"></div><div class="btns"><button class="next">下一關 ▶</button><button class="again">再玩一次</button></div><div class="btns"><button class="pick">選關卡</button><button class="back">回去上班</button></div></div>
 </div></div>
 <div id="intro"></div>
+<div id="ending"></div>
 <!-- 小劇場（js/theater.js）：中間紙框小舞台＋頭像對話＋字卡／按鈕 -->
 <div id="theater"><div class="th-card">
   <div class="th-title"></div>
@@ -343,6 +344,7 @@
   <h2>🎉 尾牙 🎉</h2><div class="mvp" id="finMvp"></div>
   <div class="stats" id="finStats"></div>
   <button class="stay" id="finStay">繼續上班</button><button class="move" id="finMove">搬到新辦公室</button>
+  <button class="quit" id="finQuit">✉ 遞辭呈</button>
   <small id="finNote"></small>
 </div></div>
 <div id="stick"><div id="knob"></div></div>
@@ -393,7 +395,7 @@
 <!-- 存檔（三格）＋往年回顧 -->
 <div id="saves" class="a4sheet"><div class="card">
   <div class="a4label"><b id="savesTitle">🗂 存檔</b><button data-x>✕</button></div>
-  <div class="a4row"><button class="a4btn main" id="tabSlots">存檔</button><button class="a4btn" id="tabYears">往年回顧</button></div>
+  <div class="a4row"><button class="a4btn main" id="tabSlots">存檔</button><button class="a4btn" id="tabYears">往年回顧</button><button class="a4btn" id="tabEnds">結局</button></div>
   <div id="savesBody"></div>
 </div></div>
 <script>
@@ -423,6 +425,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.10.0"></script>
+<script type="module" src="js/main.js?v=0.13.0"></script>
 </body>
 </html>

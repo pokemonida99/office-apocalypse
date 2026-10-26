@@ -41,7 +41,7 @@ export function yearScript(year, ctx = {}) {
   if (year === 4) return {
     title: '第 4 年　新部門報到',
     wall: 0xeef4ff,
-    cast: { kui: { x: -2.2 }, cha: { x: -0.6 }, qiang: { x: 0.6 }, senpai: { x: 1.9 } },
+    cast: { kui: { x: -1.7 }, cha: { x: -0.55 }, qiang: { x: 0.55 }, senpai: { x: 1.7 } },
     steps: [
       { who: 'kui', face: 'happy', text: '今年來了新部門！大家好～', act: [['emote', 'kui', '👋']] },
       { who: 'cha', face: 'happy', text: '阿強～這箱好重喔，你幫人家搬好不好？', act: [['face', 'cha', 'right'], ['emote', 'cha', '💕']] },
@@ -78,7 +78,7 @@ export function yearScript(year, ctx = {}) {
       trip: [{ who: 'vivi', face: 'happy', text: '今年員工旅遊！頂樓直接變海灘～', act: [['emote', 'vivi', '🏖️']] }, { who: 'kui', face: 'happy', text: '那我們還要上班嗎？', act: [['jump', 'kui']] }],
       night: [{ who: 'kui', face: 'tired', text: '今年……是不是都沒下班過？', act: [['emote', 'kui', '🌙']] }, { who: 'jie', face: 'tired', text: '泡麵跟咖啡賣得特別好，你說呢。' }],
     })[th.id],
-    card: { title: `第 ${year} 年哪裡不一樣`, items: [`${th.icon} 年度主題：${th.name}`, th.desc, `🏢 ${bonus}`] },
+    card: { title: `第 ${year} 年哪裡不一樣`, items: [`${th.icon} 年度主題：${th.name}`, th.desc, year === 10 ? '✉️ 今年尾牙可以「遞辭呈」，看結局二' : `🏢 ${bonus}`] },
   };
   return null;
 }
@@ -97,3 +97,22 @@ export function yearEndScript(year) {
     ],
   };
 }
+
+// ---------- 離職結局（第 5 年、第 10 年尾牙「遞辭呈」）：寫實劇照＋小葵的旁白，主角是小葵，阿傑稍微帶到 ----------
+// 劇照用 GPT 照《我想離職》系列的小葵、阿傑參考照畫（art/ending/*.webp）。用阿傑或小葵過關都看同一個結局
+export const ENDINGS = {
+  dream: { no: 1, year: 5, title: '結局一　追夢', icon: '✈️', shots: [
+    ['e5_1', '第五年的某個晚上，我又在辦公室待到很晚。桌上那份國外設計學校的簡章，我已經看了好幾遍。'],
+    ['e5_2', '隔天早上，我把信封放在老闆桌上。手有點抖，但心裡很清楚。'],
+    ['e5_3', '收東西的時候，螢幕上貼滿了大家的便利貼。「加油！」「要回來看我們喔！」'],
+    ['e5_4', '出發那天，機場好亮。原來離開，也可以是往前走。'],
+    ['e5_5', '在新的城市，我每天都在畫畫。那些在茶水間搬咖啡的日子，好像都變成了養分。'],
+    ['e5_6', '聽說阿傑也開了自己的工作室。我們偶爾視訊，他還是老樣子，嘴上說不累。'],
+  ] },
+  studio: { no: 2, year: 10, title: '結局二　自己的工作室', icon: '🏠', shots: [
+    ['e10_1', '第十年，我終於開了自己的工作室。剪綵那天，好多熟悉的臉都來了。'],
+    ['e10_2', '現在換我帶新人了。看著他們手忙腳亂，就想起當年抱著水桶衝刺的自己。'],
+    ['e10_3', '阿傑升上了部門經理。他說：「你走了，設計部總要有人撐著。」'],
+  ] },
+};
+export const endingOfYear = (y) => Object.entries(ENDINGS).find(([, e]) => e.year === y)?.[0] || null;

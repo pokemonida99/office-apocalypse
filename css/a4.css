@@ -1,8 +1,8 @@
 /* 上班啟示錄 UI（v0.7）：A＝員工證／打卡鐘（骨架、數據、面板）、B＝綜藝字卡（事件瞬間）、C＝手帳（故事收藏）
    跟 GPT 討論後的定案：米白紙＋藏青墨＋警示紅，字用 Noto Sans TC（子集，tools/build_font.py）＋Bungee 數字
    這支檔案蓋在 index.html 原本的樣式上面：版面位置沿用，外觀換掉 */
-@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.10.0) format('woff2'); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.10.0) format('woff2'); font-display: swap; }
+@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.13.0) format('woff2'); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.13.0) format('woff2'); font-display: swap; }
 :root {
   --paper: #f5e7c8; --paper2: #fffdf8; --kraft: #e9c98f; --ink: #142b45; --ink2: #2c4566;
   --gold: #ffc343; --red: #ef443c; --green: #32b95a; --pink: #ff3d6e; --line: #e3d2b2;
@@ -37,6 +37,34 @@ html, body, button { font-family: var(--sans); }
 #theater .th-skip { position: absolute; z-index: 3; right: 6px; top: 6px; border: 0; border-radius: 10px; background: #ffffffd9; color: var(--ink); font: 900 12px var(--sans); padding: 6px 10px; box-shadow: 0 0 0 2px var(--ink); }
 #theater.gain .th-skip { display: none; }
 
+/* ================= C：離職結局（手帳：方格紙＋紙膠帶劇照＋旁白） ================= */
+#ending { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; background: #fbf8f1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M20 0H0v20' fill='none' stroke='%23dfe9f2' stroke-width='1'/%3E%3C/svg%3E"); padding: 18px; }
+#ending.on { display: flex; }
+#ending::before { content: ''; position: absolute; left: 26px; top: 0; bottom: 0; border-left: 2px solid #f4a7a7; }
+#ending .en-page { position: relative; width: min(460px, 100%); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+#ending .en-head { font-size: 18px; font-weight: 900; color: #3a3a3a; background: linear-gradient(transparent 55%, #ffe36e 55% 90%, transparent 90%); padding: 0 6px; }
+#ending .en-photo { position: relative; width: 100%; background: #fff; padding: 10px 10px 12px; box-shadow: 0 10px 24px #0002; transition: transform .3s; }
+#ending .en-photo.in { animation: enIn .45s cubic-bezier(.2,1.3,.4,1); } @keyframes enIn { from { opacity: 0; transform: translateY(24px) rotate(-6deg) scale(.94); } }
+#ending .en-photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #eee; }
+#ending .tape { position: absolute; width: 90px; height: 26px; background: #ffd27acc; top: -12px; z-index: 1; } #ending .tape.a { left: -14px; transform: rotate(-28deg); } #ending .tape.b { right: -14px; transform: rotate(24deg); background: #9fd9d4cc; }
+#ending .en-text { margin: 0; min-height: 84px; width: 100%; background: #fffdf8; border: 2px dashed #e07a3a; border-radius: 6px; padding: 12px 14px; font-size: 16px; font-weight: 700; line-height: 1.7; color: #333; }
+#ending .en-next { font-size: 12px; color: #e07a3a; font-weight: 800; animation: blink 1s infinite; }
+#ending .en-skip { position: absolute; right: 0; top: -6px; border: 0; border-radius: 10px; background: #fff; color: #555; font: 800 12px var(--sans); padding: 6px 10px; box-shadow: 0 2px 6px #0002; }
+#ending .en-btns { display: flex; gap: 10px; width: 100%; } #ending .en-btns:empty { display: none; } #ending .en-btns .a4btn { flex: 1; margin-top: 0; }
+#ending .en-photo.card { aspect-ratio: auto; } #ending .en-card { aspect-ratio: 4 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #fffaf0; position: relative; }
+#ending .en-card b { font-size: 56px; } #ending .en-card h2 { margin: 0; font-size: 26px; color: #2b2b2b; }
+#ending .en-stamp { position: absolute; right: 14px; bottom: 14px; width: 86px; height: 86px; border: 4px solid var(--red); border-radius: 50%; color: var(--red); display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 900; font-size: 15px; line-height: 1.15; transform: rotate(14deg); }
+#finale .quit { background: #fff; color: var(--red); border: 2px dashed var(--red); box-shadow: none; display: none; }
+/* 存檔面板的結局收藏 */
+.endc { display: flex; gap: 12px; align-items: center; margin-top: 12px; background: var(--paper2); border-radius: 12px; padding: 10px; box-shadow: 0 0 0 2px var(--ink), 0 3px 0 var(--ink); }
+.endc img, .endc .lockimg { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; flex: none; background: #d9ccb4; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.endc .tx { flex: 1; } .endc b { display: block; font-size: 16px; } .endc small { color: #6b5a40; font-weight: 700; font-size: 12px; }
+.endc .a4btn { width: auto; margin-top: 6px; min-height: 36px; padding: 4px 12px; font-size: 13px; }
+
+/* 颱風季：畫面上的雨；加班地獄：夜色 */
+body.rain::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1; background: repeating-linear-gradient(105deg, transparent 0 18px, #9fc4e655 18px 19px); background-size: 200% 200%; animation: rainFall .5s linear infinite; mix-blend-mode: multiply; }
+@keyframes rainFall { to { background-position: -40px 120px; } }
+body.night { background: #1d2540; }
 /* ================= 開場 START ================= */
 #splash { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cpath d='M22 0H0v22' fill='none' stroke='%23ffffff10' stroke-width='1'/%3E%3C/svg%3E"); color: var(--paper); text-align: center; padding: 24px; transition: opacity .45s, transform .45s; }
 #splash.out { opacity: 0; transform: scale(1.06); pointer-events: none; }
