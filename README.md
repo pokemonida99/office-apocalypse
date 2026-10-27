@@ -101,6 +101,7 @@
 - 測試頁：`gait.html`（走路動作比較）、`viewer.html`（模型預覽）、`walk.html`（帶隊走路）。
 - 自動玩到滿級（在遊戲頁主控台）：`const b = (await import('./tools/bot.js?' + Date.now())).install(); while (!b.allMax()) b.run(10)`（約 750 遊戲秒全滿、含尾牙與全部採購）；網址加 `?fresh` 會清掉存檔從頭開始
 - 表情頭像：GPT 畫 3×2 表情表放 work/gpt/expr/，`python3 tools/cut_expr.py` 切成 `icons/expr/<角色>_<表情>.webp`；結局劇照放 work/gpt/ending/，`python3 tools/ending_webp.py` 轉成 `art/ending/*.webp`。
+- 連結縮圖（貼文預覽圖）：GPT 畫的主視覺 work/og/og_raw.png（提示詞 work/jobs/og_card.prompt）＋`python3 tools/make_og.py` 加標題 → `og.jpg`（1200×630），index.html 的 og:image 指向它。
 - 主畫面圖示：GPT 畫的原圖放 work/icons/，`tools/make_icons.sh` 裁成 180／192／512 並產生 `icons/manifest-<角色>.json`。
 - 離線：`sw.js`（service worker）只在 github.io 或網址加 `?sw` 時啟用；發新版要一起改 sw.js 的 VERSION。
 - 模型用 gltf-transform 壓縮（meshopt＋webp 1024）；載入時會自動量每個角色不滑步的步伐速度。
