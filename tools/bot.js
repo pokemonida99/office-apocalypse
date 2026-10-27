@@ -30,6 +30,15 @@ export function install() {
     }
     if (G.kevin && G.kevin.phase !== 'flee') { const k = G.kevin.a.root.position; return [k.x, k.z]; }   // Kevin 來鬧事：先去揍他
     if (G.ga && G.ga.breaks.some(b => !b.reported)) return G.GA_ZONE;   // 機器壞了：先去總務部報修
+    if (G.back && G.back.on && !p.carry.length) {   // 後門：垃圾車來了先丟垃圾；頂著原料箱就送去；早餐街快沒料就去搬
+      const pos = p.actor.root.position, held = p.head?.kind === 'bag' ? p.head.list.length : 0;
+      if (G.back.truck && (held || G.bagsLeft())) {
+        const s = G.northShops().filter(s => s.bags.length).sort((a, b) => Math.hypot(G.bagAt(a)[0] - pos.x, G.bagAt(a)[1] - pos.z) - Math.hypot(G.bagAt(b)[0] - pos.x, G.bagAt(b)[1] - pos.z))[0];
+        return held && (held >= G.BACK.bagCarry || !s) ? G.BACK.truckZone : G.bagAt(s);
+      }
+      if (p.head?.kind === 'box') { const s = G.boxTaker(); return s ? s.pickup : G.BACK.palletZone; }
+      if (!p.head && !p.jug && G.northShops().some(s => s.stock < G.BACK.cap * 0.25)) return G.BACK.palletZone;
+    }
     if (p.carry.length) return shopOf(p.type).d.drop;
     if (B.pad && B.pad.shown && G.state.money > 0) return B.pad.at;   // 選定的格子就付到完
     B.pad = pad || null;

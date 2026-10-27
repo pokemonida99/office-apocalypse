@@ -3,21 +3,21 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.0';
-import { CHANGES } from './changelog.js?v=0.18.0';
-import { makeTheater } from './theater.js?v=0.18.0';
-import { makeDeco } from './deco.js?v=0.18.0';
-import { makeEnding, seenEndings } from './ending.js?v=0.18.0';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.0';
-import { makeIntro } from './intro.js?v=0.18.0';
-import { openCallGame } from './callgame.js?v=0.18.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.1';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.1';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.1';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.1';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.1';
+import { CHANGES } from './changelog.js?v=0.18.1';
+import { makeTheater } from './theater.js?v=0.18.1';
+import { makeDeco } from './deco.js?v=0.18.1';
+import { makeEnding, seenEndings } from './ending.js?v=0.18.1';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.1';
+import { makeIntro } from './intro.js?v=0.18.1';
+import { openCallGame } from './callgame.js?v=0.18.1';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.1';
 
-const VERSION = 'v0.18.0';
+const VERSION = 'v0.18.1';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -250,7 +250,7 @@ function makeShop(type) {
   const src = d.machine || d.source;
   const pickup = d.pickup || [src[0], src[1] + 1.55];
   const pile = d.machine ? V(src[0], 0, src[1] + 0.9) : V(src[0] + (pickup[0] - src[0]) * 0.5, 0, src[1] + (pickup[1] - src[1]) * 0.5);
-  const s = { type, d, def, item: def.item, lv: 0, unlocked: !def.unlock, src, pickup, pile, tray: [], stack: [], cash: [], queue: [], crowd: [], timer: 0, serveT: 0, spawnT: 0, spawnN: 0, beltItems: [], belt: null, look: null, stall: null, badge: null };
+  const s = { type, d, def, item: def.item, lv: 0, unlocked: !def.unlock, stock: d.north ? BACK.cap : 0, bags: [], soldN: 0, stink: false, src, pickup, pile, tray: [], stack: [], cash: [], queue: [], crowd: [], timer: 0, serveT: 0, spawnT: 0, spawnN: 0, beltItems: [], belt: null, look: null, stall: null, badge: null };
   shops[type] = s;
   if (s.unlocked) openShop(s, false);
   return s;
@@ -302,7 +302,7 @@ function produce(s, dt) {
   const Lv = s.def.levels[s.lv];
   s.look.tick(dt, state.t, s.look.g.position);
   s.stall.tick(dt, state.t, s.stall.g.position);
-  if (!s.broken) s.timer += dt;   // 機器故障：停止出貨（總務部修好才會動）
+  if (!s.broken && !(s.d.north && s.stock <= 0)) s.timer += dt;   // 機器故障：停止出貨（總務部修好才會動）；早餐街缺料也停
   if (Lv.line) {
     // 產線：直接做到輸送帶上，送到櫃台
     if (s.timer >= Lv.brew && s.stack.length + s.beltItems.length < 40) {
@@ -318,7 +318,7 @@ function produce(s, dt) {
     }
   } else if (s.timer >= Lv.brew && s.tray.length < Lv.tray) {
     s.timer = 0;
-    const m = makeItem(s.item);
+    const m = makeItem(s.item); if (s.d.north) s.stock--;
     s.look.g.updateMatrixWorld(); m.position.copy(s.look.g.localToWorld(s.look.out.clone()));
     s.tray.push(m); squash(s.look.g, 0.05);
     track(m, () => V(s.pile.x, ITEM_H[s.item] / 2 + 0.01 + s.tray.indexOf(m) * ITEM_H[s.item], s.pile.z));
@@ -399,6 +399,8 @@ function updateCustomers(s, dt) {
 function pay(s, c) {
   s.queue.shift(); c.mode = 'leave'; state.served++; state.stats[s.item] += c.want;
   let total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1) * (THEME?.id === 'night' && ['coffee', 'beef', 'chicken', 'fish'].includes(s.type) ? 1.3 : 1));   // 加班地獄：咖啡、便當 ×1.3
+  if (s.stink) total = Math.round(total * BACK.stink);   // 垃圾沒丟：攤位臭掉
+  if (s.d.north) { s.soldN += c.want; while (s.soldN >= BACK.bagEvery) { s.soldN -= BACK.bagEvery; addBag(s); } }
   if (c.vip) vipPaid(s, c, total);
   if (c.complain) { total *= 2; floatText(c.actor.root.position.clone().setY(2.0), `客訴變好評！付款 ×2`, '#22a447', 1.1); sfx.upgrade(); }
   if (magnetMax()) { addMoney(total); sfx.coin(); floatText(V(s.d.cash[0], 1.1, s.d.cash[1]), '+$' + total, '#22a447'); return; }
@@ -782,7 +784,7 @@ function complainUpdate(dt) {
 // ---------- 第 4 年起：總務部（茶茶、阿強、學姊） ----------
 // 機器會故障（咖啡機、印表機、販賣機）：停止出貨，要去總務部窗口報修，阿強（阿強沒空就學姊）才會去修
 // 茶茶：坐辦公室；有時把工作推給阿強，有時拉人聊天害對方罷工（像 Kevin 一樣，小葵過去打斷她）；最常直接把阿強帶走
-// 阿強：一次搬 10 個；報修時去修機器；空手時順手換飲水機的水；偶爾被電風扇吹掉帽子
+// 阿強：一次搬 10 個；報修時去修機器；空手時順手換飲水機的水；後門的事（丟垃圾、交外送、搬原料）都會幫忙；偶爾被電風扇吹掉帽子
 // 學姊：坐辦公室；看到阿強被茶茶帶走就去把他拉回來；阿強沒空時她去修；水快沒了會去換；最缺貨時出手搬一趟
 const GA = GA_OFFICE, GA_ZONE = [(GA.x0 + GA.door[0]) / 2, GA.z0 - 0.55];
 const GA_IN = [(GA.door[0] + GA.door[1]) / 2, GA.z0 + 0.35], GA_OUT = [(GA.door[0] + GA.door[1]) / 2, GA.z0 - 0.45];
@@ -876,6 +878,39 @@ function runTask(h, dt) {
       floatText(k.u.look.g.position.clone().setY(1.6), h.id === 'qiang' ? '水換好了！💧' : '……順便換了。💧', '#2f7fc4', 0.9);
       return true;
     }
+  } else if (k.kind === 'trash') {   // 垃圾車：去攤位旁拿垃圾袋（一次三袋），丟上垃圾車
+    if (!back.truck) return true;
+    k.cd -= dt;
+    if (k.phase === 'get') {
+      const s = northShops().filter(s => s.bags.length).sort((x, y) => Math.hypot(bagAt(x)[0] - p.x, bagAt(x)[1] - p.z) - Math.hypot(bagAt(y)[0] - p.x, bagAt(y)[1] - p.z))[0];
+      if (!s || h.bags.length >= BACK.bagCarry) { if (h.bags.length) k.phase = 'dump'; else return true; }
+      else if (gaGo(h, [bagAt(s)[0] - 0.2, bagAt(s)[1] + 0.5], 2.3, dt) && k.cd <= 0) {
+        k.cd = 0.25; scene.remove(s.bags.pop()); const m = bagMesh(); m.position.y = 1.15 + h.bags.length * 0.3; a.root.add(m); popIn(m, 1); h.bags.push({ m, from: s });
+      }
+    } else if (gaGo(h, [BACK.truckZone[0] + 0.3, BACK.truckZone[1] - 0.3], 2.3, dt)) {
+      const n = h.bags.length, val = Math.round(n * BACK.bagPay * state.yearBonus); h.bags.forEach(o => a.root.remove(o.m)); h.bags = [];
+      addMoney(val); squash(back.truck.g, 0.08); floatText(V(BACK.truckZone[0], 1.9, BACK.truckZone[1]), `阿強丟！🗑 ×${n}　+$${val}`, '#2f8f4e', 0.9);
+      for (const s of northShops()) if (!s.bags.length) setStink(s, false);
+      if (!bagsLeft() && !player.head?.list.length) endTruck(true);
+      else k.phase = 'get';
+    }
+  } else if (k.kind === 'rider') {   // 外送員：去攤位拿他要的東西，交給他（交接在 updateRider）
+    const r = back.rider;
+    if (!r || r.phase !== 'wait' || !(r.need[k.s.item] > 0)) { h.carryMax = 10; return true; }   // 送齊了／外送員走了：多拿的照常送回攤位
+    if (k.phase === 'fetch') {
+      k.t -= dt;
+      if (h.carry.length >= h.carryMax || (h.carry.length && k.t <= 0) || !(r.need[k.s.item] > 0)) k.phase = 'give';
+      else { gaGo(h, [k.s.pickup[0] + 0.3, k.s.pickup[1]], 2.3, dt); carry(h, dt); }
+    } else {
+      const rp = r.a.root.position; gaGo(h, [rp.x - 0.75, rp.z + 0.35], 2.3, dt);
+      if (!h.carry.length) { h.type = null; h.job = null; h.carryMax = 10; return true; }
+    }
+  } else if (k.kind === 'box') {   // 進貨：後門棧板頂一箱原料，送到快沒料的攤位
+    if (k.phase === 'get') { if (gaGo(h, [BACK.palletZone[0] + 0.2, BACK.palletZone[1] + 0.2], 2.2, dt)) { h.boxM = boxMesh(); h.boxM.position.y = 1.15; a.root.add(h.boxM); popIn(h.boxM, 1); k.phase = 'put'; } }
+    else if (gaGo(h, [k.s.pickup[0] - 0.3, k.s.pickup[1]], 2.2, dt)) {
+      a.root.remove(h.boxM); h.boxM = null; k.s.stock = Math.min(BACK.cap, k.s.stock + BACK.box); k.s.boxBy = null; squash(k.s.look.g, 0.12);
+      floatText(V(k.s.src[0], 1.7, k.s.src[1]), '📦 阿強補料！', '#8a5a32', 0.8); return true;
+    }
   } else if (k.kind === 'rescue') {
     const q = hires.qiang, qp = q.actor.root.position;
     if (!q.chat) return true;   // 已經被別人拉回來了
@@ -892,6 +927,23 @@ function gaWaterJob(h) {
   if (!water.on || h.carry.length) return false;
   const u = water.units.find(u => u.level < 0.2 && !u.claim); if (!u) return false;
   u.claim = h; h.task = { kind: 'water', u, phase: 'jug' }; sayAt(h, h.id === 'qiang' ? '水我來換！' : '……水沒了。', '#2f7fc4'); return true;
+}
+
+// 第 3 年的後門差事，第 4 年阿強來了會幫忙：timed＝有倒數的（垃圾車、外送員）先做，原料快沒了再搬進貨
+function gaBackJob(h, timed) {
+  if (!back.on || h.carry.length) return false;
+  if (timed) {
+    if (back.truck && bagsLeft()) { h.bags = []; h.task = { kind: 'trash', phase: 'get', cd: 0 }; sayAt(h, '垃圾車來了！我來丟！🚛', '#2f8f4e'); return true; }
+    const r = back.rider;
+    if (r?.phase === 'wait') {
+      const it = Object.keys(r.need).filter(i => r.need[i] > 0).sort((x, y) => (x === player.type) - (y === player.type) || r.need[y] - r.need[x])[0];
+      if (it) { const s = shopOf(it); Object.assign(h, { job: s, type: null, carryMax: r.need[it], moveT: 0 }); h.task = { kind: 'rider', s, phase: 'fetch', t: 12 }; sayAt(h, `外送我來送！${ICON[it]}`, '#2bb673'); return true; }
+    }
+    return false;
+  }
+  const s = northShops().filter(s => s.stock < BACK.cap * 0.35 && !s.boxBy).sort((x, y) => x.stock - y.stock)[0];
+  if (s) { s.boxBy = h; h.task = { kind: 'box', s, phase: 'get' }; sayAt(h, `${s.def.name}快沒料了，我去搬！📦`, '#8a5a32'); return true; }
+  return false;
 }
 
 // ---------- 茶茶拉人聊天：被拉到的人停工（罷工），小葵過去才會散 ----------
@@ -977,7 +1029,7 @@ function trioUpdate(h, dt) {
       return updateActor(a, dt, state.t);
     }
     if (h.task) { if (runTask(h, dt)) h.task = null; return updateActor(a, dt, state.t); }
-    if (gaWaterJob(h)) return updateActor(a, dt, state.t);
+    if (gaBackJob(h, true) || gaWaterJob(h) || gaBackJob(h, false)) return updateActor(a, dt, state.t);
     h.capT = (h.capT ?? 90 + Math.random() * 60) - dt;
     if (h.capT <= 0 && !h.carry.length && state.floor === 'f1') {   // 帽子被電風扇吹走：光頭登場
       h.capT = 90 + Math.random() * 60;
@@ -1013,6 +1065,10 @@ function gaReset() {
     if (h.chat) { h.chatTag?.parent?.remove(h.chatTag); h.chatTag = null; h.chat = null; }
     if (h.tool) { h.actor.root.remove(h.tool); h.tool = null; }
     if (h.task?.kind === 'water') { if (h.jug) { h.actor.root.remove(h.jug); h.jug = null; } h.task.u.claim = null; }
+    if (h.bags?.length) { h.bags.forEach(o => { h.actor.root.remove(o.m); addBag(o.from); }); h.bags = []; }
+    if (h.boxM) { h.actor.root.remove(h.boxM); h.boxM = null; }
+    if (h.task?.kind === 'box') h.task.s.boxBy = null;
+    if (h.task?.kind === 'rider') { h.job = null; h.carryMax = 10; }
     h.task = null; h.gp = null;
   }
   for (const b of ga.breaks.slice()) { b.s.broken = false; scene.remove(b.sign); }
@@ -1317,7 +1373,12 @@ function updateGuide() {
   else if (hires.cha?.cm?.v && ['chat', 'lead'].includes(hires.cha.cm.phase) && (hires.cha.cm.v.id !== 'qiang' || hires.senpai?.task)) { const c = hires.cha.actor.root.position; at = [c.x, c.z]; text = `💬 茶茶拉著${nameOf(hires.cha.cm.v)}聊天，過去打斷她`; }
   else if (yan && yan.phase === 'wait' && player.carry.length && yan.need[player.type] > 0) { const y = yan.a.root.position; at = [y.x, y.z]; text = `📋 把 ${ICON[player.type]} 交給小燕`; }
   else if (yan && yan.phase === 'wait' && !player.carry.length) { const [it, n] = Object.entries(yan.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `📋 小燕急件：去拿 ${ICON[it]}×${n}`; } }
-  else if (waterEmpty() && !player.carry.length) { const u = water.units.find(u => u.level <= 0); [at, text] = player.jug ? [u.at, '💧 把水倒進飲水機'] : [WATER.pickup, '💧 飲水機沒水了，去搬桶裝水']; }
+  else if (back.truck && (player.head?.kind === 'bag' || bagsLeft())) { const s = northShops().filter(s => s.bags.length).sort((a, b) => dist(bagAt(a)) - dist(bagAt(b)))[0]; [at, text] = player.head?.kind === 'bag' && (player.head.list.length >= BACK.bagCarry || !s) ? [BACK.truckZone, '🚛 把垃圾袋丟上後門的垃圾車'] : [bagAt(s), '🚛 垃圾車來了！去攤位旁邊拿垃圾袋']; }
+  else if (back.rider?.phase === 'wait' && player.carry.length && back.rider.need[player.type] > 0) { const r = back.rider.a.root.position; at = [r.x, r.z]; text = `🛵 把 ${ICON[player.type]} 交給外送員`; }
+  else if (back.rider?.phase === 'wait' && !player.carry.length && !player.head) { const [it, n] = Object.entries(back.rider.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `🛵 外送單：去拿 ${ICON[it]}×${n}`; } }
+  else if (player.head?.kind === 'box') { const s = boxTaker(); [at, text] = s ? [s.pickup, `📦 把原料送到${s.def.name}`] : [BACK.palletZone, '📦 現在不缺料，箱子放回棧板']; }
+  else if (!player.carry.length && !player.head && northShops().some(s => s.stock < BACK.cap * 0.25)) { const s = northShops().sort((a, b) => a.stock - b.stock)[0]; at = BACK.palletZone; text = `📦 ${s.def.name}${s.stock <= 0 ? '缺料停賣' : '快沒料了'}，去後門搬原料`; }
+  else if (waterEmpty() && !player.carry.length && !player.head) { const u = water.units.find(u => u.level <= 0); [at, text] = player.jug ? [u.at, '💧 把水倒進飲水機'] : [WATER.pickup, '💧 飲水機沒水了，去搬桶裝水']; }
   else if (player.carry.length) { const s = shopOf(player.type); at = s.d.drop; text = `把 ${ICON[s.item]} 送到${s.type === 'vending' ? '販賣機' : s.def.name}`; }
   else if (cashShop && (cashShop.cash.length > 4 || !padReady)) { at = cashShop.d.cash; text = '去收錢！'; }
   else if (padReady) { at = padReady.at; text = `站上格子：${padReady.kind === 'upgrade' ? '升級' : padReady.kind === 'hire' ? '請' : '解鎖'}「${padReady.title()}」`; }
@@ -1585,6 +1646,9 @@ function updateEvents() {
     ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[pool[Math.floor(Math.random() * pool.length)]]();
   }
   let chips = '';
+  for (const s of northShops()) { if (s.stock <= 0) chips += `<span class="rush">📦 ${s.def.name}缺料停賣</span>`; if (s.stink) chips += `<span class="rush">🪰 ${s.def.name}臭了 售價 ×${BACK.stink}</span>`; }
+  if (back.truck) chips += `<span class="rush">🚛 垃圾車 剩 ${bagsLeft() + (player.head?.kind === 'bag' ? player.head.list.length : 0) + (hires.qiang?.bags?.length || 0)} 袋　${Math.max(0, Math.ceil(back.truck.t))} 秒</span>`;
+  if (back.rider?.phase === 'wait') chips += `<span class="rush">🛵 外送單 ${needText(back.rider.need)}　${Math.max(0, Math.ceil(back.rider.t))} 秒</span>`;
   if (waterEmpty()) chips += `<span class="rush">💧 飲水機沒水 小費 -${waterEmpty() * 5}%</span>`;
   for (const b of ga.breaks) chips += `<span class="rush">🔧 ${MACHINE_NAME[b.s.type]}故障${b.fixer ? (b.fixer.chat ? '（' + nameOf(b.fixer) + '被茶茶拉走了）' : '（' + (b.fixer.id === 'qiang' ? '阿強' : '學姊') + '修理中）') : b.reported ? '（等人修）' : '（去總務部報修）'}</span>`;
   { const m = hires.cha?.cm; if (m?.v && ['chat', 'lead'].includes(m.phase)) chips += `<span class="rush">💬 ${nameOf(m.v)}被茶茶拉去聊天</span>`; }
@@ -1827,7 +1891,7 @@ function startFinale() {
 }
 function beginFinale() {
   if (state.finaleDone || design.finale) return;
-  design.finale = true; clearVisitors(); gaReset();
+  design.finale = true; clearVisitors(); gaReset(); backReset();
   // 上台前：小米站起來（藏坐姿模型）、阿傑放下手上的貨
   const mi = hires.mi; if (mi) { if (mi.sit) mi.sit.root.visible = false; mi.actor.root.visible = true; if (mi.jug) { mi.actor.root.remove(mi.jug); mi.jug = null; } mi.ms = null; mi.path = null; }
   for (const id of TRIO) { const t = hires[id]; if (!t) continue; t.cm = null; if (t.cap) { setBald(t.actor, false); t.cap = null; } if (id !== 'qiang' && t.carry.length) { t.carry.forEach(m => untrack(m)); t.carry = []; t.type = null; } }
@@ -1916,6 +1980,11 @@ moveAsk.onpointerdown = (e) => { if (e.target === moveAsk) moveAsk.classList.rem
 // ======================================================================
 const floorOpen = () => state.year >= 2 || JIE;
 const elevAt = (f = state.floor) => [FLOORS[f].ox - 6.4, -0.6];
+// 電梯判定：門前一整塊長方形（貼著牆也算），地上畫框標出來
+const ELEV_ZONE = { x0: -7.3, x1: -5.85, hz: 0.95 };
+const inElev = (p, f = state.floor) => p.x - FLOORS[f].ox < ELEV_ZONE.x1 && Math.abs(p.z - elevAt(f)[1]) < ELEV_ZONE.hz;
+const elevMark = (f) => zoneMark(FLOORS[f].ox + (ELEV_ZONE.x0 + ELEV_ZONE.x1) / 2 + 0.05, elevAt(f)[1], ELEV_ZONE.x1 - ELEV_ZONE.x0 - 0.1, ELEV_ZONE.hz * 2 - 0.1, '#ff9a6a');
+elevMark('f1');
 const elevEl = document.getElementById('elev'), elevList = document.getElementById('elevList'), fadeEl = document.getElementById('fade');
 let elevOpen = false, elevClosedHere = false;
 document.getElementById('elevX').onclick = () => { elevEl.classList.remove('on'); elevOpen = false; elevClosedHere = true; };
@@ -1927,7 +1996,7 @@ function renderElevator() {
   elevList.querySelectorAll('button[data-f]').forEach(b => b.onclick = (e) => { e.stopPropagation(); audioInit(); goFloor(b.dataset.f); });
 }
 function updateElevator() {
-  const near = nearAt(player.actor, elevAt(), 0.75);
+  const near = inElev(player.actor.root.position);
   if (near && !elevOpen && !elevClosedHere) { elevOpen = true; renderElevator(); elevEl.classList.add('on'); }
   if (!near) { elevClosedHere = false; if (elevOpen) { elevOpen = false; elevEl.classList.remove('on'); } }
 }
@@ -1971,6 +2040,189 @@ function buildNorth() {
   for (const t of ['tea', 'sand', 'cake']) queueDecor(SHOPS_DEF[t]);
 }
 
+// ---------- 第三年：後門（早餐街開張後）：進貨、垃圾車、外送員 ----------
+// 進貨：早餐街三攤的原料會用完（缺料就停賣），去後門棧板頂一箱原料送到攤位的進貨箱；沒有倒數
+// 垃圾車：攤位賣東西會堆垃圾袋；垃圾車來時（放給愛麗絲）限時把垃圾袋頂去後門丟，沒丟完的攤位會臭掉（售價 ×0.6，下一台垃圾車丟乾淨才好）
+// 外送員：從右邊出口進來等，限時把指定的早餐交給他，送齊給 3 倍；有倒數的兩個不會同時出現
+const BACK = { pallet: [-6.75, -7.4], palletZone: [-5.75, -7.4], truckZone: [-6.75, -8.6], riderIn: [7.0, -9.3], rider: [6.45, -8.5],
+  box: 24, cap: 48, bagEvery: 4, bagMax: 3, bagCarry: 3, bagPay: 25, stink: 0.6,
+  truckTime: 35, truckFirst: 60, truckEvery: [110, 150], riderTime: 40, riderFirst: 35, riderEvery: [95, 135], riderMult: 3, gap: 20 };
+const back = { on: false, truck: null, rider: null, nextTruck: 0, nextRider: 0, truckMark: null, moveT: 0 };
+const northShops = () => ['tea', 'sand', 'cake'].map(k => shops[k]).filter(s => s?.unlocked);
+const bagAt = (s) => [s.d.counter[0] - 1.9, -10.3];
+const bagsLeft = () => northShops().reduce((n, s) => n + s.bags.length, 0);
+const boxTaker = () => northShops().filter(s => s.stock <= BACK.cap - BACK.box / 2).sort((a, b) => a.stock - b.stock)[0];
+const randIn = ([a, b]) => a + Math.random() * (b - a);
+function boxMesh() {
+  const g = new THREE.Group();
+  rbox(0.44, 0.3, 0.34, 0xc9915b, 0, 0, 0, g); box(0.45, 0.05, 0.08, 0xe9d3a8, 0, 0.13, 0, g);
+  const ic = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({ map: canvasTex(64, 64, (c) => { c.font = `48px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('📦', 32, 36); }), transparent: true }));
+  ic.position.set(0, 0, 0.172); g.add(ic); return g;
+}
+function bagMesh() {
+  const g = new THREE.Group(), b = sphere(0.17, 0x2b3530, 0, 0.15, 0, g, { roughness: 0.35 }); b.scale.set(1, 1.1, 0.9);
+  cyl(0.03, 0.06, 0.1, 0x2b3530, 0, 0.33, 0, g); box(0.16, 0.03, 0.03, 0xffd23f, 0, 0.37, 0, g); return g;
+}
+function truckLook() {
+  const g = new THREE.Group();
+  box(2.4, 0.02, 4.0, 0x55595f, 0, 0.01, 0, g);   // 牆外的柏油路
+  rbox(1.1, 1.3, 2.0, 0xf2f4f6, 0, 0.85, -0.35, g); rbox(1.12, 0.22, 2.02, 0x2f8f4e, 0, 0.55, -0.35, g);   // 車斗
+  rbox(1.1, 1.0, 0.8, 0xffd23f, 0, 0.7, 1.05, g); box(0.9, 0.36, 0.04, 0x9fd8ff, 0, 0.98, 1.46, g);   // 車頭
+  for (const [x, z] of [[-0.5, 0.9], [0.5, 0.9], [-0.5, -0.9], [0.5, -0.9]]) { const w = cyl(0.22, 0.22, 0.16, 0x222222, x, 0.22, z, g); w.rotation.z = Math.PI / 2; }
+  rbox(0.5, 0.5, 0.2, 0x7b8794, 0.3, 0.55, -1.42, g);   // 後面倒垃圾的斗
+  const s = labelSprite('🚛 垃圾車 🎵', { bg: '#2f8f4e', size: 0.3 }); s.position.set(0.9, 2.0, 0.6); g.add(s);
+  return g;
+}
+function riderGear(a) {
+  const helmet = sphere(0.19, 0x2bb673, 0, 0.93, -0.01, a.root, { roughness: 0.3 }); helmet.scale.set(1, 0.85, 1.05);
+  rbox(0.36, 0.36, 0.3, 0x2bb673, 0, 0.62, -0.27, a.root);
+  const tag = labelSprite('🛵 外送員', { bg: '#2bb673', size: 0.26 }); tag.position.y = 1.38; a.root.add(tag);
+}
+function openBack(fancy) {
+  back.on = true;
+  const g = new THREE.Group(); g.position.set(BACK.pallet[0], 0, BACK.pallet[1]); scene.add(g);
+  rbox(0.95, 0.12, 0.8, 0xb7895a, 0, 0.06, 0, g);
+  for (let i = 0; i < 5; i++) { const b = boxMesh(); b.position.set((i % 2 - 0.5) * 0.46, 0.27 + Math.floor(i / 2) * 0.31, i === 4 ? 0 : 0.02); g.add(b); }
+  const s = labelSprite('📦 後門進貨', { bg: '#8a5a32', size: 0.24 }); s.position.set(0, 1.45, 0); g.add(s);
+  aabb(BACK.pallet[0], BACK.pallet[1], 0.48, 0.4); zoneMark(BACK.palletZone[0], BACK.palletZone[1], 1.0, 0.9, '#e0b07a');
+  back.truckMark = zoneMark(BACK.truckZone[0], BACK.truckZone[1], 1.0, 1.0, '#7dff9a'); back.truckMark.visible = false;
+  if (fancy) { popIn(g); toast('🚪 後門開始進貨了：早餐街缺料要去搬'); }
+  back.nextTruck = state.t + BACK.truckFirst; back.nextRider = state.t + BACK.riderFirst;
+}
+// 頭上頂的東西（原料箱一箱、垃圾袋最多三袋）；跟桶裝水一樣一次只能頂一種
+function headOn(kind, from) {
+  const p = player; if (!p.head) p.head = { kind, list: [] };
+  const m = kind === 'box' ? boxMesh() : bagMesh(); m.position.y = 1.2 + p.head.list.length * 0.3; p.actor.root.add(m); popIn(m, 1);
+  p.head.list.push({ m, from }); sfx.pick();
+}
+function headOff() { const p = player; if (!p.head) return []; const l = p.head.list; l.forEach(o => p.actor.root.remove(o.m)); p.head = null; return l; }
+function addBag(s) {
+  if (s.bags.length >= BACK.bagMax) return;
+  const m = bagMesh(), [x, z] = bagAt(s), i = s.bags.length;
+  m.position.set(x + (i % 2 - 0.5) * 0.3, i >= 2 ? 0.28 : 0, z + (i >= 2 ? 0 : (i - 0.5) * 0.1)); scene.add(m); popIn(m, 1); s.bags.push(m);
+}
+function setStockTag(s, st) {
+  s.stockSt = st; if (s.stockTag) { scene.remove(s.stockTag); s.stockTag = null; }
+  if (!st) return;
+  s.stockTag = labelSprite(st === 'out' ? '📦 缺料停賣' : '📦 快沒料了', { bg: st === 'out' ? '#d9483b' : '#e8902a', size: 0.24 });
+  s.stockTag.position.set(s.src[0], 2.75, s.src[1]); scene.add(s.stockTag);
+}
+function setStink(s, on) {
+  s.stink = on;
+  if (on && !s.flies) {
+    const g = new THREE.Group(); g.position.set(s.d.counter[0], 1.25, s.d.counter[1]); scene.add(g);
+    for (let i = 0; i < 6; i++) sphere(0.035, 0x111111, 0, 0, 0, g);
+    const l = labelSprite(`🪰 臭了 售價 ×${BACK.stink}`, { bg: '#6b6f2a', size: 0.22 }); l.position.y = 0.85; g.add(l); s.flies = g;
+  } else if (!on && s.flies) { scene.remove(s.flies); s.flies = null; }
+}
+function startTruck() {
+  if (!bagsLeft()) { back.nextTruck = state.t + 30; return; }   // 沒垃圾就不用來
+  const g = truckLook(); g.position.set(-8.35, 0, -16); scene.add(g);
+  back.truck = { g, t: BACK.truckTime, songT: 0, sec: -1 }; back.truckMark.visible = true;
+  sfx.elise(); camKick(0.2);
+  banner('🚛 垃圾車來了！', `${BACK.truckTime} 秒內把早餐街的垃圾袋拿去後門丟，沒丟的攤位會臭掉`, 0, '#2f8f4e');
+}
+function endTruck(clean) {
+  const tr = back.truck; back.truck = null; back.truckMark.visible = false;
+  const held = player.head?.kind === 'bag' ? headOff() : [];
+  for (const o of held) addBag(o.from);   // 手上沒丟到的放回去
+  const q = hires.qiang; if (q?.bags?.length) { q.bags.forEach(o => { q.actor.root.remove(o.m); addBag(o.from); }); q.bags = []; }
+  for (const s of northShops()) setStink(s, s.bags.length > 0);
+  if (clean) { banner('🚛 垃圾不落地 👍', '早餐街乾乾淨淨', 0, '#2f8f4e'); sfx.upgrade(); }
+  else if (bagsLeft()) banner('🪰 垃圾車開走了……', `沒丟的攤位臭掉了，售價 ×${BACK.stink}（下一台垃圾車丟乾淨就好）`, 0, '#6b6f2a');
+  const g = tr.g; let k = 0; const drive = () => { k += 0.016; g.position.z += 0.16; if (k < 1.2) after(0.016, drive); else scene.remove(g); }; drive();
+  back.nextTruck = state.t + randIn(BACK.truckEvery); back.nextRider = Math.max(back.nextRider, state.t + BACK.gap);
+}
+function updateTruck(dt) {
+  const tr = back.truck, p = player;
+  tr.g.position.z += (BACK.truckZone[1] - tr.g.position.z) * Math.min(1, dt * 2.5);
+  tr.t -= dt; tr.songT += dt; if (tr.songT > 5.4) { tr.songT = 0; sfx.elise(); }
+  back.moveT += dt;
+  if (!p.jug && (!p.head || (p.head.kind === 'bag' && p.head.list.length < BACK.bagCarry)) && back.moveT > 0.18) {   // 去攤位旁拿垃圾袋
+    const s = northShops().find(s => s.bags.length && nearAt(p.actor, bagAt(s), 0.8));
+    if (s) { back.moveT = 0; scene.remove(s.bags.pop()); headOn('bag', s); }
+  }
+  if (p.head?.kind === 'bag' && nearAt(p.actor, BACK.truckZone, 0.7)) {   // 丟上垃圾車
+    const n = headOff().length, val = Math.round(n * BACK.bagPay * state.yearBonus);
+    addMoney(val); gainXp(2); sfx.drop(); squash(tr.g, 0.08);
+    floatText(V(BACK.truckZone[0], 1.6, BACK.truckZone[1]), `丟！🗑 ×${n}　+$${val}`, '#2f8f4e', 0.9);
+    for (const s of northShops()) if (!s.bags.length) setStink(s, false);
+    if (!bagsLeft() && !hires.qiang?.bags?.length) return endTruck(true);
+  }
+  if (tr.t <= 0) endTruck(false);
+}
+function startRider() {
+  const ns = northShops().sort(() => Math.random() - 0.5).slice(0, 2);
+  if (!ns.length) { back.nextRider = state.t + 30; return; }
+  const need = Object.fromEntries(ns.map(s => [s.item, Math.min(player.carryMax, 2 + Math.floor(Math.random() * 3))]));
+  const a = makeActor(kinds.npcM, 0.98); a.root.position.set(BACK.riderIn[0], 0, BACK.riderIn[1]); scene.add(a.root); popIn(a.root, a.root.scale.x); riderGear(a);
+  back.rider = { a, need, got: [], phase: 'walk', t: BACK.riderTime, bubble: null, sec: -1, giveT: 0, value: 0 };
+  sfx.ring(); camKick(0.2);
+  banner('🛵 外送單來了！', `${BACK.riderTime} 秒內把 ${needText(need)} 交給後門的外送員，送齊給 ${BACK.riderMult} 倍`, 0, '#2bb673');
+}
+function updateRider(dt) {
+  const r = back.rider, a = r.a, p = a.root.position;
+  if (r.phase === 'leave') {
+    if (walkTo(a, BACK.riderIn[0], BACK.riderIn[1], 2.6, dt)) { scene.remove(a.root); back.rider = null; return; }
+    return updateActor(a, dt, state.t);
+  }
+  if (r.phase === 'walk' && walkTo(a, BACK.rider[0], BACK.rider[1], 2.2, dt)) r.phase = 'wait';
+  if (r.phase === 'wait') {
+    const pp = player.actor.root.position;
+    a.speed = 0; turnTo(a, Math.atan2(pp.x - p.x, pp.z - p.z), dt);
+    r.t -= dt;
+    const sec = Math.ceil(r.t);
+    if (sec !== r.sec) { r.sec = sec; npcSay(r, '外送單 ' + needText(r.need), Math.max(0, sec)); }
+    r.giveT += dt;
+    const c = [player, hires.qiang].find(c => c && c.carry.length && r.need[c.type] > 0 && c.actor.root.position.distanceTo(p) < 1.3);   // 小葵、阿強都能交
+    if (c && r.giveT >= 0.12) {
+      r.giveT = 0;
+      const it = c.type, s = shopOf(it), m = c.carry.pop(), n = r.got.length;
+      r.need[it]--; r.value += s.def.levels[s.lv].price; r.got.push(m); r.sec = -1;
+      if (!c.carry.length) c.type = null;
+      retarget(m, () => V(p.x - Math.sin(a.root.rotation.y) * 0.3, 0.6 + n * 0.04, p.z - Math.cos(a.root.rotation.y) * 0.3)); sfx.drop();
+    }
+    const done = Object.values(r.need).every(n => n <= 0);
+    if (done || r.t <= 0) {
+      r.got.forEach(m => untrack(m));
+      if (done) {
+        const val = Math.round(r.value * BACK.riderMult * incomeMult());
+        addMoney(val); gainXp(4); confetti(V(p.x, 1.4, p.z), 60, 1.0); sfx.upgrade();
+        npcSay(r, '謝啦！五星好評 ⭐⭐⭐⭐⭐');
+        banner('🛵 外送單完成！', `客人給五星，外送費分你　+$${val.toLocaleString()}`, 0, '#2bb673');
+      } else {
+        const val = Math.round(r.value * incomeMult());
+        if (val) addMoney(val);
+        npcSay(r, '客人取消了啦……我先走了 😑');
+        banner('🛵 外送單來不及', val ? `交到的部分照原價算　+$${val.toLocaleString()}` : '外送員先走了', 0, '#7a7f87');
+      }
+      r.phase = 'leave';
+      back.nextRider = state.t + randIn(BACK.riderEvery); back.nextTruck = Math.max(back.nextTruck, state.t + BACK.gap);
+    }
+  }
+  updateActor(a, dt, state.t);
+}
+function updateBack(dt) {
+  if (!back.on) { if (shops.tea?.unlocked && !design.finale) openBack(true); return; }
+  if (design.finale) return;
+  const p = player, ns = northShops();
+  for (const s of ns) { const st = s.stock <= 0 ? 'out' : s.stock < BACK.cap * 0.25 ? 'low' : ''; if (st !== (s.stockSt || '')) setStockTag(s, st); }
+  for (const s of ns) if (s.flies) s.flies.children.forEach((f, i) => { if (f.isMesh) f.position.set(Math.cos(state.t * 5 + i * 1.1) * (0.5 + i * 0.08), 0.15 + Math.sin(state.t * 7 + i) * 0.15, Math.sin(state.t * 4 + i * 1.7) * 0.35); });
+  // 進貨：棧板頂一箱 → 送到缺料的攤位（站到攤位的出貨框）
+  if (!p.head && !p.jug && boxTaker() && nearAt(p.actor, BACK.palletZone, 0.8)) headOn('box', null);
+  if (p.head?.kind === 'box') { const s = ns.find(s => s.stock <= BACK.cap - BACK.box / 2 && nearAt(p.actor, s.pickup, 0.85)); if (s) { headOff(); s.stock = Math.min(BACK.cap, s.stock + BACK.box); gainXp(1); sfx.drop(); squash(s.look.g, 0.12); floatText(V(s.src[0], 1.7, s.src[1]), '📦 補料！', '#8a5a32', 0.8); } }
+  if (p.head?.kind === 'box' && !boxTaker() && nearAt(p.actor, BACK.palletZone, 0.8)) headOff();   // 不缺料了：放回棧板
+  if (back.truck) updateTruck(dt); else if (!back.rider && state.t >= back.nextTruck) startTruck();
+  if (back.rider) updateRider(dt); else if (!back.truck && state.t >= back.nextRider) startRider();
+}
+function backReset() {
+  if (back.truck) { scene.remove(back.truck.g); back.truck = null; back.truckMark.visible = false; }
+  if (back.rider) { back.rider.got.forEach(m => untrack(m)); scene.remove(back.rider.a.root); back.rider = null; }
+  const held = player?.head?.kind === 'bag' ? headOff() : player?.head ? headOff() : [];
+  for (const o of held) if (o.from) addBag(o.from);
+  back.nextTruck = state.t + BACK.truckFirst; back.nextRider = state.t + BACK.riderFirst;
+}
+
 // ---------- 茶水站：兩台飲水機會慢慢被喝完，去搬桶裝水倒上去（Q1 達標後開） ----------
 const WATER = { units: [[6.95, 2.95], [6.95, 3.55]], pile: [5.4, 3.25], pickup: [4.75, 3.25], drain: 75, reward: 80 };
 const water = { on: false, units: [], pile: null };
@@ -1991,7 +2243,7 @@ function updateWater(dt) {
   if (!water.on || design.finale) return;
   for (const u of water.units) { const was = u.level; u.level = Math.max(0, u.level - dt / WATER.drain); u.look.setLevel(u.level); if (was > 0 && u.level <= 0) toast('💧 飲水機沒水了！小費變少'); }
   const p = player, need = water.units.some(u => u.level < 0.9);
-  if (!p.jug && need && nearAt(p.actor, WATER.pickup, 0.8)) {   // 頂一桶在頭上
+  if (!p.jug && !p.head && need && nearAt(p.actor, WATER.pickup, 0.8)) {   // 頂一桶在頭上
     p.jug = jugMesh(); p.jug.position.y = 1.2; p.actor.root.add(p.jug); popIn(p.jug, 1); sfx.pick();
   }
   if (p.jug) for (const u of water.units) if (u.level < 0.9 && nearAt(p.actor, u.at, 0.75)) {   // 倒上去
@@ -2026,7 +2278,7 @@ document.getElementById('coverCall').onclick = () => startCallGame(true);
 const OXR = FLOORS.rf.ox, rw = ([x, z]) => [OXR + x, z];
 const roof = { rides: {}, visitors: [], spawnT: 0, n: 0 };
 function setupRoof() {
-  buildRoof(OXR);
+  buildRoof(OXR); elevMark('rf');
   for (const R of RIDES) roof.rides[R.id] = { def: R, unlocked: false, lv: 0, look: null, state: 'idle', t: 0, run: 0, wait: 0, riders: [], queue: [], cash: [], badge: null, collectT: 0 };
 }
 function setupRoofPads() {
@@ -2150,6 +2402,7 @@ function setupRoom() {
   for (const [x, z, hw, hd] of room.boss.walls) aabb(OXO + x, z, hw, hd);
   roomPlate(OXO, -1.3, '👑 Vivi 老闆辦公室', '#d9a63a', 2.2);
   zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 0.9, '#9fc39a');
+  elevMark('f2');
   aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.65, 0.35);
 }
 // 布置模式：2F 型錄台前或左下按鈕進入；開著的時候小葵不能走、HUD 收起來、鏡頭對著員工辦公室
@@ -2330,7 +2583,7 @@ function update(dt) {
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
   else { updatePlayer(dt); updateHires(dt); updateBreaks(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
-  updateRoof(dt); updatePet(dt); updateWater(dt);
+  updateRoof(dt); updatePet(dt); updateWater(dt); updateBack(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateTheme(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); if (cai && !design.finale) updateCaishen(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { updateYear(metaT); metaT = 0; }
   for (const b of [...Object.values(shops).map(s => s.badge), phone.badge, ...Object.values(roof.rides).map(r => r.badge)]) if (b) b.position.y = b.userData.y + Math.sin(state.t * 2) * 0.04;
@@ -2457,7 +2710,7 @@ const G = window.G = {
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
   get water() { return water; }, WATER, music, get theater() { return theater; }, yearScript, autoTheater: false,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), back, BACK, bagAt, bagsLeft, boxTaker, northShops, startTruck: () => startTruck(), startRider: () => startRider(), get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -2472,7 +2725,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.18.0'); music.load('office', 'audio/bgm_office.m4a?v=0.18.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.18.1'); music.load('office', 'audio/bgm_office.m4a?v=0.18.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});

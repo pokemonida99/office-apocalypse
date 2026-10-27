@@ -1,6 +1,6 @@
 // 特效與音效：飄字、彩帶、光柱、地面衝擊波、彈出放大、合成音效
 import * as THREE from 'three';
-import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.18.0';
+import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.18.1';
 
 const fxList = [];   // 每個特效自己有 update(dt) 回傳 false 就移除
 export function updateFx(dt) { for (let i = fxList.length - 1; i >= 0; i--) if (!fxList[i](dt)) fxList.splice(i, 1); }
@@ -239,6 +239,11 @@ export const sfx = {
   upgrade() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.22, 'triangle', 0.7, i * 0.06)); tone(2093, 0.5, 'sine', 0.4, 0.38); },
   punch() { tone(150, 0.09, 'square', 0.7); tone(95, 0.14, 'sawtooth', 0.45, 0.02); },   // 揍 Kevin
   alarm() { for (let i = 0; i < 3; i++) { tone(880, 0.14, 'square', 0.22, i * 0.32); tone(660, 0.14, 'square', 0.22, i * 0.32 + 0.16); } },   // Kevin 來了
+  // 垃圾車：給愛麗絲開頭一句（台灣垃圾車的歌），方波小小聲像喇叭
+  elise() {
+    const E5 = 659.3, Ds5 = 622.3, B4 = 493.9, D5 = 587.3, C5 = 523.3, A4 = 440, C4 = 261.6, E4 = 329.6, Gs4 = 415.3, u = 0.19;
+    let t = 0; for (const [f, n] of [[E5, 1], [Ds5, 1], [E5, 1], [Ds5, 1], [E5, 1], [B4, 1], [D5, 1], [C5, 1], [A4, 2], [0, 1], [C4, 1], [E4, 1], [A4, 1], [B4, 2], [0, 1], [E4, 1], [Gs4, 1], [B4, 1], [C5, 2]]) { if (f) tone(f, u * n * 0.9, 'square', 0.12, t); t += u * n; }
+  },
   // 片頭用：時鐘滴答、腳步、咻、蓋章、上班鈴
   tick() { tone(1568, 0.04, 'square', 0.25); },
   step() { tone(120 + Math.random() * 40, 0.05, 'sine', 0.5); },
