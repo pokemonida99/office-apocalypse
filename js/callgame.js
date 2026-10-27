@@ -73,6 +73,7 @@ export function openCallGame({ sfx, bests = [], onEnd, level = null }) {
     document.addEventListener('visibilitychange', onHide);
     pzBtn.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); pause(); };
     pzEl.querySelector('[data-k="go"]').onclick = resume;
+    pzEl.onclick = (e) => { if (e.target === pzEl) resume(); };   // 點暫停卡外面＝繼續
     pzEl.querySelector('[data-k="again"]').onclick = () => { quit(); play(lvI); };
     pzEl.querySelector('[data-k="pick"]').onclick = () => { quit(); showLevels(); };
     pzEl.querySelector('[data-k="out"]').onclick = () => { quit(); el.classList.remove('on'); onEnd(null)?.close?.(); };   // 中途離開不算分

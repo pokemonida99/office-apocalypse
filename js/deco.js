@@ -3,7 +3,7 @@
 // 型錄分三個系列（清新木作、復古文具、夜班科技）＋寵物、牆面、地板；靠升職和任務永久解鎖，沒有等待或登入
 // 評分取代以前的「每件 +2%」：機能、綠意、豐富、系列、展示，最高 100 分 ＝ 1F 收入 +10%，拿過的最高分永久保留
 import * as THREE from 'three';
-import { scene, camera, renderer, rbox, box, cyl, sphere, mat, canvasTex, FONT } from './world.js?v=0.16.1';
+import { scene, camera, renderer, rbox, box, cyl, sphere, mat, canvasTex, FONT } from './world.js?v=0.16.2';
 
 // 房間格子（2F 本地座標，x 再加上 2F 的 ox）：寬 11 格 × 深 9 格，前牆中間是門
 export const DECO_ROOM = { x0: -7.05, z0: -6.5, cols: 11, rows: 9, cell: 0.5, wallZ: -6.84, door: [4, 5, 6] };   // door：最前排這幾欄要留給門口
