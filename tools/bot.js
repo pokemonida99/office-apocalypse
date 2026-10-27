@@ -9,7 +9,7 @@ export function install() {
   const shopOf = item => Object.values(S).find(s => s.item === item);
   const lv = s => s.unlocked ? s.lv + 1 : '-';
   const lvls = () => `Q${G.state.q} 咖${lv(S.coffee)} 印${lv(S.printer)} 販${lv(S.vending)} 牛${lv(S.beef)} 雞${lv(S.chicken)} 魚${lv(S.fish)} 電${G.phone.unlocked ? G.phone.lv + 1 : '-'} 職${G.state.rank + 1} 人${Object.keys(G.hires).length}`;
-  const PHONE = [5.4, -4.2];
+  const PHONE = [5.6, -5.95];   // 總機：桌子後面接電話（v0.15）
   B.decide = () => {
     const p = G.player;
     const pad = G.pads.filter(q => q.shown && !q.floor && G.state.money >= q.price() - q.paid).sort((a, b) => a.price() - b.price())[0];   // bot 只玩 1F

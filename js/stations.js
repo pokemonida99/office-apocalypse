@@ -1,6 +1,6 @@
 // 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.14.0';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.15.0';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -229,7 +229,7 @@ function printerLook(lv, fx) {
 // 電話總機：一張桌子，線數＝電話數。回傳每支電話的位置（響鈴時要跳）
 function phoneLook(lv, fx) {
   const g = new THREE.Group(); const L = STATIONS.phone.levels[lv];
-  const w = 1.2 + L.lines * 0.22;
+  const w = 1.1 + L.lines * 0.18;
   rbox(w, 0.62, 0.8, lv >= 3 ? 0x6b4a8a : 0xc9915b, 0, 0.31, 0, g);
   rbox(w + 0.06, 0.06, 0.86, lv >= 3 ? 0xf2e6ff : 0xf0e2c8, 0, 0.65, 0, g);
   const phones = [];
@@ -242,9 +242,9 @@ function phoneLook(lv, fx) {
   }
   if (lv >= 2) for (let i = 0; i < Math.min(3, Math.ceil(L.lines / 2)); i++) {   // 螢幕
     const x = (i - (Math.min(3, Math.ceil(L.lines / 2)) - 1) / 2) * 0.55;
-    rbox(0.45, 0.3, 0.04, 0x222831, x, 0.92, -0.28, g); box(0.4, 0.24, 0.01, glowMat(0x4ecbff), x, 0.92, -0.255, g);
+    const m = rbox(0.45, 0.2, 0.03, 0x222831, x, 0.8, -0.3, g); m.rotation.x = 0.35; const sc = box(0.4, 0.15, 0.01, glowMat(0x4ecbff), x, 0.8, -0.282, g); sc.rotation.x = 0.35;   // 矮螢幕（v0.15 接電話的人坐在後面，螢幕不能擋住她）
   }
-  if (lv === 4) { const sign = labelSprite('☎ 客服中心', { bg: '#7b5cff', size: 0.42, glow: true }); sign.position.set(0, 1.75, 0); g.add(sign); }
+  if (lv === 4) { const sign = labelSprite('☎ 客服中心', { bg: '#7b5cff', size: 0.42, glow: true }); sign.position.set(0, 2.4, 0); g.add(sign); }
   return { g, phones, tick: () => {} };
 }
 

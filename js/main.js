@@ -3,20 +3,20 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.14.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.14.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.14.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.14.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.14.0';
-import { CHANGES } from './changelog.js?v=0.14.0';
-import { makeTheater } from './theater.js?v=0.14.0';
-import { makeEnding, seenEndings } from './ending.js?v=0.14.0';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.14.0';
-import { makeIntro } from './intro.js?v=0.14.0';
-import { openCallGame } from './callgame.js?v=0.14.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, buildJieSeat } from './floors.js?v=0.14.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.15.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.15.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.15.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog } from './assets.js?v=0.15.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.15.0';
+import { CHANGES } from './changelog.js?v=0.15.0';
+import { makeTheater } from './theater.js?v=0.15.0';
+import { makeEnding, seenEndings } from './ending.js?v=0.15.0';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.15.0';
+import { makeIntro } from './intro.js?v=0.15.0';
+import { openCallGame } from './callgame.js?v=0.15.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, buildJieSeat, ROOM_X } from './floors.js?v=0.15.0';
 
-const VERSION = 'v0.14.0';
+const VERSION = 'v0.15.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -60,7 +60,7 @@ const L = {
 // 樓層：同一個世界的不同區域（2F 在 x-40、頂樓在 x+40），搭電梯就是瞬移；1F 照常運轉
 const FLOORS = {
   f1: { name: '1F 辦公室', icon: '🏢', ox: 0, bounds: L.bounds, cam: [-4.8, 4.8, -4.4, 9.0] },
-  f2: { name: '2F 辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 6.6 }, cam: [-44.8, -35.2, -4.4, 4.0] },   // 後排：小葵、Kevin；走廊；前排：老闆、阿傑的座位
+  f2: { name: '2F 辦公室', icon: '🛋', ox: -40, bounds: { minX: -47.2, maxX: -32.8, minZ: -6.5, maxZ: 6.6 }, cam: [-44.8, -35.2, -4.4, 4.0] },   // 後排：小葵、阿傑的座位、Kevin；走廊；前排整排：老闆
   rf: { name: 'RF 頂樓遊樂園', icon: '🎡', ox: 40, bounds: { minX: 32.8, maxX: 47.2, minZ: -6.5, maxZ: 7.0 }, cam: [35.2, 44.8, -4.4, 4.6] },
 };
 const camFocusOf = (p) => { const c = FLOORS[state.floor].cam; return V(THREE.MathUtils.clamp(p.x, c[0], c[1]), 0, THREE.MathUtils.clamp(p.z, c[2], c[3])); };
@@ -96,7 +96,8 @@ const SHOPS_DEF = {
   chicken: { ...foodShop(0, -1.8), need: () => shops.beef.unlocked },
   fish: { ...foodShop(4.2, 2.4), need: () => shops.chicken.unlocked },
 };
-const PHONE_DEF = { desk: [5.4, -5.6], zone: [5.4, -4.2], upPad: [3.88, -4.4], unlockPad: [5.4, -4.2] };   // 升級格放在之後小米辦公室的玻璃牆裡面
+// 總機（v0.15）：桌子在前、接電話的位置在桌子後面，小米和小葵接電話時都面向觀眾；從桌子左邊的走道繞進去
+const PHONE_DEF = { desk: [5.6, -4.95], zone: [5.6, -5.95], upPad: [6.78, -5.95], unlockPad: [5.6, -4.2], aisle: [[3.75, -4.15], [3.75, -5.95]] };   // 升級格在桌子後面、接電話位置的右邊
 const DESK_AT = [-6.0, 3.3];
 const HIRES = [
   { id: 'worker', name: '工讀生（咖啡）', price: 250, at: [-2.4, 3.0], need: () => shops.coffee.lv >= 1, kind: 'npcF', home: 'coffee', cap: 0xffc83d },
@@ -415,14 +416,14 @@ function pay(s, c) {
 function openPhone() {
   phone.unlocked = true;
   const [x, z] = PHONE_DEF.desk;
-  aabb(x, z, 1.1, 0.45);
+  aabb(x, z, 1.3, 0.45);   // 八線的桌子最寬 2.54；左邊留 1 公尺走道
   phone.zoneMark = zoneMark(PHONE_DEF.zone[0], PHONE_DEF.zone[1], 1.4, 1.0, '#c9b6ff');
   setPhoneLook(0, false);
 }
 function setPhoneLook(lv, fancy = true) {
   const [x, z] = PHONE_DEF.desk;
   if (phone.look) scene.remove(phone.look.g);
-  phone.look = LOOKS.phone(lv, {}); phone.look.g.position.set(x, 0, z); scene.add(phone.look.g);
+  phone.look = LOOKS.phone(lv, {}); phone.look.g.position.set(x, 0, z); phone.look.g.rotation.y = Math.PI; scene.add(phone.look.g);   // 話機、螢幕朝向桌子後面接電話的人
   if (fancy) popIn(phone.look.g, 1, 2.6);
   const n = STATIONS.phone.levels[lv].lines;
   // 線數變多：保留原本在響的，新的從安靜開始
@@ -441,7 +442,7 @@ function setPhoneLook(lv, fancy = true) {
     phone.office = miOfficeLook(lv); scene.add(phone.office); if (fancy) popIn(phone.office, 1, 2);
   }
   if (phone.badge) scene.remove(phone.badge);
-  phone.badge = levelBadge(STATIONS.phone.levels[lv].title, lv); phone.badge.position.set(x, 0, z); phone.badge.userData.y = 2.1; scene.add(phone.badge);
+  phone.badge = levelBadge(STATIONS.phone.levels[lv].title, lv); phone.badge.position.set(x, 0, z); phone.badge.userData.y = 3.0; scene.add(phone.badge);   // 抬高：不要擋到坐在桌後的小米
 }
 function updatePhone(dt) {
   if (!phone.unlocked) return;
@@ -459,7 +460,7 @@ function updatePhone(dt) {
       const val = Math.round(P.price * state.yearBonus * (rushOn() ? 2 : 1)); state.stats.calls++;
       addMoney(val);
       floatText(phone.look.phones[i].g.getWorldPosition(V()).setY(1.5), '+$' + val, '#7b5cff', 0.8);
-      sfx.answer(); if (kuiOn) gainXp(1);
+      if (kuiOn) gainXp(1);   // 主遊戲接電話不出聲（太吵），只有小米的接電話挑戰有音效
     }
   }
 }
@@ -622,7 +623,7 @@ function setupPads() {
   });
   for (const h of HIRES) if (!h.auto) addPad({
     kind: 'hire', at: h.at, price: () => h.price, title: () => h.name, cond: h.need, done: () => !!hires[h.id],
-    complete: () => { hire(h); gainCard(h.name.replace(/（.*）/, ''), (HIRE_SUB[h.id] || '加入團隊！'), makeActor(kinds[h.kind] || kinds.npcF, 1).root, V(h.at[0], 0, h.at[1]), 1.9); },
+    complete: () => { hire(h); gainCard(h.name.replace(/（.*）/, ''), (HIRE_SUB[h.id] || '加入團隊！'), null, V(h.at[0], 0, h.at[1]), 1, kinds[h.kind] ? h.kind : 'npcF'); },
   });
 }
 
@@ -633,9 +634,9 @@ function previewOf(type) {
   if (LOOKS[type]) return LOOKS[type](0, fx).g;
   return stallLook(type, 0, fx).g;
 }
-function gainCard(name, desc, model, at, scale = 1.15) {
+function gainCard(name, desc, model, at, scale = 1.15, who) {
   if (!theater) return;
-  theater.gain({ name, desc, model, scale, go: at && (() => { if (design.finale) return; camFocus = at.clone(); after(2.2, () => { if (!design.finale) camFocus = null; }); }) });
+  theater.gain({ name, desc, model, who, scale, go: at && (() => { if (design.finale) return; camFocus = at.clone(); after(2.2, () => { if (!design.finale) camFocus = null; }); }) });
 }
 // ---------- 夥伴 ----------
 const HIRE_SUB = {
@@ -849,38 +850,44 @@ function chairLook() {
   cyl(0.04, 0.04, 0.4, 0x666666, 0, 0.22, 0, g); for (let i = 0; i < 5; i++) { const ang = i / 5 * Math.PI * 2; rbox(0.3, 0.04, 0.05, 0x444444, Math.cos(ang) * 0.14, 0.04, Math.sin(ang) * 0.14, g).rotation.y = -ang; }
   g.traverse(m => { if (m.isMesh) m.castShadow = true; }); return g;
 }
+const MI_CHAIR_H = 0.9;
 function miUpdate(h, dt) {
   const a = h.actor, p = a.root.position, seat = [PHONE_DEF.zone[0] + 0.25, PHONE_DEF.zone[1]];
-  const door = (MI_OFFICE.door[0] + MI_OFFICE.door[1]) / 2, outDoor = [door, MI_OFFICE.z1 + 0.7];
-  if (!h.chair) { h.chair = chairLook(); h.chair.position.set(seat[0], 0, seat[1] + 0.1); scene.add(h.chair); popIn(h.chair); }
-  if (!h.sit && kinds.miSit) { h.sit = makeActor(kinds.miSit, 0.98); h.sit.action?.setEffectiveWeight(1); h.sit.root.rotation.y = Math.PI; h.sit.root.visible = false; scene.add(h.sit.root); }
-  const sitDown = (on) => { if (!h.sit) return; h.sit.root.visible = on; a.root.visible = !on; if (on) h.sit.root.position.set(seat[0], 0.02, seat[1] + 0.05); };
-  // 路線：要進出小米辦公室就先經過門口
-  const route = (to) => { const inside = (z) => phone.office && z < MI_OFFICE.z1 - 0.15; return inside(p.z) !== inside(to[1]) ? [outDoor, to] : [to]; };
+  const door = (MI_OFFICE.door[0] + MI_OFFICE.door[1]) / 2, outDoor = [door, MI_OFFICE.z1 + 0.7], [front, back] = PHONE_DEF.aisle;
+  // 坐姿：坐在椅子上的小米模型（連椅子一起建模，面向觀眾）；舊的坐姿骨架模型當備用
+  if (!h.sit && (kinds.miChair || kinds.miSit)) {
+    if (kinds.miChair) h.sit = makeActor(kinds.miChair, MI_CHAIR_H);   // 靜態模型（沒有骨架動作），高度＝坐著的頭頂高
+    else { h.sit = makeActor(kinds.miSit, 0.98); h.sit.action?.setEffectiveWeight(1); h.chair = chairLook(); h.chair.rotation.y = Math.PI; h.chair.position.set(seat[0], 0, seat[1] - 0.1); scene.add(h.chair); }
+    h.sit.root.visible = false; scene.add(h.sit.root);
+  }
+  const sitDown = (on) => { if (!h.sit) return; h.sit.root.visible = on; a.root.visible = !on; if (on) h.sit.root.position.set(seat[0], 0.02, seat[1] - 0.05); };
+  // 路線：座位在桌子後面，要從左邊走道繞；進出小米辦公室要經過門口
+  const toSeat = () => [...(phone.office && p.z > MI_OFFICE.z1 ? [outDoor] : []), front, back, seat];
+  const fromSeat = (to) => [back, front, ...(phone.office ? [outDoor] : []), to];
   const follow = () => { const t = h.path[0]; if (walkTo(a, t[0], t[1], 1.4, dt)) h.path.shift(); return !h.path.length; };
   h.drinkT = (h.drinkT ?? 60 + Math.random() * 30) - dt;
   if (!h.ms) h.ms = { phase: 'seat' };
   const m = h.ms;
   if (m.phase === 'seat') {
-    if (!h.path) h.path = route(seat);
+    if (!h.path) h.path = toSeat();
     if (h.path.length) { sitDown(false); follow(); }
-    else { turnTo(a, Math.PI, dt); a.speed = 0; sitDown(true); if (h.sit) { h.sit.mixer.update(dt); } }
+    else { turnTo(a, 0, dt); a.speed = 0; sitDown(true); if (h.sit) { h.sit.mixer?.update(dt); h.sit.root.position.y = 0.02 + Math.sin(state.t * 2.2) * 0.008; } }
     if (h.drinkT <= 0 && water.on && !design.finale) {
       const u = water.units.slice().sort((x, y) => x.level - y.level)[0];
-      Object.assign(m, { phase: 'water', u }); h.path = route(u.at); sitDown(false); floatText(p.clone().setY(1.6), '去喝口水～', '#7b5cff', 0.7);
+      Object.assign(m, { phase: 'water', u }); h.path = fromSeat(u.at); sitDown(false); floatText(p.clone().setY(1.6), '去喝口水～', '#7b5cff', 0.7);
     }
   } else if (m.phase === 'water') {
     if (follow()) { m.phase = 'drink'; m.t = 1.8; floatText(p.clone().setY(1.6), '咕嚕咕嚕～', '#2f7fc4', 0.8); }
   } else if (m.phase === 'drink') {
     a.speed = 0; m.t -= dt;
-    if (m.t <= 0) { if (m.u.level < 0.5) { m.phase = 'jug'; h.path = [WATER.pickup]; } else { m.phase = 'seat'; h.path = route(seat); h.drinkT = 60 + Math.random() * 30; } }
+    if (m.t <= 0) { if (m.u.level < 0.5) { m.phase = 'jug'; h.path = [WATER.pickup]; } else { m.phase = 'seat'; h.path = toSeat(); h.drinkT = 60 + Math.random() * 30; } }
   } else if (m.phase === 'jug') {
     if (follow()) { h.jug = jugMesh(); h.jug.position.y = 1.15; a.root.add(h.jug); popIn(h.jug, 1); m.phase = 'pour'; h.path = [m.u.at]; }
   } else if (m.phase === 'pour') {
     if (follow()) {
       a.root.remove(h.jug); h.jug = null; m.u.level = 1; m.u.look.setLevel(1); squash(m.u.look.g, 0.2); sfx.answer();
       floatText(m.u.look.g.position.clone().setY(1.6), '順手換好水了～ 💧', '#7b5cff', 0.9);
-      m.phase = 'seat'; h.path = route(seat); h.drinkT = 60 + Math.random() * 30;
+      m.phase = 'seat'; h.path = toSeat(); h.drinkT = 60 + Math.random() * 30;
     }
   }
   updateActor(a, dt, state.t);
@@ -1936,16 +1943,16 @@ function setupRoom() {
     const f = FURN_B_OLD.find(x => x.slot === slot); if (f) for (const i of room.owned[slot]) room.refund += f.opts[i]?.price || 0;
     delete room.owned[slot]; delete room.sel[slot];
   }
-  roomPlate(OXO, -3.7, `🛋 ${ME.name}的辦公室`, '#ff7a45');
+  roomPlate(OXO, ROOM_X.kui, `🛋 ${ME.name}的辦公室`, '#ff7a45');
   const kevinOn = state.year >= 2;
-  roomPlate(OXO, 3.7, kevinOn ? '🤖 特助 Kevin 辦公室' : '空辦公室', kevinOn ? '#142b45' : '#9aa3ad');
+  roomPlate(OXO, ROOM_X.kevin, kevinOn ? '🤖 特助 Kevin 辦公室' : '空辦公室', kevinOn ? '#142b45' : '#9aa3ad');
   room.kevin = buildKevinOffice(OXO, kevinOn);
   if (kevinOn) { setRoomTex(room.shell.b.floor, 'floor', 'grid'); setRoomTex(room.shell.b.back, 'wall', 'circuit'); } else { setRoomTex(room.shell.b.floor, 'floor', 'dark'); setRoomTex(room.shell.b.back, 'wall', 'navy'); }
   room.boss = buildBossOffice(OXO);
   for (const [x, z, hw, hd] of room.boss.walls) aabb(OXO + x, z, hw, hd);
   roomPlate(OXO, -1.3, '👑 Vivi 老闆辦公室', '#d9a63a', 2.2);
   const seat = buildJieSeat(OXO); for (const [x, z, hw, hd] of seat.walls) aabb(OXO + x, z, hw, hd);
-  roomPlate(OXO, 5.0, JIE ? '💻 小葵的座位' : '💻 阿傑的座位', '#5b6676', 3.3);
+  roomPlate(OXO, ROOM_X.jie, JIE ? '💻 小葵的座位' : '💻 阿傑的座位', '#5b6676');
   zoneMark(OXO + ROOM.zone[0], ROOM.zone[1], 1.2, 0.9, '#ffb47a');
   aabb(OXO + ROOM.kiosk[0], ROOM.kiosk[1], 0.65, 0.35);
   for (const f of FURN) { room.owned[f.slot] = [...new Set([0, ...(room.owned[f.slot] || [])])]; applySlot(f.slot, false); }
@@ -2285,9 +2292,9 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.14.0'); music.load('office', 'audio/bgm_office.m4a?v=0.14.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.15.0'); music.load('office', 'audio/bgm_office.m4a?v=0.15.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
-  loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {});
+  loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
   if (state.year >= 4) await Promise.all(TRIO.map(k => loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {})));   // 三人組開工就要在
   // 新辦公室：每一年換一點顏色（木地板色調、餐廳地磚、隔板）

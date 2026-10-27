@@ -71,7 +71,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
     if (!who) { img.style.visibility = 'hidden'; return; }
     img.style.visibility = 'visible';
     img.onerror = () => { img.onerror = null; img.src = HAS_ICON[who] ? `icons/${who}-180.png` : 'icons/kui-180.png'; };
-    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.14.0`;
+    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.15.0`;
   }
   // ---------- 打字機對話 ----------
   let typing = null;
@@ -126,12 +126,14 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
     });
   }
   // 「獲得」卡：舞台中間轉著新東西的模型，下面一句「獲得了 ○○」，按鈕：關閉／去看看
-  function gain({ name, desc, model, go, scale = 1 }) {
+  // 新夥伴（who＝角色模型）不轉圈：從左邊走進來，停在中間轉向觀眾，跳一下揮手
+  function gain({ name, desc, model, who, go, scale = 1 }) {
     return new Promise((done) => {
       if (window.G?.autoTheater) return done();
       const c = { gain: true, cast: {}, done, title: '獲得', wall: 0xfdf3e1, floor: 0xe9c98f };
       open(c);
-      if (model) { c.model = model; model.position.set(0, 0, 0.2); model.scale.multiplyScalar(scale); stage.add(model); }
+      if (who) { const ch = spawn('p', who, -2.6); if (ch) { ch.tx = 0; c.cast.p = ch; c.person = true; c.hello = 2.0; } }
+      else if (model) { c.model = model; model.position.set(0, 0, 0.2); model.scale.multiplyScalar(scale); stage.add(model); }
       $('.th-talk').style.display = 'none';
       const L = $('.th-list'); L.style.display = ''; L.innerHTML = `<div class="gain-name">獲得了${name}</div>${desc ? `<small>${desc}</small>` : ''}`;
       showButtons([{ label: '關閉' }, ...(go ? [{ label: '去看看', main: true, fn: () => { close(); go(); } }] : [])]);
@@ -146,15 +148,18 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
       if (Math.abs(d) > 0.02) { const v = Math.sign(d) * Math.min(Math.abs(d), dt * 1.6); p.x += v; ch.a.speed = 1.6; ch.a.root.rotation.y += ((d > 0 ? Math.PI / 2 : -Math.PI / 2) - ch.a.root.rotation.y) * Math.min(1, dt * 10); }
       else { ch.a.speed = 0; ch.a.root.rotation.y += (ch.face - ch.a.root.rotation.y) * Math.min(1, dt * 8); if (ch.gone) ch.a.root.visible = false; }
       if (ch.jump) { ch.jump += dt; p.y = Math.max(0, Math.sin(Math.min(1, ch.jump / 0.4) * Math.PI) * 0.35); if (ch.jump > 0.4) { ch.jump = 0; p.y = 0; } }
-      if (ch.emote) { ch.emoteT -= dt; ch.emote.position.y = 1.45 + Math.sin(t * 6) * 0.03; if (ch.emoteT <= 0) { ch.a.root.remove(ch.emote); ch.emote = null; } }
+      if (ch.emote) { ch.emoteT -= dt; ch.emote.position.y = (ch.emoteY || 1.45) + Math.sin(t * 6) * 0.03; if (ch.emoteT <= 0) { ch.a.root.remove(ch.emote); ch.emote = null; } }
       updateActor(ch.a, dt, t);
     }
     if (c.model) c.model.rotation.y += dt * 0.8;
+    if (c.hello) { c.hello -= dt; if (c.hello <= 0) { c.hello = 0; act(c, ['jump', 'p']); const p = c.cast.p; p.emoteY = 1.12; act(c, ['emote', 'p', '👋']); p.emote.position.x = 0.45; p.emoteT = 9; sfx.bell?.(); } }
     if (c.flying) { const f = c.flying; f.t += dt; f.g.position.x += dt * 3.2; f.g.position.y += dt * (2.2 - f.t * 4); f.g.rotation.z += dt * 9; if (f.t > 2) { stage.remove(f.g); c.flying = null; } }
     if (c.auto) { c.auto -= dt; if (c.auto <= 0) { c.auto = 0; next(c); } }
     // 畫：紙框裡的舞台
     const box = $('.th-stage').getBoundingClientRect(); if (box.width < 4) return;
-    cam.aspect = box.width / box.height; cam.position.set(0, c.gain ? 1.5 : 1.05, c.gain ? 3.6 : 5.0); cam.lookAt(0, c.gain ? 0.55 : 0.68, 0);
+    cam.aspect = box.width / box.height;
+    if (c.person) { cam.position.set(0, 0.95, 3.1); cam.lookAt(0, 0.7, 0); }   // 新夥伴：鏡頭平一點，看得到臉
+    else { cam.position.set(0, c.gain ? 1.5 : 1.05, c.gain ? 3.6 : 5.0); cam.lookAt(0, c.gain ? 0.55 : 0.68, 0); }
     if (c.shake > 0) { c.shake -= dt; cam.position.x += (Math.random() - 0.5) * 0.12; cam.position.y += (Math.random() - 0.5) * 0.08; }
     cam.updateProjectionMatrix();
     const H = renderer.domElement.clientHeight, ac = renderer.autoClear;
