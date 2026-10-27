@@ -94,7 +94,7 @@ export function yearEndScript(year) {
     wall: 0xfff0d6,
     cast: { kui: { x: -1.6 }, vivi: { x: 0 }, jie: { x: 1.6 } },
     steps: [
-      { who: 'vivi', face: 'smug', text: `第 ${year} 年業績全部達標！大家辛苦了～`, act: [['emote', 'vivi', '🎉']] },
+      { who: 'vivi', face: 'smug', text: `第 ${year} 年結束了！大家辛苦了～`, act: [['emote', 'vivi', '🎉']] },
       { who: 'kui', face: 'happy', text: '耶——！終於可以吃尾牙了！', act: [['jump', 'kui'], ['jump', 'jie']] },
       { who: 'jie', face: 'smug', text: year >= 5 ? '今年尾牙……有人有話要說吧？' : '今年的年終應該會多一點吧？', act: [['emote', 'jie', '😏']] },
       { who: 'vivi', face: 'happy', text: '走！上台領獎！', auto: 1.6 },
