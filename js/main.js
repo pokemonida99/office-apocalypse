@@ -1179,10 +1179,10 @@ document.getElementById('coverVer').onclick = () => {
 // 每季有一個業績目標（這一季賺到的錢）：達標拿全額獎金，沒達標獎金減半，時間到都會進下一季
 // ======================================================================
 const QUARTERS = [
-  { target: 3000, reward: 400, unlock: '採購部開張了！買裝備、買裝潢' },
+  { target: 2000, reward: 400, unlock: '採購部開張了！買裝備、買裝潢' },   // 第一季還在學操作，目標低一點
   { target: 8000, reward: 2000, unlock: '開始有突發事件：VIP 客戶、午餐尖峰' },
   { target: 35000, reward: 6000, unlock: '採購部進了高級裝潢' },
-  { target: 130000, reward: 20000, unlock: '一年結束了！準備尾牙' },
+  { target: 110000, reward: 20000, unlock: '一年結束了！準備尾牙' },
 ];
 CFG.quarterSec = 180;
 const yearEl = document.getElementById('year'), yearTitle = document.getElementById('yearTitle'), yearNum = document.getElementById('yearNum'), yearBar = document.getElementById('yearBar');
@@ -1197,9 +1197,10 @@ function updateYear(dt = 0) {
   const done = state.q >= 4 && state.finaleDone && !design.finale;   // 尾牙辦完、選了繼續上班：隨時可以搬家
   if (done !== yearEl.classList.contains('done')) { yearEl.classList.toggle('done', done); chipsEl.classList.toggle('low', done); moveBtn.textContent = `🚚 搬到新辦公室（第 ${state.year + 1} 年）`; }
   if (state.q >= 4) { yearTitle.textContent = `第 ${state.year} 年　結束 ✓`; yearNum.textContent = '全年 $' + state.earned.toLocaleString(); yearBar.style.width = '100%'; return; }
-  if (!design.finale && !state.talking) state.qT += dt;   // 季度時間（遊戲時間，暫停、開選單時不會走）
+  const qPaused = design.finale || state.talking || state.floor === 'f2';   // 季度時間（遊戲時間）：暫停、開選單、待在 2F 辦公室時不會走
+  if (!qPaused) state.qT += dt;
   const tgt = qTarget(state.q), got = state.earned - state.qStart, left = Math.max(0, CFG.quarterSec - state.qT);
-  yearTitle.textContent = `第 ${state.year} 年${REPLAY ? '（回顧）' : ''}　Q${state.q + 1}　⏱ ${mmss(left)}`;
+  yearTitle.textContent = `第 ${state.year} 年${REPLAY ? '（回顧）' : ''}　Q${state.q + 1}　${state.floor === 'f2' ? '⏸' : '⏱'} ${mmss(left)}`;
   yearNum.textContent = `${got >= tgt ? '✓ ' : ''}$${Math.min(got, 9e9).toLocaleString()} / ${tgt.toLocaleString()}`;
   const pct = Math.min(100, state.qT / CFG.quarterSec * 100);
   yearBar.style.width = `${pct}%`; yearBar.classList.toggle('hit', got >= tgt); yearQs[state.q]?.style.setProperty('--p', pct.toFixed(1) + '%');
@@ -2131,7 +2132,16 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 
 // ---------- 主迴圈 ----------
 let camFocus = null, metaT = 0;
+let f2Clock = 0;   // 待在 2F 時 state.t 停住，2F 自己的動畫（魚、寵物、老闆）用這個時鐘
 function update(dt) {
+  // 待在 2F 員工辦公室：整個公司停住（1F 不會有收入、季度倒數也停），只有小葵和 2F 在動
+  if (state.floor === 'f2' && !design.finale) {
+    f2Clock += dt; updatePlayer(dt); updateElevator(); updateDecoBtn(); updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateSave(dt);
+    room.boss?.tick(dt, f2Clock); room.kevin?.tick(dt, f2Clock); room.deco?.update(dt, f2Clock);
+    const v = hires.vivi; if (v && v.trip === 'up') { vivi2F(v, dt); updateActor(v.actor, dt, f2Clock); }   // 老闆剛好在樓上就繼續逛
+    metaT += dt; if (metaT > 0.25) { updateYear(metaT); metaT = 0; }
+    return;
+  }
   state.t += dt; runLater();
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
@@ -2251,7 +2261,7 @@ const G = window.G = {
   look(x, z) { cam.target.set(x, 0, z); if (player) player.actor.root.position.set(x, 0, z + 1.2); },
   step(dt, n = 1) { for (let i = 0; i < n; i++) update(dt); },
   KIOSK, buy, shopItems, startFinale, endFinale, save, get kiosk() { return kiosk; },
-  get deco() { return room.deco; }, proj: (x, y, z) => { const v = V(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },   // 測試用：世界座標 → 畫面座標
+  qTarget,   get deco() { return room.deco; }, proj: (x, y, z) => { const v = V(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },   // 測試用：世界座標 → 畫面座標
   // 錄影用：G.hold = true 後，G.tick(dt) 推一格（更新＋鏡頭＋畫）；G.camAt = [x, z] 可指定鏡頭看哪裡
   tick(dt) {
     if (state.started && !state.mini) update(dt);   // 玩小米的挑戰時主遊戲暫停
