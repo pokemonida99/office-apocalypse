@@ -133,3 +133,23 @@ export function turnTo(a, target, dt) {
   let d = target - r.y; d = Math.atan2(Math.sin(d), Math.cos(d));
   r.y += d * Math.min(1, dt * 12);
 }
+
+// 阿強的帽子掉了：帽子那一截（頭頂往下約 0.125）用裁切平面切掉，換成剛好頭大小的光頭
+// 尺寸照模型量的（角色本地座標）：頭頂 y＝1、帽緣 y≈0.9、頭寬約 0.33、頭深約 0.31（帽簷往前凸不算）
+const BALD = { cut: 0.875, rx: 0.166, ry: 0.13, rz: 0.158, z: -0.012 };
+const baldGeo = new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), baldMat = new THREE.MeshStandardMaterial({ color: 0xf2c9a5, roughness: 0.35 });
+export function setBald(a, on, renderer) {
+  if (on) {
+    if (a.bald) return;
+    renderer.localClippingEnabled = true;
+    const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);   // 只留下 y ≤ 切線的部分
+    a.root.traverse(o => { if (o.isMesh && !o.userData.mat0) { o.userData.mat0 = o.material; o.material = o.material.clone(); o.material.clippingPlanes = [plane]; } });
+    const g = new THREE.Group(), dome = new THREE.Mesh(baldGeo, baldMat); dome.scale.set(BALD.rx, BALD.ry, BALD.rz); dome.castShadow = true; g.add(dome);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); shine.position.set(-0.06, BALD.ry * 0.82, 0.07); g.add(shine);
+    g.position.set(0, BALD.cut, BALD.z); a.root.add(g); a.bald = { g, plane }; baldTick(a);
+  } else if (a.bald) {
+    a.root.remove(a.bald.g); a.root.traverse(o => { if (o.userData.mat0) { o.material.dispose(); o.material = o.userData.mat0; delete o.userData.mat0; } }); a.bald = null;
+  }
+}
+const _v = new THREE.Vector3();
+export function baldTick(a) { if (a.bald) a.bald.plane.constant = a.root.localToWorld(_v.set(0, BALD.cut, 0)).y; }   // 裁切平面跟著角色走（世界座標）

@@ -7,7 +7,7 @@ const FACES = ['happy', 'shock', 'angry', 'tired', 'smug', 'cry'];
 const NAMES = { kui: '小葵', jie: '阿傑', mi: '小米', vivi: 'Vivi 老闆', kevin: '特助 Kevin', yan: 'PM 小燕', heilun: '業務黑輪', cha: '茶茶', qiang: '阿強', senpai: '學姊', caishen: '黑財神' };
 const HAS_ICON = { kui: 1, jie: 1, mi: 1, vivi: 1 };   // 沒有表情頭像時的備用大頭貼
 
-export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, addJog, rbox, canvasTex, sfx = {}, onOpen, onClose }) {
+export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, addJog, setBald, baldTick, rbox, canvasTex, sfx = {}, onOpen, onClose }) {
   const el = document.getElementById('theater');
   const stage = new THREE.Scene();
   stage.add(new THREE.HemisphereLight(0xfff4e0, 0xb08a6a, 2.3));
@@ -60,9 +60,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
       const capM = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x15171c })); capM.scale.set(1.15, 0.7, 1.15);
       const bill = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 16, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0x15171c })); bill.position.set(0, 0, 0.12); g.add(capM, bill);
       g.position.set(ch.a.root.position.x, 1.05, 0.1); stage.add(g); c.flying = { g, t: 0 };
-      const bald = new THREE.Mesh(new THREE.SphereGeometry(0.235, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf2c9a5, roughness: 0.35 }));
-      bald.position.set(0, 0.86, -0.01); bald.scale.set(1.05, 0.75, 1.05); ch.a.root.add(bald); ch.bald = bald;
-      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); shine.position.set(-0.08, 1.01, 0.12); ch.a.root.add(shine);
+      setBald(ch.a, true, renderer); ch.bald = true;
       sfx.whoosh?.();
     }
   }
@@ -71,7 +69,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
     if (!who) { img.style.visibility = 'hidden'; return; }
     img.style.visibility = 'visible';
     img.onerror = () => { img.onerror = null; img.src = HAS_ICON[who] ? `icons/${who}-180.png` : 'icons/kui-180.png'; };
-    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.16.2`;
+    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.16.3`;
   }
   // ---------- 打字機對話 ----------
   let typing = null;
@@ -149,7 +147,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
       else { ch.a.speed = 0; ch.a.root.rotation.y += (ch.face - ch.a.root.rotation.y) * Math.min(1, dt * 8); if (ch.gone) ch.a.root.visible = false; }
       if (ch.jump) { ch.jump += dt; p.y = Math.max(0, Math.sin(Math.min(1, ch.jump / 0.4) * Math.PI) * 0.35); if (ch.jump > 0.4) { ch.jump = 0; p.y = 0; } }
       if (ch.emote) { ch.emoteT -= dt; ch.emote.position.y = (ch.emoteY || 1.45) + Math.sin(t * 6) * 0.03; if (ch.emoteT <= 0) { ch.a.root.remove(ch.emote); ch.emote = null; } }
-      updateActor(ch.a, dt, t);
+      updateActor(ch.a, dt, t); if (ch.bald) baldTick(ch.a);
     }
     if (c.model) c.model.rotation.y += dt * 0.8;
     if (c.hello) { c.hello -= dt; if (c.hello <= 0) { c.hello = 0; act(c, ['jump', 'p']); const p = c.cast.p; p.emoteY = 1.12; act(c, ['emote', 'p', '👋']); p.emote.position.x = 0.45; p.emoteT = 9; sfx.bell?.(); } }
