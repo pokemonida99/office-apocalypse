@@ -2,7 +2,7 @@
 // 角色個性照《不想上班／我想離職》：小葵＝菜鳥設計師、阿傑＝老鳥設計師、小米＝客服、Vivi＝老闆、Kevin＝說「用 AI 就好」的特助
 // 第 6 年起的年度主題放在 THEMES（v0.13），開場也走這裡
 export const THEMES = [
-  { id: 'typhoon', name: '颱風季', icon: '🌀', desc: '風會把手上的貨吹掉幾個，窗外下大雨；颱風假那天收入 ×1.5' },
+  { id: 'typhoon', name: '颱風季', icon: '🌀', desc: '一股白色強風會橫掃辦公室，被掃到的人會被吹飛、手上的貨掉幾個（地上會先亮一條，閃開就好）；颱風假那天收入 ×1.5' },
   { id: 'winter', name: '景氣寒冬', icon: '❄️', desc: '景氣不好，所有收入減半；年度目標也降成 7 成' },
   { id: 'anniv', name: '週年慶', icon: '🎉', desc: '客人一直湧進來，售價 ×1.5，但進貨要跑更快' },
   { id: 'robot', name: 'AI 機器人導入', icon: '🤖', desc: 'Kevin 帶來兩台 AI 機器人，會幫忙搬貨，也會把貨送錯店' },
@@ -54,7 +54,7 @@ export function yearScript(year, ctx = {}) {
       { who: 'senpai', face: 'tired', text: '對了，這棟的機器很舊。壞了就來總務部窗口報修。', act: [['face', 'senpai', 'cam']] },
       { who: 'cha', face: 'happy', text: '修東西就交給阿強囉～人家去找大家聊天💕', act: [['emote', 'cha', '💬']] },
     ],
-    card: { title: '第 4 年哪裡不一樣', items: ['🔧 總務部成立：茶茶、阿強、學姊', '⚠️ 機器會故障、停止出貨：去總務部窗口報修，阿強會去修', '💬 茶茶會拉人聊天害人罷工，過去打斷她；阿強被帶走時學姊會去拉回來', '💧 阿強、學姊會順手換飲水機的水', '🚪 阿強也會幫後門：丟垃圾、交外送、搬原料'] },
+    card: { title: '第 4 年哪裡不一樣', items: ['🔧 總務部成立：茶茶、阿強、學姊', '⚠️ 機器會故障、停止出貨：去總務部窗口報修（早餐街右後角），阿強會去修', '💬 茶茶會拉人聊天害人罷工，過去打斷她；阿強被帶走時學姊會去拉回來', '💧 阿強、學姊會順手換飲水機的水', '🚪 阿強也會幫後門：丟垃圾、交外送、搬原料'] },
   };
   if (year === 5) return {
     title: '第 5 年',
@@ -76,7 +76,7 @@ export function yearScript(year, ctx = {}) {
     floor: th.id === 'night' ? 0x6b5a48 : undefined,
     cast: { kui: { x: -1.2 }, ...(th.id === 'robot' ? { kevin: { x: 1.2 } } : ['anniv', 'trip', 'winter'].includes(th.id) ? { vivi: { x: 1.2 } } : th.id === 'complain' ? { mi: { x: 1.2 } } : { jie: { x: 1.2 } }) },
     steps: ({
-      typhoon: [{ who: 'kui', face: 'shock', text: '颱風要來了！外面風好大！', act: [['shake'], ['emote', 'kui', '🌀']] }, { who: 'jie', face: 'tired', text: '手上的貨抱緊一點，會被吹掉喔。' }],
+      typhoon: [{ who: 'kui', face: 'shock', text: '颱風要來了！外面風好大！', act: [['shake'], ['emote', 'kui', '🌀']] }, { who: 'jie', face: 'tired', text: '地上亮白線就快閃，不然會被吹飛。' }],
       winter: [{ who: 'vivi', face: 'tired', text: '今年景氣寒冬……大家的收入都要先打對折了。', act: [['emote', 'vivi', '❄️']] }, { who: 'kui', face: 'cry', text: '年終呢？', act: [['emote', 'kui', '💧']] }, { who: 'vivi', face: 'smug', text: '目標我也降一點啦，撐過今年就好！' }],
       complain: [{ who: 'mi', face: 'angry', text: '這禮拜客訴電話爆炸了！客人還會直接跑回來找你。', act: [['shake'], ['emote', 'mi', '😡']] }, { who: 'kui', face: 'shock', text: '那要怎麼辦？' }, { who: 'mi', face: 'tired', text: '走過去看是要退錢，還是重做一份給他。放著不管，我只好加倍賠了……' }],
       anniv: [{ who: 'vivi', face: 'smug', text: '今年是週年慶！客人會多到爆～', act: [['emote', 'vivi', '🎉']] }, { who: 'kui', face: 'tired', text: '（又要跑更快了……）', act: [['emote', 'kui', '💦']] }],

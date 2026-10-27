@@ -3,21 +3,21 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.1';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.1';
-import { CHANGES } from './changelog.js?v=0.18.1';
-import { makeTheater } from './theater.js?v=0.18.1';
-import { makeDeco } from './deco.js?v=0.18.1';
-import { makeEnding, seenEndings } from './ending.js?v=0.18.1';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.1';
-import { makeIntro } from './intro.js?v=0.18.1';
-import { openCallGame } from './callgame.js?v=0.18.1';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.2';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.2';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.2';
+import { CHANGES } from './changelog.js?v=0.18.2';
+import { makeTheater } from './theater.js?v=0.18.2';
+import { makeDeco } from './deco.js?v=0.18.2';
+import { makeEnding, seenEndings } from './ending.js?v=0.18.2';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.2';
+import { makeIntro } from './intro.js?v=0.18.2';
+import { openCallGame } from './callgame.js?v=0.18.2';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.2';
 
-const VERSION = 'v0.18.1';
+const VERSION = 'v0.18.2';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -107,9 +107,9 @@ const HIRES = [
   { id: 'mi', name: '小米', price: 2500, at: [1.2, 3.0], need: () => phone.unlocked, kind: 'mi' },
   { id: 'vivi', name: 'Vivi 老闆', price: 9000, at: [3.0, 3.0], need: () => phone.unlocked && shops.vending.unlocked, kind: 'vivi' },
   // 第 4 年：總務部三人組自動報到，不用花錢請（站在總務部辦公室裡）
-  { id: 'cha', name: '茶茶（總務部）', auto: 4, at: [-1.9, 5.15], kind: 'cha' },
-  { id: 'qiang', name: '阿強（總務部）', auto: 4, at: [-0.9, 4.9], kind: 'qiang' },
-  { id: 'senpai', name: '學姊（總務部）', auto: 4, at: [-1.2, 5.15], kind: 'senpai' },
+  { id: 'cha', name: '茶茶（總務部）', auto: 4, at: [6.25, -12.5], kind: 'cha' },
+  { id: 'qiang', name: '阿強（總務部）', auto: 4, at: [5.7, -10.6], kind: 'qiang' },
+  { id: 'senpai', name: '學姊（總務部）', auto: 4, at: [6.85, -12.5], kind: 'senpai' },
 ];
 const TRIO = ['cha', 'qiang', 'senpai'];
 
@@ -368,8 +368,7 @@ function updateCustomers(s, dt) {
   for (let i = s.crowd.length - 1; i >= 0; i--) {
     const c = s.crowd[i];
     const ex = s.d.exit || L.exit;
-    if (c.mode === 'leave' && !c.out && s.type === 'beef') { if (walkTo(c.actor, c.actor.root.position.x, 3.7, CFG.crewSpeed * 1.2, dt)) c.out = true; }   // 牛肉攤：先往北走，不要斜穿總務部
-    else if (c.mode === 'leave' && walkTo(c.actor, ex[0] - 0.3, ex[1], CFG.crewSpeed * 1.2, dt)) {
+    if (c.mode === 'leave' && walkTo(c.actor, ex[0] - 0.3, ex[1], CFG.crewSpeed * 1.2, dt)) {
       scene.remove(c.actor.root); c.got.forEach(m => untrack(m)); s.crowd.splice(i, 1); continue;
     }
     const need = c.want - c.got.length, show = c.mode === 'queue' && s.queue[0] === c && need > 0;
@@ -669,13 +668,12 @@ function hire(h, silent = false) {
   banner(h.name.replace(/（.*）/, '') + ' 加入！', HIRE_SUB[h.id], 0, h.id === 'jie' ? '#b46bff' : '#ff4fa3');
 }
 // ---------- 第 6 年起：年度主題 ----------
-// 颱風季：每 20～30 秒一陣風，手上 3 個以上會被吹掉 1～2 個；一年一次 60 秒颱風假（收入 ×1.5）；畫面下雨
+// 颱風季：每 20～30 秒一股白色強風橫掃 1F（地上先亮一條預告帶），被掃到的人會被吹飛一段；小葵手上 3 個以上會被吹掉 1～2 個；一年一次 60 秒颱風假（收入 ×1.5）
 // AI 機器人導入：兩台機器人幫忙搬，但每趟有 15% 會「ERROR」把貨弄丟
 let gustT = 25, holidayDone = false;
 const robots = [];
 function setupTheme() {
   THEME = themeOf(state.year); if (!THEME) return;
-  if (THEME.id === 'typhoon') document.body.classList.add('rain');
   if (THEME.id === 'winter') {   // 景氣寒冬：下雪、光線偏冷
     document.body.classList.add('snow');
     scene.traverse(o => { if (o.isHemisphereLight) o.color.setHex(0xdfe9ff); });
@@ -711,18 +709,13 @@ function setupTheme() {
 }
 function updateTheme(dt) {
   if (!THEME) return;
-  if (design.finale) { if (cpl) cplShow(null); return; }
+  if (design.finale) { if (cpl) cplShow(null); if (gust) { scene.remove(gust.g); scene.remove(gust.band); gust = null; } return; }
   if (THEME.id === 'complain') complainUpdate(dt);
+  knockAll(dt);
   if (THEME.id === 'typhoon') {
     gustT -= dt;
-    if (gustT <= 0) {
-      gustT = 20 + Math.random() * 10; camKick(0.4); sfx.whoosh?.();
-      if (player.carry.length >= 3 && state.floor === 'f1') {
-        const n = Math.min(player.carry.length - 1, 1 + Math.floor(Math.random() * 2));
-        for (let i = 0; i < n; i++) { const m = player.carry.pop(); puff(m.position.clone()); untrack(m); }
-        floatText(player.actor.root.position.clone().setY(1.8), `🌀 一陣風！被吹走 ${n} 個`, '#2f7fc4', 1);
-      } else toast('🌀 好大的風！');
-    }
+    if (gustT <= 0 && !gust) { gustT = 20 + Math.random() * 10; if (state.floor === 'f1') spawnGust(); }
+    if (gust) updateGust(dt);
     if (!holidayDone && state.q >= 1 && Math.random() < dt / 60) { holidayDone = true; holidayUntil = state.t + 60; banner('🌀 颱風假！', '今天來上班的人少，60 秒收入 ×1.5', 0, '#2f7fc4'); }
   }
   for (const r of robots) {   // AI 機器人：搬貨，偶爾 ERROR
@@ -732,6 +725,80 @@ function updateTheme(dt) {
     updateActor(r.actor, dt, state.t);
   }
 }
+// 颱風的風：預告 1.2 秒（地上一條白色帶子＋箭頭）→ 一團白色的風從一邊掃到另一邊（約 2 秒），碰到的人被吹飛
+const GUST = { warn: 1.2, speed: 9, half: 1.1, hitX: 0.9, push: 5.5, flyT: 0.75 };
+let gust = null;
+const windTex = (() => { let t = null; return () => t || (t = canvasTex(512, 256, (g, W, H) => {
+  g.strokeStyle = '#ffffff'; g.lineCap = 'round';
+  for (let i = 0; i < 9; i++) {   // 一條條往前捲的白線
+    const y = 26 + i * 25, x0 = 20 + (i * 53) % 120, len = 260 + (i * 71) % 160; g.lineWidth = 12 + (i % 3) * 6; g.globalAlpha = 0.8 + (i % 3) * 0.1;
+    g.beginPath(); g.moveTo(x0, y); g.bezierCurveTo(x0 + len * 0.35, y - 18, x0 + len * 0.65, y + 18, x0 + len, y);
+    if (i % 3 === 0) g.arc(x0 + len, y - 16, 16, Math.PI / 2, Math.PI * 2.2, true);   // 尾巴捲一圈
+    g.stroke();
+  }
+})); })();
+const warnTex = (() => { let t = null; return () => t || (t = canvasTex(512, 64, (g, W, H) => {
+  g.fillStyle = '#ffffff'; g.globalAlpha = 0.6; g.fillRect(0, 0, W, H); g.globalAlpha = 1; g.fillStyle = '#7fb8e6'; g.font = `900 52px ${FONT}`; g.textBaseline = 'middle';
+  for (let x = 10; x < W; x += 64) g.fillText('»', x, H / 2 + 2);
+})); })();
+function spawnGust() {
+  const pz = player.actor.root.position.z, b = L.bounds;
+  const z = THREE.MathUtils.clamp(Math.random() < 0.65 ? pz + (Math.random() - 0.5) * 1.6 : b.minZ + 1 + Math.random() * (b.maxZ - b.minZ - 2), b.minZ + 0.8, b.maxZ - 0.8);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const band = new THREE.Mesh(new THREE.PlaneGeometry(15, GUST.half * 2), new THREE.MeshBasicMaterial({ map: warnTex(), transparent: true, depthWrite: false, opacity: 0 }));
+  band.rotation.x = -Math.PI / 2; if (dir < 0) band.rotation.z = Math.PI; band.position.set(0, 0.02, z); band.material.map.wrapS = THREE.RepeatWrapping; band.material.map.repeat.set(4, 1); scene.add(band);
+  const g = new THREE.Group(); g.position.set(-dir * 10, 0, z); scene.add(g);
+  for (const [y, sc, rz] of [[0.4, 1.1, 0], [1.0, 1.35, 0.05], [1.6, 1.0, -0.04]]) {   // 三層白線（直立的，鏡頭看得到在空中）
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(4.4 * sc, 1.3 * sc), new THREE.MeshBasicMaterial({ map: windTex(), transparent: true, depthWrite: false, opacity: 1, side: THREE.DoubleSide, toneMapped: false }));
+    m.position.y = y; m.rotation.z = rz; if (dir < 0) m.scale.x = -1; g.add(m);
+  }
+  const cloud = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false });
+  for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.42 + (i % 3) * 0.12, 12, 8), cloud); c.position.set(dir * (0.9 - i * 0.32), 0.45 + (i % 3) * 0.42, (i % 2 - 0.5) * 0.9); c.scale.x = 1.6; c.userData.cloud = true; g.add(c); }   // 一團白白的風
+  const flat = new THREE.Mesh(new THREE.PlaneGeometry(3.6, GUST.half * 2), new THREE.MeshBasicMaterial({ map: windTex(), transparent: true, depthWrite: false, opacity: 0.6 }));
+  flat.rotation.x = -Math.PI / 2; flat.position.y = 0.05; if (dir < 0) flat.scale.x = -1; g.add(flat);
+  g.visible = false;
+  gust = { z, dir, band, g, t: 0, hit: new Set() };
+  sfx.whoosh?.(); toast('🌀 強風要來了！閃開白色那條');
+}
+// 被吹飛：往風的方向滑出去、轉圈、離地一點點
+function blowAway(o, a, dir) {
+  if (o.knock) return;
+  o.knock = { vx: dir * GUST.push, t: 0 }; puff(a.root.position.clone().setY(0.5));
+}
+function knockStep(o, a, dt) {
+  const k = o.knock; if (!k) return;
+  k.t += dt; const f = k.t / GUST.flyT, p = a.root.position;
+  p.x = THREE.MathUtils.clamp(p.x + k.vx * (1 - f) * dt, -7.0, 7.0);
+  p.y = Math.sin(Math.min(1, f) * Math.PI) * 0.4; a.root.rotation.y += 14 * dt * (1 - f);
+  if (f >= 1) { p.y = 0; o.knock = null; }
+}
+function updateGust(dt) {
+  const G2 = gust; G2.t += dt;
+  if (G2.t < GUST.warn) { G2.band.material.opacity = 0.6 + Math.sin(G2.t * 14) * 0.25; G2.band.material.map.offset.x -= dt * 2; return; }
+  G2.g.visible = true; G2.band.material.opacity = Math.max(0, G2.band.material.opacity - dt * 0.6);
+  if (!G2.blew) { G2.blew = true; camKick(0.35); sfx.whoosh?.(); }
+  const g = G2.g, wx = (g.position.x += G2.dir * GUST.speed * dt);
+  g.children.forEach((m, i) => { if (m.userData.cloud) { m.rotation.y += dt * 6; m.scale.y = 1 + Math.sin(state.t * 10 + i) * 0.15; return; } m.material.map.offset.x -= dt * 1.5 * G2.dir; if (i < 3) m.position.y += Math.sin(state.t * 9 + i) * 0.004; });
+  const inWind = (a) => { const p = a.root.position; return Math.abs(p.x - wx) < GUST.hitX && Math.abs(p.z - G2.z) < GUST.half && a.root.visible; };
+  // 小葵
+  if (state.floor === 'f1' && !G2.hit.has(player) && inWind(player.actor)) {
+    G2.hit.add(player); blowAway(player, player.actor, G2.dir); vel.set(0, 0);
+    if (player.carry.length >= 3) {
+      const n = Math.min(player.carry.length - 1, 1 + Math.floor(Math.random() * 2));
+      for (let i = 0; i < n; i++) { const m = player.carry.pop(); puff(m.position.clone()); untrack(m); }
+      floatText(player.actor.root.position.clone().setY(1.8), `🌀 哇啊～被吹走 ${n} 個`, '#2f7fc4', 1);
+    } else floatText(player.actor.root.position.clone().setY(1.8), '🌀 哇啊～', '#2f7fc4', 0.9);
+  }
+  // 同事、客人（坐著的、總務部辦公室裡面的不會被吹到）
+  const others = [...Object.values(shops).flatMap(s => s.crowd), ...Object.values(hires).filter(h => !(h.sit && h.sit.root.visible) && !inGA(h.actor.root.position.x, h.actor.root.position.z))];
+  for (const o of others) if (!G2.hit.has(o) && inWind(o.actor)) { G2.hit.add(o); blowAway(o, o.actor, G2.dir); if (Math.random() < 0.5) floatText(o.actor.root.position.clone().setY(1.6), ['哇～', '我的頭髮！', '救命啊～', '好大的風！'][Math.floor(Math.random() * 4)], '#2f7fc4', 0.7); }
+  if (Math.abs(wx) > 10.5 && G2.t > GUST.warn + 0.5) { scene.remove(G2.g); scene.remove(G2.band); gust = null; }
+}
+function knockAll(dt) {
+  for (const s of Object.values(shops)) for (const c of s.crowd) if (c.knock) knockStep(c, c.actor, dt);
+  for (const h of Object.values(hires)) if (h.knock) knockStep(h, h.actor, dt);
+}
+
 // ---------- 小米客訴週：客人回來客訴，插隊到櫃台前擋住（不收貨），走過去選退款或重做 ----------
 // 退款：馬上扣錢走人；重做：照他要的數量再送一份，付款 ×2（客訴變好評）；30 秒沒理，小米幫你道歉、賠 1.5 倍
 let cplT = 30, cpl = null;
@@ -786,9 +853,9 @@ function complainUpdate(dt) {
 // 茶茶：坐辦公室；有時把工作推給阿強，有時拉人聊天害對方罷工（像 Kevin 一樣，小葵過去打斷她）；最常直接把阿強帶走
 // 阿強：一次搬 10 個；報修時去修機器；空手時順手換飲水機的水；後門的事（丟垃圾、交外送、搬原料）都會幫忙；偶爾被電風扇吹掉帽子
 // 學姊：坐辦公室；看到阿強被茶茶帶走就去把他拉回來；阿強沒空時她去修；水快沒了會去換；最缺貨時出手搬一趟
-const GA = GA_OFFICE, GA_ZONE = [(GA.x0 + GA.door[0]) / 2, GA.z0 - 0.55];
-const GA_IN = [(GA.door[0] + GA.door[1]) / 2, GA.z0 + 0.35], GA_OUT = [(GA.door[0] + GA.door[1]) / 2, GA.z0 - 0.45];
-const GA_SEAT = { cha: [GA.x0 + 0.5, GA.z1 - 1.0], senpai: [GA.x0 + 1.2, GA.z1 - 1.0] };
+const GA = GA_OFFICE, GA_ZONE = [(GA.door[1] + GA.x1) / 2, GA.z1 + 0.55];   // 窗口在前面右邊
+const GA_IN = [(GA.door[0] + GA.door[1]) / 2, GA.z0 + 0.55], GA_OUT = [(GA.door[0] + GA.door[1]) / 2, GA.z1 + 0.45];   // 進門先走到桌子後面那排
+const GA_SEAT = { cha: [GA.x1 - 0.9, GA.z0 + 0.55], senpai: [GA.x1 - 0.3, GA.z0 + 0.55] };
 const GA_HANG = [[2.5, 2.3], [-3.5, 2.1]];   // 茶茶把阿強帶去聊天的地方
 const BREAK = { first: 70, every: [80, 120], fix: 3.5, pool: ['coffee', 'printer', 'vending'] };
 const MACHINE_NAME = { coffee: '咖啡機', printer: '印表機', vending: '販賣機' };
@@ -798,8 +865,8 @@ function buildGA() {
   if (ga.on) return; ga.on = true;
   ga.look = gaOfficeLook(); scene.add(ga.look);
   const cx = (GA.x0 + GA.x1) / 2, cz = (GA.z0 + GA.z1) / 2, hd = (GA.z1 - GA.z0) / 2;
-  aabb(GA.x0, cz, 0.06, hd); aabb(GA.x1, cz, 0.06, hd); aabb(cx, GA.z1, (GA.x1 - GA.x0) / 2, 0.06);
-  aabb((GA.x0 + GA.door[0]) / 2, GA.z0, (GA.door[0] - GA.x0) / 2, 0.2); aabb((GA.door[1] + GA.x1) / 2, GA.z0, (GA.x1 - GA.door[1]) / 2, 0.06);
+  aabb(GA.x0, cz, 0.06, hd); aabb(GA.x1, cz, 0.06, hd); aabb(cx, GA.z0, (GA.x1 - GA.x0) / 2, 0.06);
+  aabb((GA.x0 + GA.door[0]) / 2, GA.z1, (GA.door[0] - GA.x0) / 2, 0.06); aabb((GA.door[1] + GA.x1) / 2, GA.z1, (GA.x1 - GA.door[1]) / 2, 0.2);
   zoneMark(GA_ZONE[0], GA_ZONE[1], 1.0, 0.8, '#ffb42e');
   ga.nextBreak = state.t + BREAK.first;
 }
@@ -808,7 +875,7 @@ function gaGo(h, to, speed, dt) {
   const p = h.actor.root.position, key = to[0].toFixed(1) + ',' + to[1].toFixed(1);
   if (h.gk !== key || !h.gp) {
     h.gk = key; const a = inGA(p.x, p.z), b = inGA(to[0], to[1]);
-    const atDoor = Math.abs(p.x - GA_IN[0]) < 0.4 && p.z > GA_OUT[1] - 0.1 && p.z < GA_IN[1] + 0.1;
+    const atDoor = Math.abs(p.x - GA_IN[0]) < 0.4 && p.z > Math.min(GA_IN[1], GA_OUT[1]) - 0.1 && p.z < Math.max(GA_IN[1], GA_OUT[1]) + 0.1;
     h.gp = a === b ? [to] : atDoor ? [a ? GA_OUT : GA_IN, to] : a ? [GA_IN, GA_OUT, to] : [GA_OUT, GA_IN, to];
   }
   const t = h.gp[0]; if (!t) return true;
@@ -1338,7 +1405,7 @@ function updatePlayer(dt) {
   const k = 1 - Math.exp(-dt * (len > 0.05 ? 10 : 14));
   vel.x += (tx - vel.x) * k; vel.y += (tz - vel.y) * k;
   const ox = p.x, oz = p.z;
-  p.x += vel.x * dt; p.z += vel.y * dt; collide(p);
+  p.x += vel.x * dt; p.z += vel.y * dt; if (player.knock) knockStep(player, a, dt); collide(p);
   a.speed = Math.hypot(p.x - ox, p.z - oz) / Math.max(dt, 1e-4);
   if (len > 0.05) turnTo(a, Math.atan2(mx, mz), dt);
   carry(player, dt);
@@ -2710,7 +2777,7 @@ const G = window.G = {
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
   get water() { return water; }, WATER, music, get theater() { return theater; }, yearScript, autoTheater: false,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), back, BACK, bagAt, bagsLeft, boxTaker, northShops, startTruck: () => startTruck(), startRider: () => startRider(), get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
+  event(n) { if (n === 'gust') return spawnGust(); ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), back, BACK, bagAt, bagsLeft, boxTaker, northShops, startTruck: () => startTruck(), startRider: () => startRider(), get cai() { return cai; }, get yan() { return yan; }, get gust() { return gust; }, get heilun() { return heilun; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -2725,7 +2792,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.18.1'); music.load('office', 'audio/bgm_office.m4a?v=0.18.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.18.2'); music.load('office', 'audio/bgm_office.m4a?v=0.18.2'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});

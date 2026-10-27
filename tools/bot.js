@@ -17,7 +17,7 @@ export function install() {
       const s = B.shop;
       B.idle = s.tray.length ? 0 : (B.idle || 0) + 1 / 30;
       if (!p.carry.length && pad) B.mode = null;
-      else if (isLine(s) || p.carry.length >= p.carryMax || (!s.tray.length && p.carry.length)) B.mode = null;
+      else if (isLine(s) || p.carry.length >= p.carryMax || (!s.tray.length && p.carry.length) || (p.carry.length && p.type !== s.item)) B.mode = null;   // 被風吹到別家出貨框、背到別的東西：先去送
       else if (B.idle > 2) { B.mode = null; B.idle = 0; B.skip = G.state.t + 3; }
       else return s.pickup;
     }

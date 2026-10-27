@@ -1,6 +1,6 @@
 // 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.18.1';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.18.2';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -462,9 +462,9 @@ export function miOfficeLook(lv) {
   return g;
 }
 
-// 總務部辦公室（第 4 年起，茶茶、阿強、學姊）：矮玻璃牆＋北邊的報修窗口，門在窗口右邊
-// 裡面：桌子在前面（人站桌後面向觀眾）、西牆工具洞洞板、東南角備用桶裝水
-export const GA_OFFICE = { x0: -2.4, x1: -0.5, z0: 4.5, z1: 6.15, door: [-1.3, -0.62] };
+// 總務部辦公室（第 4 年起，茶茶、阿強、學姊）：早餐街右後角（蛋糕攤右邊、靠後牆），不擋走道
+// 前面（南邊、朝鏡頭）：左邊是門、右邊是報修窗口；裡面：兩人坐後面、桌子在前面面向觀眾；後牆工具洞洞板、西北角備用桶裝水
+export const GA_OFFICE = { x0: 5.25, x1: 7.15, z0: -13.05, z1: -11.45, door: [5.35, 6.0] };
 export function gaOfficeLook() {
   const O = GA_OFFICE, g = new THREE.Group(), rail = 0xe07b2a;
   const cw = O.x1 - O.x0, cd = O.z1 - O.z0, cx = (O.x0 + O.x1) / 2, cz = (O.z0 + O.z1) / 2;
@@ -483,31 +483,31 @@ export function gaOfficeLook() {
     rbox(len + 0.04, 0.06, 0.09, rail, 0, 0.17 + h, 0, w);
     return w;
   };
-  wall(O.x0, O.z0, O.x0, O.z1); wall(O.x0, O.z1, O.x1, O.z1, 0.5); wall(O.x1, O.z1, O.x1, O.z0); wall(O.door[1], O.z0, O.x1, O.z0);
-  // 報修窗口：北邊矮櫃台＋服務鈴＋報修單
-  const cl = O.door[0] - O.x0, ccx = (O.x0 + O.door[0]) / 2;
-  rbox(cl, 0.8, 0.34, 0xf4e6d0, ccx, 0.4, O.z0, g); rbox(cl + 0.06, 0.05, 0.42, rail, ccx, 0.82, O.z0, g);
-  cyl(0.07, 0.09, 0.05, 0xd9a63a, ccx + 0.3, 0.87, O.z0, g, { metalness: 0.9, roughness: 0.25 }); sphere(0.025, 0xd9a63a, ccx + 0.3, 0.92, O.z0, g, { metalness: 0.9, roughness: 0.25 });
-  rbox(0.2, 0.01, 0.26, 0xffffff, ccx - 0.25, 0.85, O.z0, g).rotation.y = 0.2;
-  for (const x of O.door) cyl(0.05, 0.05, 1.05, rail, x, 0.52, O.z0, g);
-  // 桌子（在前面）＋兩台筆電（螢幕朝裡）＋紅色工具箱
-  const dz = O.z1 - 0.48, dx = cx - 0.15;
-  rbox(1.3, 0.06, 0.5, 0xfff1dd, dx, 0.72, dz, g); for (const x of [-0.6, 0.6]) rbox(0.06, 0.7, 0.45, 0x8a6a4c, dx + x, 0.36, dz, g);
-  for (const [x, c] of [[-0.35, 0xff7ab8], [0.35, 0x2c3e57]]) { rbox(0.32, 0.02, 0.22, 0x9aa3ad, dx + x, 0.76, dz, g); const sc = rbox(0.32, 0.22, 0.02, c, dx + x, 0.87, dz + 0.1, g); sc.rotation.x = 0.25; }
-  rbox(0.3, 0.14, 0.16, 0xd9483b, dx + 0.02, 0.83, dz - 0.05, g); rbox(0.16, 0.03, 0.04, 0x333333, dx + 0.02, 0.92, dz - 0.05, g);
-  // 西牆洞洞板＋工具
-  const peg = new THREE.Group(); peg.position.set(O.x0 + 0.06, 0, cz - 0.2); peg.rotation.y = Math.PI / 2; g.add(peg);
-  rbox(1.0, 0.6, 0.03, 0xc79a6a, 0, 0.95, 0, peg);
-  rbox(0.05, 0.36, 0.03, 0x7a8794, -0.32, 0.95, 0.03, peg).rotation.z = 0.2;   // 扳手
-  rbox(0.26, 0.07, 0.03, 0x3a3f48, -0.02, 1.1, 0.03, peg); rbox(0.04, 0.3, 0.03, 0xb9733c, -0.02, 0.92, 0.03, peg);   // 鐵鎚
-  rbox(0.05, 0.28, 0.03, 0xffb42e, 0.28, 0.98, 0.03, peg); rbox(0.03, 0.12, 0.03, 0x9aa3ad, 0.28, 0.78, 0.03, peg);   // 螺絲起子
-  // 東南角：備用桶裝水兩桶
-  for (const [y, z] of [[0.2, 0], [0.58, 0.02]]) { cyl(0.15, 0.15, 0.36, 0x6cc4ff, O.x1 - 0.22, y, O.z1 - 0.25 + z, g, { transparent: true, opacity: 0.85 }); }
-  // 門牌貼在前面玻璃上
+  wall(O.x0, O.z0, O.x0, O.z1, 0.5); wall(O.x0, O.z0, O.x1, O.z0); wall(O.x1, O.z0, O.x1, O.z1, 0.5); wall(O.x0, O.z1, O.door[0], O.z1, 0.5);
+  // 報修窗口：前面右邊的矮櫃台＋服務鈴＋報修單
+  const cl = O.x1 - O.door[1], ccx = (O.door[1] + O.x1) / 2;
+  rbox(cl, 0.8, 0.34, 0xf4e6d0, ccx, 0.4, O.z1, g); rbox(cl + 0.06, 0.05, 0.42, rail, ccx, 0.82, O.z1, g);
+  cyl(0.07, 0.09, 0.05, 0xd9a63a, ccx + 0.3, 0.87, O.z1, g, { metalness: 0.9, roughness: 0.25 }); sphere(0.025, 0xd9a63a, ccx + 0.3, 0.92, O.z1, g, { metalness: 0.9, roughness: 0.25 });
+  rbox(0.2, 0.01, 0.26, 0xffffff, ccx - 0.25, 0.85, O.z1, g).rotation.y = 0.2;
+  for (const x of O.door) cyl(0.05, 0.05, 1.05, rail, x, 0.52, O.z1, g);
+  // 桌子（在人前面、櫃台後面）＋兩台筆電（螢幕朝裡）＋紅色工具箱
+  const dz = O.z0 + 1.0, dx = ccx;
+  rbox(1.05, 0.06, 0.46, 0xfff1dd, dx, 0.72, dz, g); for (const x of [-0.48, 0.48]) rbox(0.06, 0.7, 0.42, 0x8a6a4c, dx + x, 0.36, dz, g);
+  for (const [x, c] of [[-0.3, 0xff7ab8], [0.3, 0x2c3e57]]) { rbox(0.3, 0.02, 0.2, 0x9aa3ad, dx + x, 0.76, dz, g); const sc = rbox(0.3, 0.2, 0.02, c, dx + x, 0.86, dz + 0.09, g); sc.rotation.x = 0.25; }
+  rbox(0.26, 0.13, 0.15, 0xd9483b, dx, 0.82, dz - 0.05, g); rbox(0.14, 0.03, 0.04, 0x333333, dx, 0.9, dz - 0.05, g);
+  // 後牆洞洞板＋工具
+  const peg = new THREE.Group(); peg.position.set(ccx, 0, O.z0 + 0.06); g.add(peg);
+  rbox(1.0, 0.6, 0.03, 0xc79a6a, 0, 1.15, 0, peg);
+  rbox(0.05, 0.36, 0.03, 0x7a8794, -0.32, 1.15, 0.03, peg).rotation.z = 0.2;   // 扳手
+  rbox(0.26, 0.07, 0.03, 0x3a3f48, -0.02, 1.3, 0.03, peg); rbox(0.04, 0.3, 0.03, 0xb9733c, -0.02, 1.12, 0.03, peg);   // 鐵鎚
+  rbox(0.05, 0.28, 0.03, 0xffb42e, 0.28, 1.18, 0.03, peg); rbox(0.03, 0.12, 0.03, 0x9aa3ad, 0.28, 0.98, 0.03, peg);   // 螺絲起子
+  // 西北角：備用桶裝水兩桶
+  for (const [y, z] of [[0.2, 0], [0.58, 0.02]]) { cyl(0.15, 0.15, 0.36, 0x6cc4ff, O.x0 + 0.22, y, O.z0 + 0.25 + z, g, { transparent: true, opacity: 0.85 }); }
+  // 門牌貼在窗口櫃台正面
   const tex = labelSprite('🔧 總務部', { bg: '#e07b2a' }).material.map;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.25), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
-  sign.position.set(cx, 0.4, O.z1 + 0.05); g.add(sign);
-  const bell = labelSprite('🔧 總務部・🛎 報修', { bg: '#e07b2a', size: 0.24 }); bell.position.set(ccx + 0.3, 1.75, O.z0); g.add(bell);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.24), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  sign.position.set(ccx, 0.45, O.z1 + 0.18); g.add(sign);
+  const bell = labelSprite('🔧 總務部・🛎 報修', { bg: '#e07b2a', size: 0.24 }); bell.position.set(ccx, 1.75, O.z1); g.add(bell);
   g.traverse(m => { if (m.isMesh && m !== floor) m.castShadow = true; });
   return g;
 }
