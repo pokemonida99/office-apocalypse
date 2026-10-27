@@ -1,6 +1,6 @@
 // 離線玩：第一次連網打開時把遊戲檔案和 Three.js 存進手機，之後沒網路也能玩
 // 每次發新版要改 VERSION（跟 main.js 的 VERSION、各檔 ?v= 一致），舊快取會在新版啟用時清掉
-const VERSION = '0.17.0';
+const VERSION = '0.18.0';
 const CACHE = 'office-apocalypse-' + VERSION;
 const THREE_DIR = 'vendor/three/';   // Three.js 放在自己的網站上（不靠 unpkg，學校、公司網路擋 CDN 也能玩）
 const FILES = [

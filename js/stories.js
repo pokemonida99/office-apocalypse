@@ -41,18 +41,20 @@ export function yearScript(year, ctx = {}) {
     card: { title: '第 3 年哪裡不一樣', items: ['🧋 後牆打通：早餐街三攤', '📋 PM 小燕的限時急件、🤝 業務黑輪帶 VIP（會抽成）', '👟 兩個工讀生直接報到'] },
   };
   if (year === 4) return {
-    title: '第 4 年　新部門報到',
+    title: '第 4 年　總務部報到',
     wall: 0xeef4ff,
     cast: { kui: { x: -1.7 }, cha: { x: -0.55 }, qiang: { x: 0.55 }, senpai: { x: 1.7 } },
     steps: [
-      { who: 'kui', face: 'happy', text: '今年來了新部門！大家好～', act: [['emote', 'kui', '👋']] },
+      { who: 'kui', face: 'happy', text: '今年來了總務部！大家好～', act: [['emote', 'kui', '👋']] },
       { who: 'cha', face: 'happy', text: '阿強～這箱好重喔，你幫人家搬好不好？', act: [['face', 'cha', 'right'], ['emote', 'cha', '💕']] },
       { who: 'qiang', face: 'smug', text: '交給我！', act: [['jump', 'qiang']] },
       { who: 'senpai', face: 'tired', text: '……又來了。', act: [['face', 'senpai', 'left']] },
       { who: 'qiang', face: 'shock', text: '哇！電風扇！我的帽子！！', act: [['cap', 'qiang'], ['shake']] },
       { who: 'senpai', face: 'smug', text: '他很在意這個，大家當作沒看到。', act: [['emote', 'qiang', '💦']] },
+      { who: 'senpai', face: 'tired', text: '對了，這棟的機器很舊。壞了就來總務部窗口報修。', act: [['face', 'senpai', 'cam']] },
+      { who: 'cha', face: 'happy', text: '修東西就交給阿強囉～人家去找大家聊天💕', act: [['emote', 'cha', '💬']] },
     ],
-    card: { title: '第 4 年哪裡不一樣', items: ['🧑‍💼 綠茶三人組入職：茶茶、阿強、學姊', '📦 茶茶會把工作推給阿強，阿強搬得特別多', '🕵️ 學姊會在最缺貨的時候出手'] },
+    card: { title: '第 4 年哪裡不一樣', items: ['🔧 總務部成立：茶茶、阿強、學姊', '⚠️ 機器會故障、停止出貨：去總務部窗口報修，阿強會去修', '💬 茶茶會拉人聊天害人罷工，過去打斷她；阿強被帶走時學姊會去拉回來', '💧 阿強、學姊會順手換飲水機的水'] },
   };
   if (year === 5) return {
     title: '第 5 年',

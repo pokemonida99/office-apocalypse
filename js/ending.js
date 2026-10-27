@@ -1,6 +1,6 @@
 // 離職結局播放（C 手帳風）：方格紙上用紙膠帶貼一張劇照，下面打字機旁白，點一下下一張；最後一張結局卡＋「已解鎖」章
 // play(id, { buttons }) 回傳 Promise；buttons＝最後結局卡的按鈕 [{ label, main, fn }]
-import { ENDINGS } from './stories.js?v=0.17.0';
+import { ENDINGS } from './stories.js?v=0.18.0';
 const SEEN_KEY = 'office-apocalypse-endings';
 export const seenEndings = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch { return []; } };
 export function makeEnding({ sfx = {}, onOpen, onClose }) {

@@ -29,6 +29,7 @@ export function install() {
       if (d) return [d.x, d.z];
     }
     if (G.kevin && G.kevin.phase !== 'flee') { const k = G.kevin.a.root.position; return [k.x, k.z]; }   // Kevin 來鬧事：先去揍他
+    if (G.ga && G.ga.breaks.some(b => !b.reported)) return G.GA_ZONE;   // 機器壞了：先去總務部報修
     if (p.carry.length) return shopOf(p.type).d.drop;
     if (B.pad && B.pad.shown && G.state.money > 0) return B.pad.at;   // 選定的格子就付到完
     B.pad = pad || null;

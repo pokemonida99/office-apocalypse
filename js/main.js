@@ -3,21 +3,21 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.17.0';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.17.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.17.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.17.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.17.0';
-import { CHANGES } from './changelog.js?v=0.17.0';
-import { makeTheater } from './theater.js?v=0.17.0';
-import { makeDeco } from './deco.js?v=0.17.0';
-import { makeEnding, seenEndings } from './ending.js?v=0.17.0';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.17.0';
-import { makeIntro } from './intro.js?v=0.17.0';
-import { openCallGame } from './callgame.js?v=0.17.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.17.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.0';
+import { CHANGES } from './changelog.js?v=0.18.0';
+import { makeTheater } from './theater.js?v=0.18.0';
+import { makeDeco } from './deco.js?v=0.18.0';
+import { makeEnding, seenEndings } from './ending.js?v=0.18.0';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.0';
+import { makeIntro } from './intro.js?v=0.18.0';
+import { openCallGame } from './callgame.js?v=0.18.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.0';
 
-const VERSION = 'v0.17.0';
+const VERSION = 'v0.18.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -106,10 +106,10 @@ const HIRES = [
   { id: 'jie', name: JIE ? '小葵（設計部）' : '阿傑（設計部）', price: 1800, at: DESK_AT, need: () => shops.printer.lv >= 1, kind: JIE ? 'kui' : 'jie' },   // 阿傑模式換小葵坐這裡畫圖
   { id: 'mi', name: '小米', price: 2500, at: [1.2, 3.0], need: () => phone.unlocked, kind: 'mi' },
   { id: 'vivi', name: 'Vivi 老闆', price: 9000, at: [3.0, 3.0], need: () => phone.unlocked && shops.vending.unlocked, kind: 'vivi' },
-  // 第 4 年：綠茶三人組（行銷企劃部）自動報到，不用花錢請
-  { id: 'cha', name: '茶茶（企劃部）', auto: 4, at: [-1.9, 4.9], kind: 'cha' },
-  { id: 'qiang', name: '阿強（企劃部）', auto: 4, at: [-1.3, 4.9], kind: 'qiang' },
-  { id: 'senpai', name: '學姊（企劃部）', auto: 4, at: [-1.6, 5.6], kind: 'senpai' },
+  // 第 4 年：總務部三人組自動報到，不用花錢請（站在總務部辦公室裡）
+  { id: 'cha', name: '茶茶（總務部）', auto: 4, at: [-1.9, 5.15], kind: 'cha' },
+  { id: 'qiang', name: '阿強（總務部）', auto: 4, at: [-0.9, 4.9], kind: 'qiang' },
+  { id: 'senpai', name: '學姊（總務部）', auto: 4, at: [-1.2, 5.15], kind: 'senpai' },
 ];
 const TRIO = ['cha', 'qiang', 'senpai'];
 
@@ -302,7 +302,7 @@ function produce(s, dt) {
   const Lv = s.def.levels[s.lv];
   s.look.tick(dt, state.t, s.look.g.position);
   s.stall.tick(dt, state.t, s.stall.g.position);
-  s.timer += dt;
+  if (!s.broken) s.timer += dt;   // 機器故障：停止出貨（總務部修好才會動）
   if (Lv.line) {
     // 產線：直接做到輸送帶上，送到櫃台
     if (s.timer >= Lv.brew && s.stack.length + s.beltItems.length < 40) {
@@ -368,7 +368,8 @@ function updateCustomers(s, dt) {
   for (let i = s.crowd.length - 1; i >= 0; i--) {
     const c = s.crowd[i];
     const ex = s.d.exit || L.exit;
-    if (c.mode === 'leave' && walkTo(c.actor, ex[0] - 0.3, ex[1], CFG.crewSpeed * 1.2, dt)) {
+    if (c.mode === 'leave' && !c.out && s.type === 'beef') { if (walkTo(c.actor, c.actor.root.position.x, 3.7, CFG.crewSpeed * 1.2, dt)) c.out = true; }   // 牛肉攤：先往北走，不要斜穿總務部
+    else if (c.mode === 'leave' && walkTo(c.actor, ex[0] - 0.3, ex[1], CFG.crewSpeed * 1.2, dt)) {
       scene.remove(c.actor.root); c.got.forEach(m => untrack(m)); s.crowd.splice(i, 1); continue;
     }
     const need = c.want - c.got.length, show = c.mode === 'queue' && s.queue[0] === c && need > 0;
@@ -452,7 +453,7 @@ function updatePhone(dt) {
   // 誰在接電話：小葵站在框裡，或小米坐鎮
   phone.answerT += dt;
   const near = (a) => Math.hypot(a.root.position.x - PHONE_DEF.zone[0], a.root.position.z - PHONE_DEF.zone[1]) < 0.9;
-  const kuiOn = player && near(player.actor), miOn = hires.mi && near(hires.mi.actor);
+  const kuiOn = player && near(player.actor), miOn = hires.mi && !hires.mi.chat && near(hires.mi.actor);
   const every = kuiOn ? CFG.answerEvery : (miOn ? CFG.miAnswerEvery : Infinity);
   if (phone.answerT >= every) {
     const i = phone.lines.findIndex(l => l.ringing), ln = phone.lines[i];
@@ -778,70 +779,244 @@ function complainUpdate(dt) {
   c.cTag = labelSprite('😡 客訴！', { bg: '#d9483b', size: 0.24 }); scene.add(c.cTag);
   cpl = c; toast(`😡 ${s.def.name}有客人回來客訴！`);
 }
-// ---------- 第 4 年：綠茶三人組（行銷企劃部） ----------
-// 茶茶：去拿一批貨，走到阿強旁邊整批丟給他（「阿強～幫人家送一下嘛💕」），自己回座位
-// 阿強：一般搬運工，但一次搬 10 個（甘之如飴）；偶爾被電風扇吹掉帽子，露出光頭幾秒
-// 學姊：平常站在企劃部，看到排很長又沒貨的店就去搬一趟（「……真是的。」）
-const TRIO_DESK = [-1.6, 5.2];
-function buildTrioDesk() {
-  if (scene.getObjectByName('trioDesk')) return;
-  const g = new THREE.Group(); g.name = 'trioDesk'; g.position.set(TRIO_DESK[0], 0, TRIO_DESK[1]); scene.add(g);
-  rbox(1.6, 0.06, 0.6, 0xfff1dd, 0, 0.72, 0, g); for (const x of [-0.75, 0.75]) rbox(0.06, 0.7, 0.55, 0x8a6a4c, x, 0.36, 0, g);
-  rbox(0.4, 0.3, 0.03, 0x2c3e57, -0.4, 0.92, -0.15, g); rbox(0.4, 0.3, 0.03, 0xff7ab8, 0.4, 0.92, -0.15, g);
-  const lab = labelSprite('📈 行銷企劃部', { bg: '#2fb27a', size: 0.24 }); lab.position.set(0, 1.55, 0); g.add(lab);
-  aabb(TRIO_DESK[0], TRIO_DESK[1], 0.85, 0.35);
+// ---------- 第 4 年起：總務部（茶茶、阿強、學姊） ----------
+// 機器會故障（咖啡機、印表機、販賣機）：停止出貨，要去總務部窗口報修，阿強（阿強沒空就學姊）才會去修
+// 茶茶：坐辦公室；有時把工作推給阿強，有時拉人聊天害對方罷工（像 Kevin 一樣，小葵過去打斷她）；最常直接把阿強帶走
+// 阿強：一次搬 10 個；報修時去修機器；空手時順手換飲水機的水；偶爾被電風扇吹掉帽子
+// 學姊：坐辦公室；看到阿強被茶茶帶走就去把他拉回來；阿強沒空時她去修；水快沒了會去換；最缺貨時出手搬一趟
+const GA = GA_OFFICE, GA_ZONE = [(GA.x0 + GA.door[0]) / 2, GA.z0 - 0.55];
+const GA_IN = [(GA.door[0] + GA.door[1]) / 2, GA.z0 + 0.35], GA_OUT = [(GA.door[0] + GA.door[1]) / 2, GA.z0 - 0.45];
+const GA_SEAT = { cha: [GA.x0 + 0.5, GA.z1 - 1.0], senpai: [GA.x0 + 1.2, GA.z1 - 1.0] };
+const GA_HANG = [[2.5, 2.3], [-3.5, 2.1]];   // 茶茶把阿強帶去聊天的地方
+const BREAK = { first: 70, every: [80, 120], fix: 3.5, pool: ['coffee', 'printer', 'vending'] };
+const MACHINE_NAME = { coffee: '咖啡機', printer: '印表機', vending: '販賣機' };
+const ga = { on: false, look: null, breaks: [], nextBreak: 0 };
+const inGA = (x, z) => x > GA.x0 && x < GA.x1 && z > GA.z0 && z < GA.z1;
+function buildGA() {
+  if (ga.on) return; ga.on = true;
+  ga.look = gaOfficeLook(); scene.add(ga.look);
+  const cx = (GA.x0 + GA.x1) / 2, cz = (GA.z0 + GA.z1) / 2, hd = (GA.z1 - GA.z0) / 2;
+  aabb(GA.x0, cz, 0.06, hd); aabb(GA.x1, cz, 0.06, hd); aabb(cx, GA.z1, (GA.x1 - GA.x0) / 2, 0.06);
+  aabb((GA.x0 + GA.door[0]) / 2, GA.z0, (GA.door[0] - GA.x0) / 2, 0.2); aabb((GA.door[1] + GA.x1) / 2, GA.z0, (GA.x1 - GA.door[1]) / 2, 0.06);
+  zoneMark(GA_ZONE[0], GA_ZONE[1], 1.0, 0.8, '#ffb42e');
+  ga.nextBreak = state.t + BREAK.first;
 }
+// 走路：進出總務部要走門（目標換了就重算路線）
+function gaGo(h, to, speed, dt) {
+  const p = h.actor.root.position, key = to[0].toFixed(1) + ',' + to[1].toFixed(1);
+  if (h.gk !== key || !h.gp) {
+    h.gk = key; const a = inGA(p.x, p.z), b = inGA(to[0], to[1]);
+    const atDoor = Math.abs(p.x - GA_IN[0]) < 0.4 && p.z > GA_OUT[1] - 0.1 && p.z < GA_IN[1] + 0.1;
+    h.gp = a === b ? [to] : atDoor ? [a ? GA_OUT : GA_IN, to] : a ? [GA_IN, GA_OUT, to] : [GA_OUT, GA_IN, to];
+  }
+  const t = h.gp[0]; if (!t) return true;
+  if (walkTo(h.actor, t[0], t[1], speed, dt)) h.gp.shift();
+  return !h.gp.length;
+}
+const sayAt = (h, L, c, s = 0.8) => floatText(h.actor.root.position.clone().setY(1.7), Array.isArray(L) ? L[Math.floor(Math.random() * L.length)] : L, c, s);
+const nameOf = (h) => h.id === 'qiang' ? '阿強' : h.id === 'mi' ? '小米' : h.id === 'jie' ? (JIE ? '小葵' : '阿傑') : '工讀生';
+
+// ---------- 機器故障 ----------
+function breakShop(s) {
+  if (s.broken) return; s.broken = true;
+  const sign = labelSprite('⚠️ 故障', { bg: '#d9483b', size: 0.3 }); sign.position.set(s.src[0], (s.badge?.userData.y ?? 2.2) + (s.d.machine ? 0.95 : 0.7), s.src[1]);   // 疊在名牌上面 scene.add(sign);
+  ga.breaks.push({ s, sign, reported: false, fixer: null, smokeT: 0 });
+  puff(V(s.src[0], 1.0, s.src[1])); camKick(0.3); sfx.alarm(); squash(s.look.g, 0.15);
+  banner(`⚠️ ${MACHINE_NAME[s.type]}壞了！`, '不會出貨了，快去 🔧 總務部窗口報修', 0, '#e07b2a');
+}
+function fixDone(b) {
+  const s = b.s; s.broken = false; scene.remove(b.sign); ga.breaks.splice(ga.breaks.indexOf(b), 1);
+  confetti(V(s.src[0], 1.2, s.src[1]), 30, 0.6); sfx.build(); squash(s.look.g, 0.1);
+  floatText(V(s.src[0], 2.3, s.src[1]), '修好了！🔧', '#e07b2a', 1.1);
+}
+const gaFree = (h) => h && !h.task && !h.chat && !h.cap;
+const gaFixer = () => gaFree(hires.qiang) ? hires.qiang : gaFree(hires.senpai) && hires.senpai.cm?.phase === 'desk' ? hires.senpai : null;
+function updateBreaks(dt) {
+  if (!ga.on || design.finale) return;
+  if (state.t >= ga.nextBreak && ga.breaks.length < 2) {
+    ga.nextBreak = state.t + BREAK.every[0] + Math.random() * (BREAK.every[1] - BREAK.every[0]);
+    const pool = BREAK.pool.map(k => shops[k]).filter(s => s.unlocked && !s.broken);
+    if (pool.length) breakShop(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  for (const b of ga.breaks) if ((b.smokeT -= dt) <= 0) { b.smokeT = 1.4; puff(V(b.s.src[0] + (Math.random() - 0.5) * 0.4, 1.4, b.s.src[1])); }
+  // 小葵站到報修窗口：一次報完所有故障
+  if (state.floor === 'f1' && nearAt(player.actor, GA_ZONE, 0.8)) {
+    const nb = ga.breaks.filter(b => !b.reported);
+    if (nb.length) {
+      nb.forEach(b => { b.reported = true; }); gainXp(2); sfx.answer();
+      floatText(V(GA_ZONE[0], 1.9, GA_ZONE[1]), `🛎 叮！${nb.map(b => MACHINE_NAME[b.s.type]).join('、')}壞了～`, '#e07b2a', 1.0);
+      const s = hires.senpai; if (s) after(0.5, () => sayAt(s, '收到，馬上派人。', '#2c3e57'));
+    }
+  }
+  for (const b of ga.breaks) if (b.reported && !b.fixer) {
+    const h = gaFixer(); if (!h) continue;
+    b.fixer = h; h.task = { kind: 'fix', b, phase: 'go', t: BREAK.fix };
+    if (h.id === 'senpai') h.cm = { phase: 'task' };
+    sayAt(h, h.id === 'qiang' ? '修東西交給我！🔧' : '阿強不在……我去吧。', '#e07b2a');
+  }
+}
+const wrenchMesh = () => { const g = new THREE.Group(); rbox(0.05, 0.3, 0.04, 0x9aa3ad, 0, 0, 0, g, { metalness: 0.7, roughness: 0.3 }); rbox(0.13, 0.07, 0.04, 0x9aa3ad, 0, 0.15, 0, g, { metalness: 0.7, roughness: 0.3 }); return g; };
+const FIX_SFX = ['叮！', '鏘！', '咚咚！', '轉轉轉～'];
+// 總務部的差事：修機器、換水、把阿強拉回來。做完回傳 true
+function runTask(h, dt) {
+  const k = h.task, a = h.actor, p = a.root.position;
+  if (k.kind === 'fix') {
+    const s = k.b.s, spot = [s.pickup[0] + (s.type === 'vending' ? -0.9 : 0.9), s.pickup[1]];
+    if (k.phase === 'go') { if (gaGo(h, spot, 2.2, dt)) { k.phase = 'fix'; h.tool = wrenchMesh(); h.tool.position.set(0.22, 0.62, 0.2); a.root.add(h.tool); } }
+    else {
+      a.speed = 0; turnTo(a, Math.atan2(s.src[0] - p.x, s.src[1] - p.z), dt);
+      h.tool.rotation.x = Math.sin(state.t * 14) * 0.7; k.t -= dt;
+      if (Math.floor(k.t / 0.6) !== k.n) { k.n = Math.floor(k.t / 0.6); floatText(V(s.src[0], 1.6 + Math.random() * 0.3, s.src[1]), FIX_SFX[k.n % FIX_SFX.length], '#7a8794', 0.6); squash(s.look.g, 0.05); }
+      if (k.t <= 0) { a.root.remove(h.tool); h.tool = null; fixDone(k.b); sayAt(h, h.id === 'qiang' ? '搞定！💪' : '好了。', '#e07b2a'); return true; }
+    }
+  } else if (k.kind === 'water') {
+    if (k.phase === 'jug') { if (gaGo(h, WATER.pickup, 2.0, dt)) { h.jug = jugMesh(); h.jug.position.y = 1.15; a.root.add(h.jug); popIn(h.jug, 1); k.phase = 'pour'; } }
+    else if (gaGo(h, k.u.at, 2.0, dt)) {
+      a.root.remove(h.jug); h.jug = null; k.u.level = 1; k.u.look.setLevel(1); k.u.claim = null; squash(k.u.look.g, 0.2); sfx.answer();
+      floatText(k.u.look.g.position.clone().setY(1.6), h.id === 'qiang' ? '水換好了！💧' : '……順便換了。💧', '#2f7fc4', 0.9);
+      return true;
+    }
+  } else if (k.kind === 'rescue') {
+    const q = hires.qiang, qp = q.actor.root.position;
+    if (!q.chat) return true;   // 已經被別人拉回來了
+    if (gaGo(h, [qp.x + 0.55, qp.z + 0.3], 2.4, dt) || Math.hypot(qp.x - p.x, qp.z - p.z) < 0.9) {
+      sayAt(h, ['阿強，工作。', '茶茶，妳自己的工作呢？', '……走了，阿強。'], '#2c3e57', 0.9);
+      endChat(q.chat.by, 'senpai'); after(0.6, () => sayAt(q, ['是、是！', '學姊對不起！', '我馬上去！'], '#2c3e57'));
+      return true;
+    }
+  }
+  return false;
+}
+// 飲水機快沒水、沒人在換：派一個閒著的人去
+function gaWaterJob(h) {
+  if (!water.on || h.carry.length) return false;
+  const u = water.units.find(u => u.level < 0.2 && !u.claim); if (!u) return false;
+  u.claim = h; h.task = { kind: 'water', u, phase: 'jug' }; sayAt(h, h.id === 'qiang' ? '水我來換！' : '……水沒了。', '#2f7fc4'); return true;
+}
+
+// ---------- 茶茶拉人聊天：被拉到的人停工（罷工），小葵過去才會散 ----------
 const CHA_LINES = ['阿強～幫人家送一下嘛💕', '阿強最好了～', '這個好重喔，交給你囉', '人家指甲剛做好耶'];
+const CHA_CHAT = ['欸你看我新做的指甲～💅', '週末要不要去喝下午茶？', '跟你說一個八卦喔……', '你今天好帥喔～', '這家飲料超好喝，你喝喝看～', '人家好無聊喔～'];
+const VICTIM_CHAT = { qiang: ['嘿嘿嘿～', '（臉紅）', '好啊好啊！', '茶茶說什麼都對！'], other: ['呃……我在忙耶', '好、好喔……', '（偷看櫃台）', '可以等一下再說嗎……'] };
 const QIANG_LINES = ['交給我！', '沒問題！', '小事一件！', '（茶茶找我耶……）'];
 const SENPAI_LINES = ['……真是的。', '我來。', '這種事也要我出手？', '阿強你又被騙了。'];
+function chaVictim() {
+  const q = hires.qiang;
+  if (q && !q.cap && !q.chat && Math.random() < 0.7) return q;
+  const L = ['worker', 'worker2', 'jie', 'mi', 'qiang'].map(k => hires[k]).filter(h => h && !h.chat && !h.cap && !h.brk && !(h.id === 'mi' && h.ms?.phase !== 'seat'));
+  return L[Math.floor(Math.random() * L.length)] || null;
+}
+function startChat(cha, v) {
+  v.chat = { by: cha, t: 0 };
+  v.chatTag = labelSprite('💬 聊天罷工中', { bg: '#ff4fa3', size: 0.22 }); v.chatTag.position.y = 1.9; (v.sit?.root.visible ? v.sit.root : v.actor.root).add(v.chatTag);
+  if (v.id === 'qiang') Object.assign(cha.cm, { phase: 'lead', to: GA_HANG[Math.floor(Math.random() * GA_HANG.length)], t: 20 });
+  else Object.assign(cha.cm, { phase: 'chat', t: 18 });
+  sayAt(cha, v.id === 'qiang' ? '阿強～陪人家去走走嘛💕' : CHA_CHAT, '#ff4fa3', 0.9);
+}
+function endChat(cha, by) {
+  const m = cha.cm, v = m?.v; if (!v) return;
+  if (v.chat) { v.chatTag?.parent?.remove(v.chatTag); v.chatTag = null; v.chat = null; }
+  Object.assign(cha.cm, { phase: 'back', v: null });
+  if (by === 'kui') { sayAt(cha, ['好啦好啦～小氣😤', '人家只是聊一下嘛～', '哼，工作狂！'], '#ff4fa3', 0.9); gainXp(2); floatText(player.actor.root.position.clone().setY(1.8), '上班時間喔！', '#2c3e57', 0.9); sfx.pick(); }
+  else if (by === 'senpai') after(1.0, () => sayAt(cha, '學姊好兇喔～', '#ff4fa3'));
+}
+function chaUpdate(h, dt) {
+  const a = h.actor, p = a.root.position, q = hires.qiang;
+  const m = h.cm || (h.cm = { phase: 'desk', t: 20 + Math.random() * 15 });
+  const seat = GA_SEAT.cha, pp = player.actor.root.position;
+  // 正在拉人聊天：小葵走過來就散
+  if (m.v && (m.phase === 'chat' || m.phase === 'lead') && state.floor === 'f1' && Math.hypot(pp.x - p.x, pp.z - p.z) < 1.1) { endChat(h, 'kui'); return updateActor(a, dt, state.t); }
+  if (m.phase === 'desk') {
+    if (gaGo(h, seat, 1.1, dt)) { a.speed = 0; turnTo(a, 0, dt); }
+    m.t -= dt;
+    if (m.t <= 0) {
+      m.t = 8;
+      if (Math.random() < 0.6) { const v = chaVictim(); if (v) Object.assign(m, { phase: 'approach', v, t: 14 }); }
+      else if (q && !q.cap && !q.chat && !q.task) { const s = pickJob({ ...h, home: null }); if (s && s.tray.length) { Object.assign(m, { phase: 'fetch', s, t: 12 }); Object.assign(h, { job: s, type: null, carry: [], carryMax: 4, moveT: 0 }); } }
+    }
+  } else if (m.phase === 'approach') {   // 走到對方旁邊（對方還在動就一直追）
+    const v = m.v, vp = (v.sit?.root.visible ? v.sit.root : v.actor.root).position; m.t -= dt;
+    if (v.chat || v.cap || (v.id === 'mi' && v.ms?.phase !== 'seat')) Object.assign(m, { phase: 'back', v: null });
+    else if (gaGo(h, v.id === 'mi' ? [5.3, -4.3] : [vp.x + 0.6, vp.z + 0.35], 2.0, dt) || Math.hypot(vp.x - p.x, vp.z - p.z) < 0.85) startChat(h, v);   // 小米：站在總機桌前面跟她聊
+    else if (m.t <= 0) Object.assign(m, { phase: 'back', v: null });
+  } else if (m.phase === 'lead') {   // 把阿強帶去旁邊聊
+    m.v.chat.t += dt; if (gaGo(h, m.to, 1.2, dt)) Object.assign(m, { phase: 'chat', t: 18 });
+  } else if (m.phase === 'chat') {
+    const v = m.v, vp = (v.sit?.root.visible ? v.sit.root : v.actor.root).position;
+    a.speed = 0; turnTo(a, Math.atan2(vp.x - p.x, vp.z - p.z), dt); m.t -= dt;
+    v.chat.t += dt; m.say = (m.say ?? 0) - dt;
+    if (m.say <= 0) { m.say = 2.2; m.turn = !m.turn; if (m.turn) sayAt(h, CHA_CHAT, '#ff4fa3'); else sayAt(v.sit?.root.visible ? { actor: { root: v.sit.root } } : v, VICTIM_CHAT[v.id === 'qiang' ? 'qiang' : 'other'], '#2c3e57'); }
+    if (m.t <= 0) endChat(h, 'time');
+  } else if (m.phase === 'back') { if (gaGo(h, seat, 1.2, dt)) Object.assign(m, { phase: 'desk', t: 25 + Math.random() * 15 }); }
+  else if (m.phase === 'fetch') { m.t -= dt; gaGo(h, [m.s.pickup[0] - 0.3, m.s.pickup[1]], 1.3, dt); carry(h, dt);
+    if (h.carry.length >= h.carryMax || (h.carry.length && !m.s.tray.length)) m.phase = 'give'; else if (m.t <= 0) Object.assign(m, { phase: 'back' }); }
+  else if (m.phase === 'give') {   // 走到阿強旁邊，整批丟給他
+    const qp = q.actor.root.position;
+    if (gaGo(h, [qp.x + 0.5, qp.z + 0.3], 1.4, dt) || Math.hypot(qp.x - p.x, qp.z - p.z) < 0.8) {
+      if (!q.chat && !q.task && (!q.carry.length || q.type === h.type)) {
+        sayAt(h, CHA_LINES, '#ff4fa3');
+        while (h.carry.length && q.carry.length < q.carryMax + 4) { const it = h.carry.pop(), i = q.carry.length; q.carry.push(it); q.type = h.type; q.mode = 'deliver'; retarget(it, () => backSlot(q, i)); }
+        if (q.carry.length) { q.job = shopOf(q.type); after(0.6, () => sayAt(q, QIANG_LINES, '#2c3e57')); }
+      }
+      if (h.carry.length) m.phase = 'self'; else { h.type = null; m.phase = 'back'; }
+    }
+  } else if (m.phase === 'self') {   // 阿強在忙別的：只好自己送
+    const d = shopOf(h.type).d.drop; gaGo(h, [d[0] - 0.3, d[1]], 1.3, dt); carry(h, dt); if (!h.carry.length) { h.type = null; m.phase = 'back'; }
+  }
+  updateActor(a, dt, state.t);
+}
 function trioUpdate(h, dt) {
-  const a = h.actor, p = a.root.position, say = (L, c) => floatText(p.clone().setY(1.7), L[Math.floor(Math.random() * L.length)], c, 0.8);
+  const a = h.actor, p = a.root.position;
+  if (h.id === 'cha') return chaUpdate(h, dt);
   if (h.id === 'qiang') {
     if (!h.home0) { h.home0 = true; h.carryMax = 10; carriers.includes(h) || carriers.push(h); }
     if (h.cap) { h.cap.t -= dt; a.speed = 0; baldTick(a); if (h.cap.t <= 0) { setBald(a, false); h.cap = null; floatText(p.clone().setY(1.7), '（趕快戴回去）', '#2c3e57', 0.8); } else { updateActor(a, dt, state.t); return; } }
+    if (h.chat) {   // 被茶茶帶走：跟在她後面，到了就站著聊
+      const c = h.chat.by, cp = c.actor.root.position;
+      if (c.cm?.phase === 'lead') walkTo(a, cp.x - 0.55, cp.z - 0.25, 1.3, dt); else { a.speed = 0; turnTo(a, Math.atan2(cp.x - p.x, cp.z - p.z), dt); }
+      return updateActor(a, dt, state.t);
+    }
+    if (h.task) { if (runTask(h, dt)) h.task = null; return updateActor(a, dt, state.t); }
+    if (gaWaterJob(h)) return updateActor(a, dt, state.t);
     h.capT = (h.capT ?? 90 + Math.random() * 60) - dt;
     if (h.capT <= 0 && !h.carry.length && state.floor === 'f1') {   // 帽子被電風扇吹走：光頭登場
       h.capT = 90 + Math.random() * 60;
       setBald(a, true, renderer); h.cap = { t: 3.2 }; squash(a.root, 0.3); camKick(0.2); sfx.whoosh?.();
       floatText(p.clone().setY(1.8), '我的帽子！！', '#ff3b3b', 1.0);
-      const senpai = hires.senpai; if (senpai) after(0.8, () => floatText(senpai.actor.root.position.clone().setY(1.7), '大家當作沒看到。', '#2c3e57', 0.8));
+      const senpai = hires.senpai; if (senpai) after(0.8, () => sayAt(senpai, '大家當作沒看到。', '#2c3e57'));
       updateActor(a, dt, state.t); return;
     }
-    const was = h.carry.length; hauler(h, dt); if (!was && h.carry.length >= 6 && Math.random() < 0.3) say(QIANG_LINES, '#2c3e57');
-    updateActor(a, dt, state.t); return;
-  }
-  const q = hires.qiang;
-  if (h.id === 'cha') {
-    const m = h.cm || (h.cm = { phase: 'desk', t: 20 + Math.random() * 15 });
-    if (m.phase === 'desk') { if (walkTo(a, TRIO_DESK[0] - 0.4, TRIO_DESK[1] + 0.7, 1.1, dt)) { a.speed = 0; turnTo(a, Math.PI, dt); } m.t -= dt;
-      if (m.t <= 0 && q && !q.cap) { const s = pickJob({ ...h, home: null }); if (s && s.tray.length) { Object.assign(m, { phase: 'fetch', s, t: 12 }); Object.assign(h, { job: s, type: null, carry: [], carryMax: 4, moveT: 0 }); } else m.t = 8; } }
-    else if (m.phase === 'fetch') { m.t -= dt; walkTo(a, m.s.pickup[0] - 0.3, m.s.pickup[1], 1.3, dt); carry(h, dt);
-      if (h.carry.length >= h.carryMax || (h.carry.length && !m.s.tray.length)) m.phase = 'give'; else if (m.t <= 0) { m.phase = 'desk'; m.t = 20; } }
-    else if (m.phase === 'give') {   // 走到阿強旁邊，整批丟給他
-      const qp = q.actor.root.position;
-      if (walkTo(a, qp.x + 0.5, qp.z + 0.3, 1.4, dt) || Math.hypot(qp.x - p.x, qp.z - p.z) < 0.8) {
-        if (!q.carry.length || q.type === h.type) {
-          say(CHA_LINES, '#ff4fa3');
-          while (h.carry.length && q.carry.length < q.carryMax + 4) { const it = h.carry.pop(), i = q.carry.length; q.carry.push(it); q.type = h.type; q.mode = 'deliver'; retarget(it, () => backSlot(q, i)); }
-          if (q.carry.length) { q.job = shopOf(q.type); after(0.6, () => floatText(q.actor.root.position.clone().setY(1.7), QIANG_LINES[Math.floor(Math.random() * QIANG_LINES.length)], '#2c3e57', 0.8)); }
-        }
-        if (h.carry.length) m.phase = 'self'; else { h.type = null; Object.assign(m, { phase: 'desk', t: 25 + Math.random() * 15 }); }
-      }
-    } else if (m.phase === 'self') {   // 阿強在忙別的：只好自己送
-      walkTo(a, shopOf(h.type).d.drop[0] - 0.3, shopOf(h.type).d.drop[1], 1.3, dt); carry(h, dt); if (!h.carry.length) { h.type = null; Object.assign(m, { phase: 'desk', t: 25 }); }
-    }
+    const was = h.carry.length; hauler(h, dt); if (!was && h.carry.length >= 6 && Math.random() < 0.3) sayAt(h, QIANG_LINES, '#2c3e57');
     updateActor(a, dt, state.t); return;
   }
   if (h.id === 'senpai') {
-    const m = h.cm || (h.cm = { phase: 'desk', t: 10 });
-    if (m.phase === 'desk') { if (walkTo(a, TRIO_DESK[0] + 0.5, TRIO_DESK[1] + 0.75, 1.3, dt)) { a.speed = 0; turnTo(a, Math.PI, dt); } m.t -= dt;
+    const m = h.cm || (h.cm = { phase: 'desk', t: 10 }), q = hires.qiang;
+    if (h.task) { if (runTask(h, dt)) { h.task = null; Object.assign(m, { phase: 'desk', t: 8 }); } return updateActor(a, dt, state.t); }
+    if (m.phase === 'desk') {
+      if (gaGo(h, GA_SEAT.senpai, 1.3, dt)) { a.speed = 0; turnTo(a, 0, dt); }
+      // 阿強被茶茶帶走 3 秒以上：去把他拉回來
+      if (q?.chat && q.chat.t > 3) { h.task = { kind: 'rescue' }; sayAt(h, '……又來了。', '#2c3e57'); return updateActor(a, dt, state.t); }
+      if (gaWaterJob(h)) return updateActor(a, dt, state.t);
+      m.t -= dt;
       if (m.t <= 0) { m.t = 6; const s = Object.values(shops).filter(s => s.unlocked && !isLine(s) && s.queue.length >= 3 && !s.stack.length && s.tray.length >= 2).sort((x, y) => y.queue.length - x.queue.length)[0];
-        if (s) { Object.assign(m, { phase: 'fetch', s, t: 14 }); Object.assign(h, { job: s, type: null, carry: [], carryMax: 6, moveT: 0 }); say(SENPAI_LINES, '#2c3e57'); } } }
-    else if (m.phase === 'fetch') { m.t -= dt; walkTo(a, m.s.pickup[0] - 0.3, m.s.pickup[1], 2.2, dt); carry(h, dt);
+        if (s) { Object.assign(m, { phase: 'fetch', s, t: 14 }); Object.assign(h, { job: s, type: null, carry: [], carryMax: 6, moveT: 0 }); sayAt(h, SENPAI_LINES, '#2c3e57'); } }
+    } else if (m.phase === 'fetch') { m.t -= dt; gaGo(h, [m.s.pickup[0] - 0.3, m.s.pickup[1]], 2.2, dt); carry(h, dt);
       if (h.carry.length >= h.carryMax || (h.carry.length && !m.s.tray.length)) m.phase = 'deliver'; else if (m.t <= 0) Object.assign(m, { phase: 'desk', t: 12 }); }
-    else if (m.phase === 'deliver') { walkTo(a, m.s.d.drop[0] - 0.3, m.s.d.drop[1], 2.2, dt); carry(h, dt); if (!h.carry.length) { h.type = null; Object.assign(m, { phase: 'desk', t: 15 }); } }
+    else if (m.phase === 'deliver') { gaGo(h, [m.s.d.drop[0] - 0.3, m.s.d.drop[1]], 2.2, dt); carry(h, dt); if (!h.carry.length) { h.type = null; Object.assign(m, { phase: 'desk', t: 15 }); } }
+    else m.phase = 'desk';
     updateActor(a, dt, state.t);
   }
+}
+// 尾牙或換年度：總務部的差事、聊天、故障全部收掉
+function gaReset() {
+  for (const h of Object.values(hires)) {
+    if (h.chat) { h.chatTag?.parent?.remove(h.chatTag); h.chatTag = null; h.chat = null; }
+    if (h.tool) { h.actor.root.remove(h.tool); h.tool = null; }
+    if (h.task?.kind === 'water') { if (h.jug) { h.actor.root.remove(h.jug); h.jug = null; } h.task.u.claim = null; }
+    h.task = null; h.gp = null;
+  }
+  for (const b of ga.breaks.slice()) { b.s.broken = false; scene.remove(b.sign); }
+  ga.breaks.length = 0;
 }
 // 小米：坐在總機旁的辦公椅上接電話（坐姿模型），每 60～90 秒起來喝水；飲水機水少就順手搬一桶換好
 function chairLook() {
@@ -897,6 +1072,10 @@ const VIVI_LINES = ['大家加油！', '我很看好你喔～', '今天也要開
 function updateHires(dt) {
   for (const h of Object.values(hires)) {
     const a = h.actor;
+    if (h.chat && !TRIO.includes(h.id)) {   // 被茶茶拉去聊天：停工，看著她
+      const cp = h.chat.by.actor.root.position, p = a.root.position; a.speed = 0; turnTo(a, Math.atan2(cp.x - p.x, cp.z - p.z), dt);
+      updateActor(a, dt, state.t); continue;
+    }
     if (h.id === 'mi') { miUpdate(h, dt); continue; }
     if (TRIO.includes(h.id)) { trioUpdate(h, dt); continue; }
     else if (h.id === 'jie') updateDesign(dt);
@@ -1134,6 +1313,8 @@ function updateGuide() {
   else if (cai && !cai.leaving && state.floor !== 'f1') { at = elevAt(); text = '🧧 黑財神在 1F 撒錢！快搭電梯下去'; }
   else if (state.floor !== 'f1') [at, text] = floorGuide();
   else if (cai && !cai.leaving && cai.drops.some(d => !d.landed && d.kind !== 'poop')) { const d = cai.drops.filter(d => !d.landed && d.kind !== 'poop').sort((a, b) => dist([a.x, a.z]) - dist([b.x, b.z]))[0]; at = [d.x, d.z]; text = '🧧 接住天上掉下來的元寶！（小心 💩）'; }
+  else if (ga.breaks.some(b => !b.reported)) { const b = ga.breaks.find(b => !b.reported); at = GA_ZONE; text = `🔧 ${MACHINE_NAME[b.s.type]}壞了！去總務部窗口報修`; }
+  else if (hires.cha?.cm?.v && ['chat', 'lead'].includes(hires.cha.cm.phase) && (hires.cha.cm.v.id !== 'qiang' || hires.senpai?.task)) { const c = hires.cha.actor.root.position; at = [c.x, c.z]; text = `💬 茶茶拉著${nameOf(hires.cha.cm.v)}聊天，過去打斷她`; }
   else if (yan && yan.phase === 'wait' && player.carry.length && yan.need[player.type] > 0) { const y = yan.a.root.position; at = [y.x, y.z]; text = `📋 把 ${ICON[player.type]} 交給小燕`; }
   else if (yan && yan.phase === 'wait' && !player.carry.length) { const [it, n] = Object.entries(yan.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `📋 小燕急件：去拿 ${ICON[it]}×${n}`; } }
   else if (waterEmpty() && !player.carry.length) { const u = water.units.find(u => u.level <= 0); [at, text] = player.jug ? [u.at, '💧 把水倒進飲水機'] : [WATER.pickup, '💧 飲水機沒水了，去搬桶裝水']; }
@@ -1405,6 +1586,8 @@ function updateEvents() {
   }
   let chips = '';
   if (waterEmpty()) chips += `<span class="rush">💧 飲水機沒水 小費 -${waterEmpty() * 5}%</span>`;
+  for (const b of ga.breaks) chips += `<span class="rush">🔧 ${MACHINE_NAME[b.s.type]}故障${b.fixer ? (b.fixer.chat ? '（' + nameOf(b.fixer) + '被茶茶拉走了）' : '（' + (b.fixer.id === 'qiang' ? '阿強' : '學姊') + '修理中）') : b.reported ? '（等人修）' : '（去總務部報修）'}</span>`;
+  { const m = hires.cha?.cm; if (m?.v && ['chat', 'lead'].includes(m.phase)) chips += `<span class="rush">💬 ${nameOf(m.v)}被茶茶拉去聊天</span>`; }
   if (kevin && kevin.phase !== 'flee') chips += `<span class="rush">⚠️ Kevin 鬧事中${kevin.phase === 'talk' ? '　' + Math.max(0, Math.ceil(kevin.t)) + ' 秒' : ''}</span>`;
   if (REPLAY) chips += `<span>📼 回顧第 ${REPLAY} 年</span>`;
   if (THEME) chips += `<span>${THEME.icon} ${THEME.name}</span>`;
@@ -1644,7 +1827,7 @@ function startFinale() {
 }
 function beginFinale() {
   if (state.finaleDone || design.finale) return;
-  design.finale = true; clearVisitors();
+  design.finale = true; clearVisitors(); gaReset();
   // 上台前：小米站起來（藏坐姿模型）、阿傑放下手上的貨
   const mi = hires.mi; if (mi) { if (mi.sit) mi.sit.root.visible = false; mi.actor.root.visible = true; if (mi.jug) { mi.actor.root.remove(mi.jug); mi.jug = null; } mi.ms = null; mi.path = null; }
   for (const id of TRIO) { const t = hires[id]; if (!t) continue; t.cm = null; if (t.cap) { setBald(t.actor, false); t.cap = null; } if (id !== 'qiang' && t.carry.length) { t.carry.forEach(m => untrack(m)); t.carry = []; t.type = null; } }
@@ -2146,7 +2329,7 @@ function update(dt) {
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
-  else { updatePlayer(dt); updateHires(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
+  else { updatePlayer(dt); updateHires(dt); updateBreaks(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
   updateRoof(dt); updatePet(dt); updateWater(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateTheme(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); if (cai && !design.finale) updateCaishen(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { updateYear(metaT); metaT = 0; }
@@ -2274,7 +2457,7 @@ const G = window.G = {
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
   get water() { return water; }, WATER, music, get theater() { return theater; }, yearScript, autoTheater: false,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
-  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
+  event(n) { ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), get cai() { return cai; }, get yan() { return yan; }, get heilun() { return heilun; },
 };   // 除錯用
 (async () => {
   const btn = document.getElementById('start');
@@ -2289,7 +2472,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.17.0'); music.load('office', 'audio/bgm_office.m4a?v=0.17.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.18.0'); music.load('office', 'audio/bgm_office.m4a?v=0.18.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
@@ -2316,7 +2499,7 @@ const G = window.G = {
     openKiosk(false);
   }
   if (!loaded && state.year >= 3) for (const id of ['worker', 'worker2']) if (!hires[id]) hire(HIRES.find(h => h.id === id), true);   // 第三年起：工讀生直接來報到，咖啡和影印交給他們
-  if (state.year >= 4) { for (const id of TRIO) if (!hires[id]) hire(HIRES.find(h => h.id === id), true); buildTrioDesk(); }   // 第四年起：綠茶三人組
+  if (state.year >= 4) { for (const id of TRIO) if (!hires[id]) hire(HIRES.find(h => h.id === id), true); buildGA(); }   // 第四年起：總務部三人組
   setupTheme();   // 第 6 年起：年度主題
   document.querySelector('#me .face').style.backgroundImage = `url(icons/${ME.icon}-180.png)`;
   player.carryMax = carryMaxNow(); setCart();
