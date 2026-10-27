@@ -86,6 +86,13 @@ export function install() {
       while (B.path.length > 1 && Math.hypot(B.path[0][0] - pos.x, B.path[0][1] - pos.z) < 0.3) B.path.shift();
       const wp = B.path[0] || at, dx = wp[0] - pos.x, dz = wp[1] - pos.z, d = Math.hypot(dx, dz);
       G.force = d > 0.15 ? [dx / d, dz / d] : [0, 0];
+      // 卡住保護：一直想走卻 2 秒沒動，就重算路線並往旁邊閃一下（客人、夥伴會擋路）
+      const t = G.state.t, st = B.stuck || (B.stuck = { x: pos.x, z: pos.z, t, nudge: 0, dir: [0, 0] });
+      if (t < st.nudge) G.force = st.dir;
+      else if (G.force[0] || G.force[1]) {
+        if (Math.hypot(pos.x - st.x, pos.z - st.z) > 0.2) Object.assign(st, { x: pos.x, z: pos.z, t });
+        else if (t - st.t > 2) { const a = Math.random() * Math.PI * 2; Object.assign(st, { t, nudge: t + 0.6, dir: [Math.cos(a), Math.sin(a)] }); B.path = []; B.pathFor = ''; }
+      } else Object.assign(st, { x: pos.x, z: pos.z, t });
     } else G.force = [0, 0];
   };
   B.run = (sec, dt = 1 / 30) => {

@@ -290,7 +290,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.15.0">
+<link rel="stylesheet" href="css/a4.css?v=0.16.0">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -311,9 +311,18 @@
   <button id="menuBtn">⏸ 選單</button><button id="swapHud"></button>
   <button id="miBtn">🎮 小米的接電話挑戰</button>
   <div id="cplBar"></div>
+  <button id="decoBtn">🛠 布置員工辦公室</button>
 </div>
 <div id="elev"><h3><span>🛗 搭電梯</span><button id="elevX">✕</button></h3><div id="elevList"></div></div>
-<div id="room"><h3><span>🛋 家具型錄 <small id="roomComfort"></small></span><button id="roomX">✕</button></h3><div id="roomList"></div></div>
+<div id="deco">
+  <div class="dc-top"><div class="dc-score"></div><button class="dc-done" data-a="done">完成 ✓</button></div>
+  <div class="dc-parts"></div>
+  <div class="dc-panel">
+    <div class="dc-tabs"></div>
+    <div class="dc-list"></div>
+    <div class="dc-acts"><button data-a="rot" title="旋轉">⟳<small>旋轉</small></button><button data-a="ok" class="main" title="放好">✓<small>放好</small></button><button data-a="store" title="收起來">▣<small>收起來</small></button><button data-a="undo" title="復原">↶<small>復原</small></button></div>
+  </div>
+</div>
 <div id="fade"></div>
 <div id="callgame"><div class="panel">
   <div class="top"><div class="host"><img src="icons/mi-180.png" alt="小米"><div class="say"></div></div>
@@ -426,6 +435,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.15.0"></script>
+<script type="module" src="js/main.js?v=0.16.0"></script>
 </body>
 </html>

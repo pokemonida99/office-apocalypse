@@ -1,8 +1,8 @@
 /* 上班啟示錄 UI（v0.7）：A＝員工證／打卡鐘（骨架、數據、面板）、B＝綜藝字卡（事件瞬間）、C＝手帳（故事收藏）
    跟 GPT 討論後的定案：米白紙＋藏青墨＋警示紅，字用 Noto Sans TC（子集，tools/build_font.py）＋Bungee 數字
    這支檔案蓋在 index.html 原本的樣式上面：版面位置沿用，外觀換掉 */
-@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.15.0) format('woff2'); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.15.0) format('woff2'); font-display: swap; }
+@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.16.0) format('woff2'); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.16.0) format('woff2'); font-display: swap; }
 :root {
   --paper: #f5e7c8; --paper2: #fffdf8; --kraft: #e9c98f; --ink: #142b45; --ink2: #2c4566;
   --gold: #ffc343; --red: #ef443c; --green: #32b95a; --pink: #ff3d6e; --line: #e3d2b2;
@@ -245,3 +245,35 @@ body.snow::after { content: ''; position: fixed; inset: 0; pointer-events: none;
 #intro .stamp { border-color: var(--red); color: var(--red); }
 #intro .skip { background: var(--paper2); color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
 #intro .clock b { font-family: var(--num); font-weight: 400; }
+
+/* ---------- 2F 員工辦公室布置模式（動森風，v0.16） ---------- */
+body.decoOn #hud, body.decoOn #elev, body.decoOn #stick { display: none !important; }
+#decoBtn { position: absolute; left: 10px; bottom: calc(66px + env(safe-area-inset-bottom)); display: none; pointer-events: auto; background: #7aa874; color: #fff; border: 0; border-radius: 12px; font: inherit; font-size: 13px; font-weight: 900; padding: 9px 12px; box-shadow: 0 0 0 2px var(--ink), 0 4px 0 var(--ink); }
+#deco { position: fixed; inset: 0; z-index: 6; display: none; pointer-events: none; }
+#deco.on { display: block; }
+#deco button { font: inherit; color: var(--ink); -webkit-tap-highlight-color: transparent; }
+#deco .dc-top { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+#deco .dc-score { pointer-events: auto; background: var(--paper2); box-shadow: 0 0 0 2px var(--ink), 0 4px 0 var(--ink); border-radius: 10px; padding: 6px 12px; display: flex; flex-direction: column; }
+#deco .dc-score b { font-size: 20px; font-weight: 900; color: #c8902a; }
+#deco .dc-score small { font-size: 11px; font-weight: 700; color: var(--ink2); }
+#deco .dc-done { pointer-events: auto; background: #7aa874; color: #fff !important; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 900; font-size: 15px; box-shadow: 0 0 0 2px var(--ink), 0 4px 0 var(--ink); }
+#deco .dc-parts { position: absolute; top: calc(env(safe-area-inset-top) + 74px); left: 12px; display: flex; flex-wrap: wrap; gap: 4px; max-width: 70vw; }
+#deco .dc-parts span { background: #fffdf8d9; border-radius: 6px; padding: 2px 6px; font-size: 10px; font-weight: 800; color: var(--ink2); box-shadow: 0 0 0 1px #142b4533; }
+#deco .dc-panel { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: auto; background: var(--paper2); box-shadow: 0 -2px 0 var(--ink), 0 -10px 24px #0002; border-radius: 16px 16px 0 0; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
+#deco .dc-tabs { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; touch-action: pan-x; }
+#deco .dc-tabs button { flex: none; border: 2px solid var(--ink); background: #fff; border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 900; }
+#deco .dc-tabs button.on { background: #7aa874; color: #fff; }
+#deco .dc-list { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 4px 2px 8px; touch-action: pan-x; }
+#deco .dc-card { flex: none; width: 92px; border: 2px solid #142b4533; background: #fbf5ea; border-radius: 10px; padding: 4px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+#deco .dc-card i { width: 76px; height: 76px; background: center / contain no-repeat; }
+#deco .dc-card i.sw { border-radius: 8px; background-size: 140%; box-shadow: inset 0 0 0 1px #0002; width: 70px; height: 52px; margin: 6px 0 4px; }
+#deco .dc-card b { font-size: 12px; font-weight: 900; line-height: 1.2; text-align: center; }
+#deco .dc-card small { font-size: 11px; font-weight: 800; color: #c8902a; text-align: center; line-height: 1.2; }
+#deco .dc-card em { font-style: normal; font-size: 10px; color: #8a7a64; }
+#deco .dc-card.cur { border-color: #7aa874; background: #eef6ea; }
+#deco .dc-card.lock { opacity: .55; } #deco .dc-card.lock small { color: #8a7a64; }
+#deco .dc-acts { display: flex; gap: 8px; }
+#deco .dc-acts button { flex: 1; border: 2px solid var(--ink); background: #fff; border-radius: 12px; padding: 6px 0 4px; font-size: 22px; font-weight: 900; display: flex; flex-direction: column; align-items: center; line-height: 1.1; box-shadow: 0 3px 0 var(--ink); }
+#deco .dc-acts button small { font-size: 11px; font-weight: 800; }
+#deco .dc-acts button.main { background: #7aa874; color: #fff; }
+#deco .dc-acts button:disabled { opacity: .4; }

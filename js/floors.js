@@ -1,7 +1,7 @@
 // 其他樓層的外觀：頂樓遊樂園（環境＋四個設施）、2F 我的辦公室（房間＋家具樣式）
 // 樓層放在同一個世界的不同區域：頂樓在 x+40、2F 在 x-40，搭電梯就是瞬移過去
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.15.0';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.16.0';
 
 const glow = (c) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
 const gold = { metalness: 0.9, roughness: 0.3 };
@@ -141,13 +141,13 @@ export function rideLook(id, lv) {
 export const ROOM = { kiosk: [0, 0.15], zone: [0, 1.0], petAt: [-5.6, -2.9] };
 // 2F（v0.15）：房間大小 老闆 1：特助 0.6：小葵 0.2：阿傑 0.2
 // 前排整排＝Vivi 老闆的大辦公室（擺滿老闆的東西）；中間走廊放型錄台
-// 後排左→右：小葵的小辦公室（唯一能自己布置）、阿傑的座位（只有一台筆電）、特助 Kevin 的辦公室（第 2 年起，科技風）
+// 後排左＝員工辦公室（小葵＋阿傑共用，0.2＋0.2，v0.16 動森風自由布置，見 deco.js）、右＝特助 Kevin 的辦公室（第 2 年起）
 // 2F 不跟著年度重置（家具存在 ROOM_KEY，搬家不清）
-const OFF = { z0: -6.5, z1: -2.0, xK: -4.35, xJ: -1.45, doorK: [-6.3, -5.3], doorJ: [-3.4, -2.4], doorB: [3.1, 4.3], f0: 2.6, f1: 6.6, doorF: [-1.9, -0.7] };
-export const ROOM_X = { kui: -5.8, jie: -2.9, kevin: 2.9 };   // 三間後排房間的中心
+const OFF = { z0: -6.5, z1: -2.0, xJ: -1.45, doorS: [-5.05, -3.55], doorB: [3.1, 4.3], f0: 2.6, f1: 6.6, doorF: [-1.9, -0.7] };
+export const ROOM_X = { staff: -4.3, kevin: 2.9 };   // 後排兩間的中心
 export function buildOffice(ox) {
   const winTex = canvasTex(256, 192, (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#ffb489'); gr.addColorStop(1, '#ffe2b8'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#ffffffcc'; g.beginPath(); g.arc(190, 60, 26, 0, 7); g.fill(); g.fillStyle = '#c99a8a'; for (let i = 0; i < 9; i++) { const h = 40 + (i * 29) % 60; g.fillRect(i * 30, H - h, 24, h); } });
-  for (const x of [-2.9, 5.6]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBasicMaterial({ map: winTex, toneMapped: false })); w.position.set(ox + x, 1.85, -6.82); scene.add(w); rbox(2.15, 0.1, 0.16, 0xffffff, ox + x, 1.12, -6.78); rbox(0.08, 1.45, 0.1, 0xffffff, ox + x, 1.85, -6.78); }
+  for (const x of [5.6]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBasicMaterial({ map: winTex, toneMapped: false })); w.position.set(ox + x, 1.85, -6.82); scene.add(w); rbox(2.15, 0.1, 0.16, 0xffffff, ox + x, 1.12, -6.78); rbox(0.08, 1.45, 0.1, 0xffffff, ox + x, 1.85, -6.78); }
   elevatorDoor(ox, -0.6, '▲▼ 電梯');
   for (let z = -6.3; z <= 6.4; z += 1.3) if (Math.abs(z + 0.6) > 0.9) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox - 7.6, 0.375, z);
   for (let z = -6.3; z <= 6.4; z += 1.3) rbox(0.14, 0.75, 1.24, 0xd9c2a5, ox + 7.6, 0.375, z);
@@ -166,9 +166,8 @@ export function buildOffice(ox) {
   // 每段牆：畫出來＋回傳擋路的方塊 [中心 x, 中心 z, 半寬, 半深]
   const walls = [];
   const seg = (ax, az, bx, bz, rail) => { wall(ax, az, bx, bz, rail); walls.push(az === bz ? [(ax + bx) / 2, az, Math.abs(bx - ax) / 2, 0.06] : [ax, (az + bz) / 2, 0.06, Math.abs(bz - az) / 2]); };
-  seg(OFF.xK, OFF.z0, OFF.xK, OFF.z1, 0x8a6a4c); seg(OFF.xJ, OFF.z0, OFF.xJ, OFF.z1, 0x8a6a4c);
-  seg(-7.25, OFF.z1, OFF.doorK[0], OFF.z1, 0xff7a45); seg(OFF.doorK[1], OFF.z1, OFF.xK, OFF.z1, 0xff7a45);
-  seg(OFF.xK, OFF.z1, OFF.doorJ[0], OFF.z1, 0x9aa3ad); seg(OFF.doorJ[1], OFF.z1, OFF.xJ, OFF.z1, 0x9aa3ad);
+  seg(OFF.xJ, OFF.z0, OFF.xJ, OFF.z1, 0x8a6a4c);
+  seg(-7.25, OFF.z1, OFF.doorS[0], OFF.z1, 0x9fc39a); seg(OFF.doorS[1], OFF.z1, OFF.xJ, OFF.z1, 0x9fc39a);
   seg(OFF.xJ, OFF.z1, OFF.doorB[0], OFF.z1, 0x2fe3ff); seg(OFF.doorB[1], OFF.z1, 7.25, OFF.z1, 0x2fe3ff);
   // 前排：老闆辦公室整排的玻璃牆（金色扶手、門在中間偏左）
   seg(-7.25, OFF.f0, OFF.doorF[0], OFF.f0, 0xd9a63a); seg(OFF.doorF[1], OFF.f0, 7.25, OFF.f0, 0xd9a63a);
@@ -184,7 +183,7 @@ export function buildBossOffice(ox) {
   const z0 = OFF.f0, z1 = OFF.f1;
   // 紅地毯
   const edge = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), new THREE.MeshStandardMaterial({ color: 0xd9a63a, metalness: 0.6, roughness: 0.4 })); edge.rotation.x = -Math.PI / 2; edge.position.set(-2.4, 0.005, 4.6); g.add(edge);   // 金邊在下面
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.4), new THREE.MeshStandardMaterial({ color: 0xb8232f, roughness: 0.9 })); rug.rotation.x = -Math.PI / 2; rug.position.set(-2.4, 0.008, 4.6); g.add(rug);
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.4), new THREE.MeshStandardMaterial({ color: 0x8e3a3a, roughness: 0.95 })); rug.rotation.x = -Math.PI / 2; rug.position.set(-2.4, 0.008, 4.6); g.add(rug);
   // 大辦公桌（L 型、金邊）＋皮椅＋名牌
   rbox(2.4, 0.08, 1.0, 0x5a3220, -2.4, 0.78, 5.2, g); rbox(2.4, 0.74, 0.12, 0x4a2818, -2.4, 0.38, 4.75, g); rbox(2.45, 0.04, 1.05, 0xd9a63a, -2.4, 0.83, 5.2, g, gold);
   for (const x of [-3.5, -1.3]) rbox(0.1, 0.74, 0.9, 0x4a2818, x, 0.37, 5.2, g);
@@ -253,9 +252,9 @@ export function buildJieSeat(ox) {
 }
 export function buildKiosk(ox) {
   const k = new THREE.Group(); k.position.set(ox + ROOM.kiosk[0], 0, ROOM.kiosk[1]); scene.add(k);
-  rbox(1.2, 0.9, 0.6, 0xff7a45, 0, 0.45, 0, k); rbox(1.25, 0.06, 0.65, 0xfff3e0, 0, 0.92, 0, k);
+  rbox(1.2, 0.9, 0.6, 0x9fc39a, 0, 0.45, 0, k); rbox(1.25, 0.06, 0.65, 0xfff3e0, 0, 0.92, 0, k);
   const bk = rbox(0.42, 0.06, 0.32, 0xffffff, -0.2, 1.0, 0.05, k); bk.rotation.x = -0.3; const bk2 = rbox(0.42, 0.06, 0.32, 0x2fe3ff, 0.25, 1.0, 0.05, k); bk2.rotation.x = -0.3;
-  const lab = labelSprite('🛋 家具型錄', { bg: '#ff7a45', size: 0.28 }); lab.position.set(0, 1.6, 0); k.add(lab);
+  const lab = labelSprite('🛠 布置型錄', { bg: '#7aa874', size: 0.28 }); lab.position.set(0, 1.6, 0); k.add(lab);
 }
 // 牆／地板材質
 const floorTex = {
@@ -264,6 +263,7 @@ const floorTex = {
   marble: () => canvasTex(256, 256, (g) => { g.fillStyle = '#f4f2ee'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#d7d2c8'; g.lineWidth = 2; for (let i = 0; i < 10; i++) { g.beginPath(); g.moveTo(Math.random() * 256, 0); g.bezierCurveTo(Math.random() * 256, 90, Math.random() * 256, 170, Math.random() * 256, 256); g.stroke(); } g.strokeStyle = '#e6e1d8'; g.lineWidth = 3; g.strokeRect(0, 0, 256, 256); }),
   dark: () => canvasTex(128, 128, (g) => { g.fillStyle = '#2b3445'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#323c50'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); }),
   grid: () => canvasTex(128, 128, (g) => { g.fillStyle = '#141a2e'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#2fe3ff'; g.lineWidth = 3; g.shadowColor = '#2fe3ff'; g.shadowBlur = 8; g.strokeRect(2, 2, 124, 124); g.strokeStyle = '#b46bff'; g.beginPath(); g.moveTo(64, 0); g.lineTo(64, 128); g.moveTo(0, 64); g.lineTo(128, 64); g.stroke(); }),
+  coolTile: () => canvasTex(128, 128, (g) => { g.fillStyle = '#d5dce6'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#bcc6d3'; g.lineWidth = 3; g.strokeRect(1, 1, 126, 126); g.strokeRect(1, 1, 63, 63); g.strokeRect(64, 64, 63, 63); }),
   grass: () => canvasTex(128, 128, (g) => { g.fillStyle = '#8ad46a'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#7cc75c'; for (let i = 0; i < 128; i += 16) g.fillRect(i, 0, 8, 128); }),
 };
 const wallTex = {
@@ -273,6 +273,7 @@ const wallTex = {
   navy: () => canvasTex(64, 64, (g) => { g.fillStyle = '#26324f'; g.fillRect(0, 0, 64, 64); }),
   circuit: () => canvasTex(256, 128, (g) => { g.fillStyle = '#123a2e'; g.fillRect(0, 0, 256, 128); g.strokeStyle = '#3cf2a0'; g.lineWidth = 3; for (let i = 0; i < 14; i++) { const x = (i * 53) % 256, y = (i * 37) % 128; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 30, y); g.lineTo(x + 30, y + 24); g.stroke(); g.fillStyle = '#9dffd6'; g.beginPath(); g.arc(x + 30, y + 24, 4, 0, 7); g.fill(); } }),
   neon: () => canvasTex(256, 128, (g) => { const gr = g.createLinearGradient(0, 0, 256, 0); gr.addColorStop(0, '#3a1d6e'); gr.addColorStop(1, '#6a1d5e'); g.fillStyle = gr; g.fillRect(0, 0, 256, 128); g.strokeStyle = '#ff5fd2'; g.lineWidth = 4; g.shadowColor = '#ff5fd2'; g.shadowBlur = 10; for (let y = 20; y < 128; y += 36) { g.beginPath(); g.moveTo(0, y); g.lineTo(256, y); g.stroke(); } }),
+  bluePanel: () => canvasTex(256, 256, (g) => { g.fillStyle = '#5d6f8f'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#4f607e'; g.fillRect(0, 150, 256, 106); g.fillStyle = '#9fb3d1'; g.fillRect(0, 146, 256, 4); g.strokeStyle = '#53647f'; g.lineWidth = 2; for (let x = 0; x < 256; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 146); g.stroke(); } }),
   brick: () => canvasTex(128, 128, (g) => { g.fillStyle = '#e9e1d6'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#d4805e'; for (let y = 0; y < 128; y += 32) for (let x = (y / 32 % 2) * 32 - 32; x < 128; x += 64) g.fillRect(x + 3, y + 3, 58, 26); }),
 };
 // 家具槽：每個有幾種樣式，第 0 種免費（空或基本款）。make(ox) 回傳要加進場景的 Group；room a＝我的辦公室、b＝阿傑的設計室
@@ -358,13 +359,12 @@ export function setRoomTex(mesh, kind, key) {
   if (kind === 'floor') t.repeat.set(3, 2.2); else t.repeat.set(4, 1.5);
   mesh.material.map = t; mesh.material.needsUpdate = true;
 }
-// 後排三間各自的地板、後牆（a 小葵、j 阿傑、b Kevin；給 setRoomTex 換材質）
+// Kevin 辦公室的地板、後牆（給 setRoomTex 換材質）
 export function roomShell(ox) {
   const mk = (x, w) => {
     const f = new THREE.Mesh(new THREE.PlaneGeometry(w, 4.5), new THREE.MeshStandardMaterial({ roughness: 0.8 })); f.rotation.x = -Math.PI / 2; f.position.set(ox + x, 0.003, -4.25); f.receiveShadow = true; scene.add(f);
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, 3.0, 0.3), new THREE.MeshStandardMaterial({ roughness: 0.9 })); b.position.set(ox + x, 1.5, -7.0); scene.add(b);
     return { floor: f, back: b };
   };
-  const j = mk(-2.875, 2.85); j.floor.material.color.setHex(0x9aa3ad); j.back.material.color.setHex(0xdfe3e8);
-  return { a: mk(-5.85, 3.1), j, b: mk(2.95, 8.8) };
+  return { b: mk(2.95, 8.8) };   // 員工辦公室的地板和牆在 deco.js
 }

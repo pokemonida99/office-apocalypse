@@ -71,7 +71,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
     if (!who) { img.style.visibility = 'hidden'; return; }
     img.style.visibility = 'visible';
     img.onerror = () => { img.onerror = null; img.src = HAS_ICON[who] ? `icons/${who}-180.png` : 'icons/kui-180.png'; };
-    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.15.0`;
+    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.16.0`;
   }
   // ---------- 打字機對話 ----------
   let typing = null;
