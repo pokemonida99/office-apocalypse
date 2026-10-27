@@ -3,21 +3,21 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：年度業績 Q1～Q4 → 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.16.3';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.16.3';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.16.3';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.16.3';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.16.3';
-import { CHANGES } from './changelog.js?v=0.16.3';
-import { makeTheater } from './theater.js?v=0.16.3';
-import { makeDeco } from './deco.js?v=0.16.3';
-import { makeEnding, seenEndings } from './ending.js?v=0.16.3';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.16.3';
-import { makeIntro } from './intro.js?v=0.16.3';
-import { openCallGame } from './callgame.js?v=0.16.3';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.16.3';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.16.4';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.16.4';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE } from './stations.js?v=0.16.4';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.16.4';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.16.4';
+import { CHANGES } from './changelog.js?v=0.16.4';
+import { makeTheater } from './theater.js?v=0.16.4';
+import { makeDeco } from './deco.js?v=0.16.4';
+import { makeEnding, seenEndings } from './ending.js?v=0.16.4';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.16.4';
+import { makeIntro } from './intro.js?v=0.16.4';
+import { openCallGame } from './callgame.js?v=0.16.4';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.16.4';
 
-const VERSION = 'v0.16.3';
+const VERSION = 'v0.16.4';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -1973,8 +1973,9 @@ function updateDecoBtn() {
   if (room.deco?.on && !document.body.classList.contains('decoOn')) document.body.classList.add('decoOn');
   if (room.deco && !room.deco.on && document.body.classList.contains('decoOn')) document.body.classList.remove('decoOn');
   // 走到型錄台前面也會打開（離開再回來才會再開）
-  const near = f2 && nearAt(player.actor, [OXO + ROOM.zone[0], ROOM.zone[1]], 0.85);
-  if (near && !decoNear) openDeco();
+  // 布置中也要記著「站在型錄台前」，按完成之後不會馬上又打開
+  const near = state.floor === 'f2' && !design.finale && room.deco && nearAt(player.actor, [OXO + ROOM.zone[0], ROOM.zone[1]], 0.85);
+  if (near && !decoNear && !room.deco.on) openDeco();
   decoNear = near;
 }
 decoBtn.onclick = (e) => { e.stopPropagation(); openDeco(); };
@@ -2273,7 +2274,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.16.3'); music.load('office', 'audio/bgm_office.m4a?v=0.16.3'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.16.4'); music.load('office', 'audio/bgm_office.m4a?v=0.16.4'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});

@@ -3,7 +3,7 @@
 // 型錄分三個系列（清新木作、復古文具、夜班科技）＋寵物、牆面、地板；靠升職和任務永久解鎖，沒有等待或登入
 // 評分取代以前的「每件 +2%」：機能、綠意、豐富、系列、展示，最高 100 分 ＝ 1F 收入 +10%，拿過的最高分永久保留
 import * as THREE from 'three';
-import { scene, camera, renderer, rbox, box, cyl, sphere, mat, canvasTex, FONT } from './world.js?v=0.16.3';
+import { scene, camera, renderer, rbox, box, cyl, sphere, mat, canvasTex, FONT } from './world.js?v=0.16.4';
 
 // 房間格子（2F 本地座標，x 再加上 2F 的 ox）：寬 11 格 × 深 9 格，前牆中間是門
 export const DECO_ROOM = { x0: -7.05, z0: -6.5, cols: 11, rows: 9, cell: 0.5, wallZ: -6.84, door: [4, 5, 6] };   // door：最前排這幾欄要留給門口
@@ -53,7 +53,7 @@ const B = {
 // ---------- 型錄 ----------
 // cat：分類；s：系列；w×d：佔幾格（朝前時）；layer：floor／rug／wall；f：機能（desk、chair、lamp、storage、plant、pet）
 const SERIES = { wood: '清新木作', retro: '復古文具', tech: '夜班科技', basic: '基本款', pet: '寵物' };
-export const CATS = [['desk', '桌椅'], ['store', '收納'], ['rest', '休憩'], ['light', '燈飾'], ['plant', '植物'], ['small', '小物'], ['wall', '牆飾'], ['room', '裝修']];
+export const CATS = [['set', '套組'], ['desk', '桌椅'], ['store', '收納'], ['rest', '休憩'], ['light', '燈飾'], ['plant', '植物'], ['small', '小物'], ['wall', '牆飾'], ['room', '裝修']];
 export const ITEMS = [
   // 基本款（一開始就有）
   { id: 'kuiDesk', name: '小葵的小木桌', cat: 'desk', s: 'basic', price: 0, w: 3, d: 2, f: 'desk', make: () => { const g = B.desk(P.basic, 1.3, 0.75); rbox(0.5, 0.32, 0.04, 0x2c3e57, 0, 0.94, -0.2, g); cyl(0.05, 0.04, 0.1, 0xffffff, 0.4, 0.81, 0.1, g); return g; } },
@@ -106,6 +106,20 @@ export const FLOORS = [
   { id: 'carpet', name: '靜音灰地毯', s: 'tech', price: 2200, tex: () => canvasTex(128, 128, (g) => { g.fillStyle = '#8e99ad'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#86919f'; for (let i = 0; i < 128; i += 8) g.fillRect(0, i, 128, 3); }) },
 ];
 
+// 套組：按一下整間換成這個系列的擺法（缺的家具、牆、地板一起買；原本擺的收進收納；可以按復原）
+// at：[id, 欄, 列, 轉向]；牆飾的列填 0
+export const SETS = [
+  { id: 'woodSet', name: '清新木作套組', s: 'wood', wall: 'sage', floor: 'herring', show: 'woodArm', at: [
+    ['woodDesk', 1, 0, 0], ['woodChair', 2, 2, 2], ['woodDesk', 7, 0, 0], ['woodChair', 8, 2, 2], ['woodShelf', 4, 0, 0], ['monstera', 0, 0, 0], ['monstera', 10, 0, 0],
+    ['woodCab', 0, 4, 1], ['woodTable', 4, 5, 0], ['woodArm', 7, 5, 3], ['bearFrame', 1, 0, 0]] },
+  { id: 'retroSet', name: '復古文具套組', s: 'retro', wall: 'coral', floor: 'check', show: 'retroSofa', at: [
+    ['kuiDesk', 1, 0, 0], ['basicChair', 2, 2, 2], ['jieDesk', 7, 0, 0], ['basicChair', 8, 2, 2], ['retroDrawers', 4, 0, 0], ['retroDrawers', 5, 0, 0], ['retroLamp', 10, 0, 0], ['smallPlant', 0, 0, 0],
+    ['retroRug', 1, 4, 0], ['retroSofa', 0, 5, 1], ['retroStool', 3, 6, 0], ['retroStool', 7, 6, 0], ['smallPlant', 10, 7, 0], ['cork', 7, 0, 0], ['clock', 5, 0, 0]] },
+  { id: 'techSet', name: '夜班科技套組', s: 'tech', wall: 'night', floor: 'carpet', show: 'techDesk', at: [
+    ['techDesk', 1, 0, 0], ['techChair', 2, 2, 2], ['techDesk', 7, 0, 0], ['techChair', 8, 2, 2], ['techRack', 0, 0, 0], ['techRack', 10, 0, 0], ['whiteboard', 4, 0, 0],
+    ['beanbag', 1, 5, 0], ['beanbag', 8, 5, 0], ['cactus', 4, 5, 0], ['neon', 4, 0, 0]] },
+];
+
 // 解鎖（達成一次就永久開）：清新木作一開始就有；其他靠升職、總機、請人、年份
 export const UNLOCKS = {
   basic: { text: '', ok: () => true },
@@ -139,7 +153,7 @@ const DEFAULT = () => ({ v: 2, inv: {}, placed: [
 export function makeDeco({ ox, colliders, money, spend, ctx, toast, sfx = {}, popIn, onChange }) {
   const R = DECO_ROOM, X0 = ox + R.x0, data = DEFAULT();
   const objs = new Map();   // 擺出來的東西：placed 物件 → { g, col }
-  let floorMesh = null, wallMesh = null, on = false, sel = null, undo = [], cat = 'desk', drag = null;
+  let floorMesh = null, wallMesh = null, on = false, sel = null, undo = [], cat = 'set', drag = null;
   const el = document.getElementById('deco');
   // ---- 房間外殼：地板＋後牆（材質可換） ----
   function shell() {
@@ -234,7 +248,34 @@ export function makeDeco({ ox, colliders, money, spend, ctx, toast, sfx = {}, po
     if ((data.inv[id] || 0) > 0) { if (place(id)) { data.inv[id]--; render(); } return; }
     if (money() < it.price) { toast(`還差 $${(it.price - money()).toLocaleString()}`); return; }
     if (sel && !valid(sel)) { toast('先把手上這件放到綠色的地方'); return; }
-    spend(it.price); sfx.upgrade?.(); if (place(id)) render();
+    spend(it.price); sfx.upgrade?.(); data.inv[id] = (data.inv[id] || 0) + 1;   // 先放進收納再拿出來：按復原會回到收納，錢不會白花
+    if (place(id)) { data.inv[id]--; } render();
+  }
+  // 套組：算出還缺哪些（扣掉收納和已經擺的），一次買齊，整間換掉
+  function setCost(S) {
+    const need = {}; S.at.forEach(([id]) => { need[id] = (need[id] || 0) + 1; });
+    const have = { ...data.inv }; data.placed.forEach(p => { have[p.id] = (have[p.id] || 0) + 1; });
+    let cost = 0; const buy = {};
+    for (const [id, n] of Object.entries(need)) { const k = Math.max(0, n - (have[id] || 0)); if (k) { buy[id] = k; cost += k * ITEM[id].price; } }
+    const skins = [['wall', S.wall, WALLS], ['floor', S.floor, FLOORS]].filter(([, v]) => !data.owned.includes(v));
+    skins.forEach(([, v, arr]) => { cost += arr.find(x => x.id === v).price; });
+    return { cost, buy, skins };
+  }
+  function useSet(id) {
+    const S = SETS.find(x => x.id === id); if (!S) return;
+    if (!unlocked(S.s)) { toast('🔒 ' + UNLOCKS[S.s].text); return; }
+    const { cost, buy, skins } = setCost(S);
+    if (money() < cost) { toast(`還差 $${(cost - money()).toLocaleString()}`); return; }
+    if (sel) { if (valid(sel)) settle(); else store(); }
+    if (cost) { spend(cost); sfx.upgrade?.(); }
+    for (const [k, n] of Object.entries(buy)) data.inv[k] = (data.inv[k] || 0) + n;
+    skins.forEach(([, v]) => data.owned.push(v));
+    pushUndo();
+    for (const p of data.placed) { data.inv[p.id] = (data.inv[p.id] || 0) + 1; hide(p); }   // 原本擺的收進收納
+    data.placed = [];
+    S.at.forEach(([iid, cx, cz, rot], i) => { data.inv[iid]--; const p = { id: iid, cx, cz, rot }; data.placed.push(p); show(p); const o = objs.get(p); if (o && popIn) setTimeout(() => popIn(o.g, 1, 2.2), i * 60); });
+    data.wall = S.wall; data.floor = S.floor; applyTex(); changed(); render();
+    toast(`套用「${S.name}」！原本的家具收進收納了`);
   }
   function useSkin(kind, v) {
     if (!unlocked(v.s)) { toast('🔒 ' + UNLOCKS[v.s].text); return; }
@@ -277,7 +318,10 @@ export function makeDeco({ ox, colliders, money, spend, ctx, toast, sfx = {}, po
     const tabs = el.querySelector('.dc-tabs'), list = el.querySelector('.dc-list');
     tabs.innerHTML = CATS.map(([k, n]) => `<button data-c="${k}" class="${k === cat ? 'on' : ''}">${n}</button>`).join('');
     let cards = '';
-    if (cat === 'room') {
+    if (cat === 'set') {
+      cards = SETS.map(S => { const lock = !unlocked(S.s), { cost } = setCost(S);
+        return `<button class="dc-card set ${lock ? 'lock' : ''}" data-set="${S.id}"><i style="background-image:url(${thumbs[S.show] || ''})"></i><b>${S.name}</b><small>${lock ? '🔒 ' + UNLOCKS[S.s].text.replace('解鎖', '') : cost ? '補齊 $' + cost.toLocaleString() : '全部都有・免費'}</small><em>${S.at.length} 件＋牆＋地板</em></button>`; }).join('');
+    } else if (cat === 'room') {
       cards = [['wall', WALLS, '牆'], ['floor', FLOORS, '地']].map(([kind, arr, tag]) => arr.map(v => { const lock = !unlocked(v.s), own = data.owned.includes(v.id), cur = data[kind] === v.id;
         return `<button class="dc-card ${cur ? 'cur' : ''} ${lock ? 'lock' : ''}" data-skin="${kind}:${v.id}"><i class="sw" style="background-image:url(${swatch(v)})"></i><b>${v.name}</b><small>${lock ? '🔒' : cur ? '使用中' : own ? '換上' : '$' + v.price.toLocaleString()}</small><em>${tag}・${SERIES[v.s]}</em></button>`; }).join('')).join('');
     } else {
@@ -310,6 +354,7 @@ export function makeDeco({ ox, colliders, money, spend, ctx, toast, sfx = {}, po
     const b = e.target.closest('button'); if (!b) return; e.stopPropagation();
     if (b.dataset.c) { cat = b.dataset.c; render(); return; }
     if (b.dataset.id) { useItem(b.dataset.id); return; }
+    if (b.dataset.set) { useSet(b.dataset.set); return; }
     if (b.dataset.skin) { const [k, id] = b.dataset.skin.split(':'); useSkin(k, (k === 'wall' ? WALLS : FLOORS).find(v => v.id === id)); return; }
     const a = b.dataset.a;
     if (a === 'rot') rotate(); else if (a === 'ok') settle(); else if (a === 'store') store(); else if (a === 'undo') doUndo(); else if (a === 'done') close();
