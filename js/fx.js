@@ -1,26 +1,53 @@
 // 特效與音效：飄字、彩帶、光柱、地面衝擊波、彈出放大、合成音效
 import * as THREE from 'three';
-import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.18.2';
+import { scene, canvasTex, FONT, cam, V } from './world.js?v=0.19.0';
 
 const fxList = [];   // 每個特效自己有 update(dt) 回傳 false 就移除
 export function updateFx(dt) { for (let i = fxList.length - 1; i >= 0; i--) if (!fxList[i](dt)) fxList.splice(i, 1); }
 
 // 飄字（+$30、升級！）
+// 畫布寬度照字數長（長句子不會被切掉），而且會推回畫面裡（keepOnScreen）
+const measure = document.createElement('canvas').getContext('2d');
 export function floatText(pos, text, color = '#ff7a45', size = 1) {
-  const t = canvasTex(320, 110, (g, W, H) => {
+  measure.font = `900 64px ${FONT}`;
+  const W0 = Math.min(1600, Math.max(320, Math.ceil(measure.measureText(text).width) + 40)), wide = W0 / 320;
+  const t = canvasTex(W0, 110, (g, W, H) => {
     g.font = `900 64px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineWidth = 12; g.strokeStyle = '#fff'; g.strokeText(text, W / 2, H / 2); g.fillStyle = color; g.fillText(text, W / 2, H / 2);
   });
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
-  s.scale.set(1.2 * size, 0.41 * size, 1); s.position.copy(pos); s.renderOrder = 20; scene.add(s);
+  s.scale.set(1.2 * size * wide, 0.41 * size, 1); s.position.copy(pos); s.renderOrder = 20; scene.add(s); onScreen.add(s);
   let life = 1.1, vy = 1.4;
   fxList.push(dt => {
     life -= dt; vy *= Math.exp(-dt * 2.5); s.position.y += vy * dt;
-    const k = Math.min(1, (1.1 - life) * 8); s.scale.set(1.2 * size * k, 0.41 * size * k, 1);
+    const k = Math.min(1, (1.1 - life) * 8); s.scale.set(1.2 * size * wide * k, 0.41 * size * k, 1);
     s.material.opacity = Math.min(1, life * 2.5);
-    if (life <= 0) { scene.remove(s); t.dispose(); s.material.dispose(); return false; }
+    if (life <= 0) { scene.remove(s); onScreen.delete(s); t.dispose(); s.material.dispose(); return false; }
     return true;
   });
+}
+
+// 頭上的字、對話泡泡：靠近畫面邊緣時往內推（改 sprite.center），不會被切掉一半
+export const onScreen = new Set();
+const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _ws = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
+export function keepOnScreen(camera, aspect = 1) {
+  if (!onScreen.size) return;
+  _r.setFromMatrixColumn(camera.matrixWorld, 0); _u.setFromMatrixColumn(camera.matrixWorld, 1);
+  const mx = 0.03, my = 0.03 * aspect;
+  for (const s of onScreen) {
+    if (!s.parent) { onScreen.delete(s); continue; }
+    s.center.set(0.5, 0.5);
+    s.getWorldPosition(_p); s.getWorldScale(_ws);   // 世界縮放已經含自己的 scale
+    const c = _q.copy(_p).project(camera); if (c.z > 1) continue;
+    const cx = c.x, cy = c.y;
+    const dx = Math.abs(_q.copy(_p).addScaledVector(_r, _ws.x / 2).project(camera).x - cx);
+    const dy = Math.abs(_q.copy(_p).addScaledVector(_u, _ws.y / 2).project(camera).y - cy);
+    if (dx < 1e-4 || dy < 1e-4) continue;
+    let sx = 0, sy = 0;
+    if (2 * dx > 2 - 2 * mx) sx = -cx; else if (cx - dx < -1 + mx) sx = -1 + mx - (cx - dx); else if (cx + dx > 1 - mx) sx = 1 - mx - (cx + dx);
+    if (cy + dy > 0.86) sy = 0.86 - (cy + dy); else if (cy - dy < -1 + my) sy = -1 + my - (cy - dy);   // 上面留給 HUD 的錢、季度條
+    s.center.set(0.5 - sx / (2 * dx), 0.5 - sy / (2 * dy));
+  }
 }
 
 // 彈出放大（easeOutBack），蓋好東西、升級時用

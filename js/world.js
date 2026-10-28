@@ -59,7 +59,8 @@ const grade = new ShaderPass({
 composer.addPass(grade);
 composer.addPass(new OutputPass());
 export const post = { composer, bloom, grade, on: true };
-export function render() { if (post.on) composer.render(); else renderer.render(scene, camera); }
+export const preRender = [];   // 每次畫之前要做的事（頭上的字推回畫面裡）
+export function render() { for (const f of preRender) f(camera); if (post.on) composer.render(); else renderer.render(scene, camera); }
 export function setQuality(level) {
   quality.level = level; const low = level === 'low';
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 2)); renderer.setSize(innerWidth, innerHeight);

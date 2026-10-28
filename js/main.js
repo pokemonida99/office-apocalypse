@@ -3,21 +3,22 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref } from './world.js?v=0.18.2';
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music } from './fx.js?v=0.18.2';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.18.2';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.18.2';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.18.2';
-import { CHANGES } from './changelog.js?v=0.18.2';
-import { makeTheater } from './theater.js?v=0.18.2';
-import { makeDeco } from './deco.js?v=0.18.2';
-import { makeEnding, seenEndings } from './ending.js?v=0.18.2';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.18.2';
-import { makeIntro } from './intro.js?v=0.18.2';
-import { openCallGame } from './callgame.js?v=0.18.2';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.18.2';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref, preRender } from './world.js?v=0.19.0';
+preRender.push(keepOnScreen);
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music, onScreen, keepOnScreen } from './fx.js?v=0.19.0';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.19.0';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.19.0';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.19.0';
+import { CHANGES } from './changelog.js?v=0.19.0';
+import { makeTheater } from './theater.js?v=0.19.0';
+import { makeDeco } from './deco.js?v=0.19.0';
+import { makeEnding, seenEndings } from './ending.js?v=0.19.0';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.19.0';
+import { makeIntro } from './intro.js?v=0.19.0';
+import { openCallGame } from './callgame.js?v=0.19.0';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.19.0';
 
-const VERSION = 'v0.18.2';
+const VERSION = 'v0.19.0';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -49,8 +50,8 @@ const GEAR = {
   scooter: { icon: '🛴', name: '滑板車', desc: ['走路快 15%', '電動滑板車：快 30%'], price: [3000, 12000], bonus: [0, 0.15, 0.3] },
   magnet: { icon: '🧲', name: '收錢磁鐵', desc: ['靠近錢堆就自動吸過來', '強力磁鐵：吸的範圍再大一點', '超強磁鐵：全場的錢自動飛過來'], price: [5000, 15000, 40000], reach: [0.75, 1.8, 3.2, 99] },   // 三級：小範圍 → 大一點 → 全場
 };
-const magnetMax = () => state.gear.magnet >= GEAR.magnet.price.length;   // 第三級磁鐵：錢直接進帳，不畫鈔票（畫面太亂、手機會卡）
-const carryMaxNow = () => rankCarry(state.rank) + GEAR.cart.bonus[state.gear.cart];
+const magnetMax = () => BOSS || state.gear.magnet >= GEAR.magnet.price.length;   // 第三級磁鐵：錢直接進帳，不畫鈔票（畫面太亂、手機會卡）
+const carryMaxNow = () => BOSS ? 0 : rankCarry(state.rank) + GEAR.cart.bonus[state.gear.cart];   // 當老闆時背不了東西
 
 // ---------- 場景配置（x 往右、z 往鏡頭） ----------
 // 北邊：咖啡機、印表機、電話總機；東邊：販賣機；中間：請人格子、設計部；南邊：員工餐廳三攤
@@ -399,7 +400,7 @@ function pay(s, c) {
   s.queue.shift(); c.mode = 'leave'; state.served++; state.stats[s.item] += c.want;
   let total = Math.round(c.want * s.def.levels[s.lv].price * incomeMult() * (c.vip ? 3 : 1) * (THEME?.id === 'night' && ['coffee', 'beef', 'chicken', 'fish'].includes(s.type) ? 1.3 : 1));   // 加班地獄：咖啡、便當 ×1.3
   if (s.stink) total = Math.round(total * BACK.stink);   // 垃圾沒丟：攤位臭掉
-  if (s.d.north) { s.soldN += c.want; while (s.soldN >= BACK.bagEvery) { s.soldN -= BACK.bagEvery; addBag(s); } }
+  if (s.d.north && !back.truck) { s.soldN += c.want; while (s.soldN >= BACK.bagEvery) { s.soldN -= BACK.bagEvery; addBag(s); } }   // 垃圾車在的時候不長新垃圾袋，丟完就不會又冒出來
   if (c.vip) vipPaid(s, c, total);
   if (c.complain) { total *= 2; floatText(c.actor.root.position.clone().setY(2.0), `客訴變好評！付款 ×2`, '#22a447', 1.1); sfx.upgrade(); }
   if (magnetMax()) { addMoney(total); sfx.coin(); floatText(V(s.d.cash[0], 1.1, s.d.cash[1]), '+$' + total, '#22a447'); return; }
@@ -469,7 +470,8 @@ function updatePhone(dt) {
 }
 
 // ---------- 阿傑的設計部：慢慢畫，交稿一次 +$500 ----------
-const design = { on: false, t: 0, look: null, bar: null };
+const design = { on: false, t: 0, look: null, bar: null, poop: false };
+const POOP_RATE = 0.04, POOP_MULT = 3;   // 每張稿 4% 會畫成大便（稀有彩蛋），稿費 ×3
 function openDesk() {
   design.on = true;
   design.look = deskLook(); design.look.g.position.set(DESK_AT[0], 0, DESK_AT[1]); scene.add(design.look.g); popIn(design.look.g);
@@ -499,16 +501,25 @@ function updateDesign(dt) {
   a.model.rotation.z = Math.sin(state.t * 6) * 0.04;   // 畫畫時身體左右晃
   design.t += dt;
   const p = Math.min(1, design.t / CFG.draftTime);
-  design.look.paint(p);
+  design.look.paint(p, design.poop);
   if (Math.floor(p * 50) !== design.lastBar) { design.lastBar = Math.floor(p * 50); drawBar(p); }
   if (p >= 1) {   // 交稿！
     design.t = 0;
     const pos = V(DESK_AT[0] - 1.15, 1.2, DESK_AT[1] + 0.25);
     const pay = Math.round(CFG.draftPay * state.yearBonus); state.stats.drafts++;
     addMoney(pay);
-    floatText(pos.clone().setY(2.3), '交稿！+$' + pay, '#b46bff', 1.3);
-    confetti(pos, 40, 0.7); sfx.build(); squash(design.look.g, 0.08);
-    if (Math.random() < 0.5) floatText(a.root.position.clone().setY(1.7), ['客戶說讚！', '一次過稿！', '這版可以！'][Math.floor(Math.random() * 3)], '#2c3e57', 0.7);
+    if (design.poop) {   // 稀有彩蛋：畫出一坨大便，客戶竟然買單
+      const big = pay * (POOP_MULT - 1); addMoney(big); state.stats.poop = (state.stats.poop || 0) + 1;
+      floatText(pos.clone().setY(2.3), `💩 交稿！+$${pay + big}`, '#8a5527', 1.3);
+      confetti(pos, 60, 0.9); sfx.upgrade(); squash(design.look.g, 0.12);
+      after(0.6, () => floatText(a.root.position.clone().setY(1.7), '……我剛剛在畫什麼？', '#8a5527', 0.8));
+      banner('💩 稀有彩蛋！', `${JIE ? '小葵' : '阿傑'}畫了一坨大便……客戶說「很有想法」，稿費 ×${POOP_MULT}`, 0, '#8a5527');
+    } else {
+      floatText(pos.clone().setY(2.3), '交稿！+$' + pay, '#b46bff', 1.3);
+      confetti(pos, 40, 0.7); sfx.build(); squash(design.look.g, 0.08);
+      if (Math.random() < 0.5) floatText(a.root.position.clone().setY(1.7), ['客戶說讚！', '一次過稿！', '這版可以！'][Math.floor(Math.random() * 3)], '#2c3e57', 0.7);
+    }
+    design.poop = Math.random() < POOP_RATE;   // 下一張會不會畫歪
   }
 }
 // 阿傑休息一下：伸懶腰 →（有攤位缺貨就幫忙搬一趟）或晃去窗邊發呆 → 回座位繼續畫
@@ -908,7 +919,8 @@ function updateBreaks(dt) {
     if (pool.length) breakShop(pool[Math.floor(Math.random() * pool.length)]);
   }
   for (const b of ga.breaks) if ((b.smokeT -= dt) <= 0) { b.smokeT = 1.4; puff(V(b.s.src[0] + (Math.random() - 0.5) * 0.4, 1.4, b.s.src[1])); }
-  // 小葵站到報修窗口：一次報完所有故障
+  // 小葵站到報修窗口：一次報完所有故障；當老闆時壞了 3 秒總務部自己發現
+  if (BOSS) for (const b of ga.breaks) if (!b.reported && (b.seenT = (b.seenT || 0) + dt) > 3) { b.reported = true; const s = hires.senpai; if (s) sayAt(s, `${MACHINE_NAME[b.s.type]}壞了，我派人去。`, '#2c3e57'); }
   if (state.floor === 'f1' && nearAt(player.actor, GA_ZONE, 0.8)) {
     const nb = ga.breaks.filter(b => !b.reported);
     if (nb.length) {
@@ -1199,6 +1211,7 @@ function updateHires(dt) {
       const cp = h.chat.by.actor.root.position, p = a.root.position; a.speed = 0; turnTo(a, Math.atan2(cp.x - p.x, cp.z - p.z), dt);
       updateActor(a, dt, state.t); continue;
     }
+    if (h.id === 'vivi' && BOSS) continue;   // 玩家自己就是老闆
     if (h.id === 'mi') { miUpdate(h, dt); continue; }
     if (TRIO.includes(h.id)) { trioUpdate(h, dt); continue; }
     else if (h.id === 'jie') updateDesign(dt);
@@ -1215,6 +1228,56 @@ function updateHires(dt) {
     } else hauler(h, dt);
     updateActor(a, dt, state.t);
   }
+}
+// ---------- 第 11 年起：當 Vivi 老闆（第 10 年尾牙老闆說想輕鬆一點） ----------
+// 操控換成 Vivi：走來走去不用搬貨（背不了東西、錢自動進帳），經過大家身邊會幫忙加油；小葵（阿傑模式是阿傑）變成 NPC 自己搬貨，原本的老闆 NPC 收起來
+// 選單切換，選擇另外存（尾牙時暫時換回來頒獎，不會改掉這個選擇）
+let BOSS = false, bossMe = null, bossTalkT = 0;
+const bossOk = () => (state.year >= 11 || (state.year === 10 && state.finaleDone)) && !REPLAY;   // 第 10 年尾牙辦完就可以換
+const BOSS_KEY = () => 'office-apocalypse-boss' + SUF;
+const bossPref = () => { try { return localStorage.getItem(BOSS_KEY()) === '1'; } catch { return false; } };
+const BOSS_LINES = ['大家辛苦了～', '今天也很棒喔！', '這個月業績靠你們了！', '我只是路過看看～', '下午茶我請！……下次。', '保持這個氣勢！', '有什麼問題都可以跟我說喔～'];
+const BOSS_REPLY = ['老闆好！', '是的老闆！', '（又來了……）', '收到～', '老闆今天好閒喔', '……謝謝老闆'];
+const pickOne = (L) => L[Math.floor(Math.random() * L.length)];
+function setBoss(on, { quiet = false, temp = false } = {}) {
+  if (on === BOSS) return true;
+  const p = player.actor.root.position;
+  if (on) {
+    if (player.carry.length || player.head || player.jug) { if (!quiet) toast('手上的東西先送完，才能換老闆'); return false; }
+    if (kevin && kevin.phase !== 'flee') { if (!quiet) toast('先把 Kevin 趕走，再換老闆'); return false; }
+    const me = player.actor, va = makeActor(kinds.vivi, 1);
+    va.root.position.copy(p); va.root.rotation.y = me.root.rotation.y; scene.add(va.root);
+    const tag = labelSprite(ME.name, { bg: '#2c3e57', size: 0.2 }); tag.position.y = 1.35; me.root.add(tag);
+    me.root.position.x += 0.6;
+    bossMe = { id: 'me', actor: me, carry: [], type: null, carryMax: 5, moveT: 0, mode: 'fetch', tag };
+    player.actor = va; player.carryMax = 0;
+    const v = hires.vivi; if (v) { v.actor.root.visible = false; v.trip = null; }
+  } else {
+    const va = player.actor, me = bossMe.actor;
+    me.root.remove(bossMe.tag); me.root.position.copy(va.root.position); me.root.rotation.y = va.root.rotation.y; scene.remove(va.root);
+    player.actor = me; player.carry = bossMe.carry; player.type = bossMe.type;   // 小葵手上搬到一半的貨照樣背著
+    const v = hires.vivi; if (v) { v.actor.root.visible = true; v.actor.root.position.set(p.x + 0.8, 0, p.z); }
+    bossMe = null;
+  }
+  BOSS = on; player.carryMax = carryMaxNow();
+  if (!temp) try { localStorage.setItem(BOSS_KEY(), on ? '1' : ''); } catch {}
+  document.querySelector('#me .face').style.backgroundImage = `url(icons/${on ? 'vivi' : ME.icon}-180.png)`; updateMe();
+  if (!quiet) {
+    const at = player.actor.root.position; pillar(at, 0xff9ad5, 0.6, 4); confetti(V(at.x, 1.2, at.z), 50); sfx.build();
+    banner(on ? '👑 今天我是老闆！' : `${ME.name}回來上班了`, on ? `走來走去就好，貨交給${ME.name}和大家搬，錢自動進帳` : '老闆回辦公室了，繼續打拚！', 0, '#ff4fa3');
+  }
+  return true;
+}
+function updateBoss(dt) {
+  if (!BOSS) return;
+  hauler(bossMe, dt); updateActor(bossMe.actor, dt, state.t);
+  bossTalkT -= dt; if (bossTalkT > 0) return;
+  const p = player.actor.root.position;
+  const h = [bossMe, ...Object.values(hires).filter(h => h.id !== 'vivi')].find(h => Math.hypot(h.actor.root.position.x - p.x, h.actor.root.position.z - p.z) < 1.4);
+  if (!h) return;
+  bossTalkT = 6;
+  floatText(p.clone().setY(1.7), pickOne(BOSS_LINES), '#ff4fa3', 0.8);
+  after(0.9, () => floatText(h.actor.root.position.clone().setY(1.6), pickOne(BOSS_REPLY), '#2c3e57', 0.7));
 }
 // Vivi 上 2F：每 70～110 秒走去電梯 → 出現在 2F 老闆辦公室逛（推桿、看魚、坐皮椅）→ 30 秒後下樓。Kevin 來鬧事就馬上下來
 const VIVI_2F_LINES = ['進了！🏌️', '小魚今天也很可愛～', '這張椅子坐起來就是不一樣', '業績報表……先放著', '招財貓，再招一點！', '今天的會議取消好了'];
@@ -1363,7 +1426,7 @@ function gainXp(n) {
 const meTitle = document.getElementById('meTitle'), meBar = document.getElementById('meBar');
 function updateMe() {
   const r = RANKS[state.rank], n = RANKS[state.rank + 1];
-  meTitle.textContent = JIE ? '😎 老鳥 阿傑' : `Lv${state.rank + 1} ${r.title}`;
+  meTitle.textContent = BOSS ? '👑 Vivi 老闆' : JIE ? '😎 老鳥 阿傑' : `Lv${state.rank + 1} ${r.title}`;
   meBar.style.width = n ? `${Math.min(100, (state.xp - r.xp) / (n.xp - r.xp) * 100)}%` : '100%';
 }
 
@@ -1438,6 +1501,7 @@ function updateGuide() {
   else if (cai && !cai.leaving && cai.drops.some(d => !d.landed && d.kind !== 'poop')) { const d = cai.drops.filter(d => !d.landed && d.kind !== 'poop').sort((a, b) => dist([a.x, a.z]) - dist([b.x, b.z]))[0]; at = [d.x, d.z]; text = '🧧 接住天上掉下來的元寶！（小心 💩）'; }
   else if (ga.breaks.some(b => !b.reported)) { const b = ga.breaks.find(b => !b.reported); at = GA_ZONE; text = `🔧 ${MACHINE_NAME[b.s.type]}壞了！去總務部窗口報修`; }
   else if (hires.cha?.cm?.v && ['chat', 'lead'].includes(hires.cha.cm.phase) && (hires.cha.cm.v.id !== 'qiang' || hires.senpai?.task)) { const c = hires.cha.actor.root.position; at = [c.x, c.z]; text = `💬 茶茶拉著${nameOf(hires.cha.cm.v)}聊天，過去打斷她`; }
+  else if (BOSS) text = '👑 老闆巡視中：走走看看，經過大家身邊會幫忙加油';
   else if (yan && yan.phase === 'wait' && player.carry.length && yan.need[player.type] > 0) { const y = yan.a.root.position; at = [y.x, y.z]; text = `📋 把 ${ICON[player.type]} 交給小燕`; }
   else if (yan && yan.phase === 'wait' && !player.carry.length) { const [it, n] = Object.entries(yan.need).find(([, n]) => n > 0) || []; if (it) { at = shopOf(it).pickup; text = `📋 小燕急件：去拿 ${ICON[it]}×${n}`; } }
   else if (back.truck && (player.head?.kind === 'bag' || bagsLeft())) { const s = northShops().filter(s => s.bags.length).sort((a, b) => dist(bagAt(a)) - dist(bagAt(b)))[0]; [at, text] = player.head?.kind === 'bag' && (player.head.list.length >= BACK.bagCarry || !s) ? [BACK.truckZone, '🚛 把垃圾袋丟上後門的垃圾車'] : [bagAt(s), '🚛 垃圾車來了！去攤位旁邊拿垃圾袋']; }
@@ -1649,11 +1713,11 @@ function npcSay(k, text, sec) {
     g.fillStyle = '#2c3e57'; g.fillText(text, x0 + 35 + g.measureText(head).width, (H - 26) / 2 + 4);
   });
   k.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
-  k.bubble.scale.set(3.8, 0.56, 1); k.bubble.renderOrder = 9; k.bubble.position.y = k.sayY || 1.9; host.add(k.bubble);
+  k.bubble.scale.set(3.8, 0.56, 1); k.bubble.renderOrder = 9; k.bubble.position.y = k.sayY || 1.9; host.add(k.bubble); onScreen.add(k.bubble);
 }
 function updateKevin(dt) {
   if (state.year < 2 || design.finale) return;
-  if (!kevin) { if (!nextKevin) nextKevin = state.t + KEVIN.first; if (state.t >= nextKevin) spawnKevin(); return; }
+  if (!kevin) { if (!nextKevin) nextKevin = state.t + KEVIN.first; if (state.t >= nextKevin) { if (BOSS) nextKevin = state.t + KEVIN.first; else spawnKevin(); } return; }   // 老闆親自在巡，Kevin 不敢來鬧
   const k = kevin, a = k.a, p = a.root.position;
   if (k.phase === 'flee') {   // 跑回電梯消失
     if (walkTo(a, L.elevator[0] + 0.3, L.elevator[1], 3.2, dt)) { scene.remove(a.root); kevin = null; return; }
@@ -1685,7 +1749,7 @@ function updateKevin(dt) {
       if (k.hp <= 0) {
         const val = Math.round(KEVIN.reward * state.yearBonus);
         addMoney(val); gainXp(3); confetti(V(p.x, 1.2, p.z), 50); sfx.upgrade();
-        banner(`${ME.name}：別來鬧事！`, `Kevin 夾著平板逃走了　+$${val.toLocaleString()}`, 0, '#ff5d3a');
+        banner(`${BOSS ? 'Vivi 老闆' : ME.name}：別來鬧事！`, `Kevin 夾著平板逃走了　+$${val.toLocaleString()}`, 0, '#ff5d3a');
         kevinSay('好啦好啦我滾 😭'); k.phase = 'flee';
       }
     }
@@ -1706,8 +1770,8 @@ function updateEvents() {
   if (state.q >= 2 && !design.finale && state.t >= nextEvent) {
     nextEvent = state.t + 70 + Math.random() * 50;
     const pool = ['vip', 'vip', 'rush'];
-    if (hires.vivi && !cake) pool.push('birthday');
-    if (state.year >= 3 && !yan && kinds.yan) pool.push('yan', 'yan');
+    if (hires.vivi && !BOSS && !cake) pool.push('birthday');
+    if (state.year >= 3 && !yan && kinds.yan && !BOSS) pool.push('yan', 'yan');   // 老闆背不了東西，不派急件
     if (state.year >= 3 && !heilun && kinds.heilun) pool.push('heilun', 'heilun');
     if (!cai && kinds.caishen && state.floor === 'f1') pool.push('caishen');
     ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[pool[Math.floor(Math.random() * pool.length)]]();
@@ -1768,10 +1832,10 @@ const HEILUN = { at: [-1.3, 4.6], vips: 4, wait: 90, cut: 0.1 };
 const HEILUN_TALK = ['這幾位都是大客戶，好好招待喔～', '我跟他們說我們公司最專業了', '業績達標，今年我要換車 😎', '單子我都簽好了，剩下交給你們', '客戶喜歡就是我喜歡'];
 let yan = null, heilun = null;
 const needText = (need) => Object.entries(need).filter(([, n]) => n > 0).map(([it, n]) => `${ICON[it]}×${n}`).join(' ');
-function npcEnter(kind, name, bg) {
+function npcEnter(kind, name, bg, size = 0.26) {
   const a = makeActor(kinds[kind] || kinds.npcF, 0.98);
   a.root.position.set(L.elevator[0] + 0.6, 0, L.elevator[1]); scene.add(a.root); popIn(a.root, a.root.scale.x);
-  const tag = labelSprite(name, { bg, size: 0.26 }); tag.position.y = 1.38; a.root.add(tag);
+  const tag = labelSprite(name, { bg, size }); tag.position.y = 1.38; a.root.add(tag);
   return a;
 }
 // 小燕：客戶臨時要開會，限時把指定的東西拿給她（自己搬得到的店才會點），完成拿 4 倍
@@ -1780,14 +1844,20 @@ function eventYan() {
   const open = Object.values(shops).filter(s => s.unlocked && !isLine(s)).sort(() => Math.random() - 0.5).slice(0, 2);
   if (!open.length) return;
   const need = Object.fromEntries(open.map(s => [s.item, Math.min(player.carryMax, 3 + Math.floor(Math.random() * 3))]));
-  const a = npcEnter('yan', 'PM 小燕', '#3f5fd9');
+  const a = npcEnter('yan', '📋 PM 小燕・急件', '#3f5fd9', 0.36);
   const pad = rbox(0.26, 0.34, 0.03, 0xf4f6fb, 0.12, 0.55, 0.2, a.root); pad.rotation.x = -0.5;   // 手上的待辦清單
-  yan = { a, need, got: [], phase: 'walk', t: YAN.time, bubble: null, sec: -1, giveT: 0, value: 0 };
+  // 人很多時也找得到：腳下藍色光圈＋光柱、頭上藍色箭頭
+  const glow = (m) => new THREE.MeshBasicMaterial({ color: 0x3f7bff, transparent: true, opacity: m, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.56, 40), glow(0.85)); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; a.root.add(ring);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 3.2, 24, 1, true), glow(0.16)); beam.position.y = 1.6; a.root.add(beam);
+  const pin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 20), new THREE.MeshStandardMaterial({ color: 0x3f7bff, emissive: 0x10308a, roughness: 0.4 })); pin.rotation.x = Math.PI; pin.position.y = 2.55; a.root.add(pin);
+  yan = { a, need, got: [], phase: 'walk', t: YAN.time, bubble: null, sec: -1, giveT: 0, value: 0, sayY: 2.0, ring, beam, pin };
   sfx.alarm(); camKick(0.3);
   banner('📋 PM 小燕：急件！', `客戶臨時要開會，${YAN.time} 秒內幫我拿 ${needText(need)}`, 0, '#3f5fd9');
 }
 function updateYan(dt) {
   const y = yan, a = y.a, p = a.root.position;
+  { const k = 1 + Math.sin(state.t * 6) * 0.12; y.ring.scale.set(k, k, 1); y.pin.position.y = 2.55 + Math.sin(state.t * 5) * 0.12; y.pin.rotation.y += dt * 3; y.ring.visible = y.beam.visible = y.pin.visible = y.phase !== 'leave'; }
   if (y.phase === 'leave') {
     if (walkTo(a, L.elevator[0] + 0.3, L.elevator[1], 2.6, dt)) { scene.remove(a.root); yan = null; return; }
     return updateActor(a, dt, state.t);
@@ -1953,6 +2023,7 @@ let stage = null;
 let finaleScene = false;
 function startFinale() {
   if (state.finaleDone || design.finale || finaleScene) return;
+  if (BOSS) setBoss(false, { quiet: true, temp: true });   // 尾牙換回自己上台領獎
   if (!theater || G.autoTheater) return beginFinale();
   finaleScene = true; theater.play(yearEndScript(state.year)).then(() => { finaleScene = false; beginFinale(); });
 }
@@ -2009,6 +2080,7 @@ function endFinale() {
   if (design.cup) { player.actor.root.remove(design.cup); design.cup = null; }
   player.actor.root.position.y = 0; Object.values(hires).forEach(h => { h.actor.root.position.y = 0; h.trip = null; h.tripT = undefined; });   // 尾牙後老闆從 1F 重新開始
   player.actor.root.position.set(STAGE_AT[0], 0, STAGE_AT[1] + 1.4);
+  if (bossOk() && bossPref()) setBoss(true, { quiet: true, temp: true });
   save();
 }
 document.getElementById('finStay').onclick = endFinale;
@@ -2280,7 +2352,7 @@ function updateBack(dt) {
   if (p.head?.kind === 'box') { const s = ns.find(s => s.stock <= BACK.cap - BACK.box / 2 && nearAt(p.actor, s.pickup, 0.85)); if (s) { headOff(); s.stock = Math.min(BACK.cap, s.stock + BACK.box); gainXp(1); sfx.drop(); squash(s.look.g, 0.12); floatText(V(s.src[0], 1.7, s.src[1]), '📦 補料！', '#8a5a32', 0.8); } }
   if (p.head?.kind === 'box' && !boxTaker() && nearAt(p.actor, BACK.palletZone, 0.8)) headOff();   // 不缺料了：放回棧板
   if (back.truck) updateTruck(dt); else if (!back.rider && state.t >= back.nextTruck) startTruck();
-  if (back.rider) updateRider(dt); else if (!back.truck && state.t >= back.nextRider) startRider();
+  if (back.rider) updateRider(dt); else if (!back.truck && !BOSS && state.t >= back.nextRider) startRider();
 }
 function backReset() {
   if (back.truck) { scene.remove(back.truck.g); back.truck = null; back.truckMark.visible = false; }
@@ -2641,7 +2713,7 @@ function update(dt) {
   if (state.floor === 'f2' && !design.finale) {
     f2Clock += dt; updatePlayer(dt); updateElevator(); updateDecoBtn(); updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateSave(dt);
     room.boss?.tick(dt, f2Clock); room.kevin?.tick(dt, f2Clock); room.deco?.update(dt, f2Clock);
-    const v = hires.vivi; if (v && v.trip === 'up') { vivi2F(v, dt); updateActor(v.actor, dt, f2Clock); }   // 老闆剛好在樓上就繼續逛
+    const v = hires.vivi; if (v && !BOSS && v.trip === 'up') { vivi2F(v, dt); updateActor(v.actor, dt, f2Clock); }   // 老闆剛好在樓上就繼續逛
     metaT += dt; if (metaT > 0.25) { updateYear(metaT); metaT = 0; }
     return;
   }
@@ -2649,7 +2721,7 @@ function update(dt) {
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
   if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
-  else { updatePlayer(dt); updateHires(dt); updateBreaks(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
+  else { updatePlayer(dt); updateHires(dt); updateBoss(dt); updateBreaks(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
   updateRoof(dt); updatePet(dt); updateWater(dt); updateBack(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateTheme(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); if (cai && !design.finale) updateCaishen(dt); updateEvents(); updateSave(dt);
   metaT += dt; if (metaT > 0.25) { updateYear(metaT); metaT = 0; }
@@ -2707,6 +2779,7 @@ function renderMenu() {
     ['intro', '🎬 重看片頭'],
     ['saves', '🗂 存檔／往年回顧'],
     ...(REPLAY ? [['endReplay', `⏹ 結束回顧第 ${REPLAY} 年`, 'move']] : [['swap', JIE ? '🙋 存檔，換回小葵' : '😎 存檔，換阿傑老鳥']]),
+    ...(bossOk() && !design.finale ? [['boss', BOSS ? `🙋 不當老闆了，換回${ME.name}` : '👑 當 Vivi 老闆（走走看看就好）']] : []),
     ...(yearEl.classList.contains('done') ? [['move', moveBtn.textContent, 'move']] : []),
     ['title', '🏠 存檔，回到標題畫面', 'out'],
   ];
@@ -2724,6 +2797,7 @@ function menuAction(k) {
   else if (k === 'saves') { closeMenu(); save(); openSaves('slots'); }
   else if (k === 'endReplay') endReplay();
   else if (k === 'swap') swapMode();
+  else if (k === 'boss') { closeMenu(); setBoss(!BOSS); }
   else if (k === 'move') { closeMenu(); moveBtn.click(); }
   else if (k === 'title') goReload(JIE ? '#jie' : '');   // 存好檔重新載入回到封面（封面的「打卡上班」接著玩）
 }
@@ -2775,6 +2849,7 @@ const G = window.G = {
   },
   playCall: () => miBtn.onclick(),
   introTick(dt) { if (intro) { intro.step(dt); render(); } return !!intro; },   // 錄片頭用
+  setBoss: (on) => setBoss(on), get boss() { return BOSS; }, get bossMe() { return bossMe; },
   get water() { return water; }, WATER, music, get theater() { return theater; }, yearScript, autoTheater: false,
   goFloor: (f) => goFloor(f), get floor() { return state.floor; }, roof: () => roof, room: () => room, buyFurn: (s, i) => buyFurn(s, i),
   event(n) { if (n === 'gust') return spawnGust(); ({ vip: eventVip, rush: eventRush, birthday: eventBirthday, kevin: spawnKevin, yan: eventYan, heilun: eventHeilun, caishen: eventCaishen })[n](); }, get kevin() { return kevin; }, ga, GA_ZONE, breakShop: (k) => breakShop(shops[k]), back, BACK, bagAt, bagsLeft, boxTaker, northShops, startTruck: () => startTruck(), startRider: () => startRider(), get cai() { return cai; }, get yan() { return yan; }, get gust() { return gust; }, get heilun() { return heilun; },
@@ -2792,7 +2867,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.18.2'); music.load('office', 'audio/bgm_office.m4a?v=0.18.2'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.19.0'); music.load('office', 'audio/bgm_office.m4a?v=0.19.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
@@ -2823,6 +2898,7 @@ const G = window.G = {
   setupTheme();   // 第 6 年起：年度主題
   document.querySelector('#me .face').style.backgroundImage = `url(icons/${ME.icon}-180.png)`;
   player.carryMax = carryMaxNow(); setCart();
+  if (bossOk() && bossPref()) setBoss(true, { quiet: true, temp: true });   // 上次是當老闆
   setupPads(); updateMe(); shownMoney = state.money; moneyEl.textContent = state.money.toLocaleString();
   for (let i = 0; i < 3; i++) spawnCustomer(shops.coffee);
   window.bootOk?.(); updateQBtn(); document.getElementById('coverCall').disabled = false;

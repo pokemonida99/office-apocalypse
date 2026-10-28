@@ -1,6 +1,6 @@
 // 設施：咖啡機、印表機、電話總機、販賣機、員工餐廳三攤。每一級外觀不同、數值不同，咖啡機與印表機 Lv5 是產線
 import * as THREE from 'three';
-import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.18.2';
+import { scene, rbox, box, cyl, sphere, mat, canvasTex, labelSprite, FONT, V } from './world.js?v=0.19.0';
 
 // ---------- 數值表（調平衡只改這裡） ----------
 // brew：幾秒做一個；tray：出貨口最多堆幾個；price：一個賣幾元；cost：升到這一級要多少錢
@@ -413,14 +413,25 @@ export function deskLook() {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.56), new THREE.MeshBasicMaterial({ map: tex })); board.position.set(0, 1.12, 0.04); easel.add(board);
   box(0.78, 0.62, 0.03, 0xfff4e2, 0, 1.12, 0.01, easel);
   let shown = -1;
-  // 畫面：天空、太陽、山、房子，依進度從左畫到右
-  const paint = (p) => {
-    const k = Math.round(p * 20) / 20; if (k === shown) return; shown = k;
+  // 畫面：天空、太陽、山、房子，依進度從左畫到右；poop＝稀有彩蛋，畫成一坨大便
+  const paint = (p, poop = false) => {
+    const k = Math.round(p * 20) / 20, key = k + (poop ? 9 : 0); if (key === shown) return; shown = key;
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 128, 100);
     x.save(); x.beginPath(); x.rect(0, 0, 128 * k, 100); x.clip();
-    x.fillStyle = '#9be7ff'; x.fillRect(0, 0, 128, 60); x.fillStyle = '#ffd34d'; x.beginPath(); x.arc(100, 22, 12, 0, 7); x.fill();
-    x.fillStyle = '#47b35a'; x.beginPath(); x.moveTo(0, 70); x.lineTo(40, 30); x.lineTo(80, 70); x.lineTo(128, 40); x.lineTo(128, 100); x.lineTo(0, 100); x.fill();
-    x.fillStyle = '#ff7a45'; x.fillRect(50, 60, 26, 24); x.fillStyle = '#d9483b'; x.beginPath(); x.moveTo(46, 60); x.lineTo(63, 46); x.lineTo(80, 60); x.fill();
+    if (poop) {
+      x.fillStyle = '#fff3c4'; x.fillRect(0, 0, 128, 100);
+      const blob = (cx, cy, rx, ry, col) => { x.fillStyle = col; x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, 7); x.fill(); };
+      blob(64, 82, 40, 12, '#7a4a22'); blob(64, 64, 31, 11, '#8a5527'); blob(64, 47, 21, 10, '#98602d');
+      x.fillStyle = '#98602d'; x.beginPath(); x.moveTo(52, 44); x.quadraticCurveTo(66, 18, 76, 30); x.quadraticCurveTo(68, 34, 74, 44); x.fill();
+      x.fillStyle = '#c98b52'; for (const [ex, ey, r] of [[50, 62, 5], [70, 79, 6], [58, 45, 3]]) { x.beginPath(); x.arc(ex, ey, r, Math.PI, 0); x.fill(); }   // 亮面
+      for (const ex of [55, 73]) { blob(ex, 62, 6, 7, '#fff'); blob(ex + 1, 63, 3, 4, '#2c3e57'); }
+      x.strokeStyle = '#2c3e57'; x.lineWidth = 2.5; x.beginPath(); x.arc(64, 70, 7, 0.2, Math.PI - 0.2); x.stroke();
+      x.strokeStyle = '#7a8794'; x.lineWidth = 1.5; for (const fx of [26, 100]) { x.beginPath(); x.moveTo(fx, 40); x.quadraticCurveTo(fx + 6, 30, fx, 22); x.stroke(); }   // 臭味
+    } else {
+      x.fillStyle = '#9be7ff'; x.fillRect(0, 0, 128, 60); x.fillStyle = '#ffd34d'; x.beginPath(); x.arc(100, 22, 12, 0, 7); x.fill();
+      x.fillStyle = '#47b35a'; x.beginPath(); x.moveTo(0, 70); x.lineTo(40, 30); x.lineTo(80, 70); x.lineTo(128, 40); x.lineTo(128, 100); x.lineTo(0, 100); x.fill();
+      x.fillStyle = '#ff7a45'; x.fillRect(50, 60, 26, 24); x.fillStyle = '#d9483b'; x.beginPath(); x.moveTo(46, 60); x.lineTo(63, 46); x.lineTo(80, 60); x.fill();
+    }
     x.restore(); x.strokeStyle = '#2c3e57'; x.lineWidth = 3; x.beginPath(); x.moveTo(128 * k, 0); x.lineTo(128 * k, 100); if (k > 0 && k < 1) x.stroke();
     tex.needsUpdate = true;
   };

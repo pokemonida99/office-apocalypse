@@ -84,22 +84,96 @@ export function yearScript(year, ctx = {}) {
       trip: [{ who: 'vivi', face: 'happy', text: '今年員工旅遊！頂樓直接變海灘～', act: [['emote', 'vivi', '🏖️']] }, { who: 'kui', face: 'happy', text: '那我們還要上班嗎？', act: [['jump', 'kui']] }],
       night: [{ who: 'kui', face: 'tired', text: '今年……是不是都沒下班過？', act: [['emote', 'kui', '🌙']] }, { who: 'jie', face: 'tired', text: '泡麵跟咖啡賣得特別好，你說呢。' }],
     })[th.id],
-    card: { title: `第 ${year} 年哪裡不一樣`, items: [`${th.icon} 年度主題：${th.name}`, th.desc, year === 10 ? '✉️ 今年尾牙可以「遞辭呈」，看結局二' : `🏢 ${bonus}`] },
+    card: { title: `第 ${year} 年哪裡不一樣`, items: [`${th.icon} 年度主題：${th.name}`, th.desc, year === 10 ? '✉️ 今年尾牙可以「遞辭呈」，看結局二' : `🏢 ${bonus}`, ...(year === 11 ? ['👑 Vivi 老闆想輕鬆一點：選單裡可以「當 Vivi 老闆」，走來走去不用搬貨，大家會幫你做'] : [])] },
   };
   return null;
 }
 
-// 年度結尾（尾牙前）：老闆宣布、大家歡呼
+// 年度結尾（尾牙前）：每年不一樣，多給剛登場的人講話。第 5、10 年留「有人有話要說吧？」（可以遞辭呈）
+// 第 13 年起年度主題重新輪，用主題那一份（第 10 年的辭呈台詞只在第 10 年）
+const E = (who, face, text, act) => ({ who, face, text, ...(act ? { act } : {}) });
+const END_LINES = {
+  1: [['kui', 'mi', 'jie', 'vivi'], [
+    E('mi', 'happy', '今年電話接到手軟，我的耳朵現在還在響……'),
+    E('jie', 'smug', '今年的年終應該會多一點吧？', [['emote', 'jie', '😏']]),
+    E('vivi', 'happy', '年終的事……先吃飯！走！上台領獎！')]],
+  2: [['kui', 'jie', 'vivi', 'kevin'], [
+    E('kevin', 'smug', '尾牙流程簡報我用 AI 做好了，三秒。', [['emote', 'kevin', '🤖']]),
+    E('jie', 'tired', '……所以抽獎也是 AI 抽的？'),
+    E('kevin', 'shock', '呃……它抽到它自己。', [['emote', 'kevin', '💦']]),
+    E('vivi', 'happy', '好了好了，走！上台領獎！')]],
+  3: [['kui', 'yan', 'vivi', 'heilun'], [
+    E('yan', 'tired', '尾牙幾點結束？我十點還有一個會……', [['emote', 'yan', '📋']]),
+    E('heilun', 'smug', '今年的業績，大概有一半是我的喔。'),
+    E('kui', 'angry', '東西都是我搬的耶！', [['emote', 'kui', '💢']]),
+    E('heilun', 'happy', '對啊，所以我請你喝飲料嘛～'),
+    E('vivi', 'happy', '早餐街也很拚！走！上台領獎！')]],
+  4: [['kui', 'cha', 'vivi', 'qiang', 'senpai'], [
+    E('cha', 'happy', '尾牙要穿什麼呀～人家想了一整個禮拜💕', [['emote', 'cha', '💕']]),
+    E('qiang', 'smug', '我今年修了一百多台機器！', [['jump', 'qiang']]),
+    E('senpai', 'tired', '其中一半是同一台咖啡機。'),
+    E('kui', 'tired', '那台真的很常壞……'),
+    E('vivi', 'happy', '明年換新的！……大概。走！上台領獎！')]],
+  5: [['kui', 'vivi', 'jie'], [
+    E('kui', 'tired', '（辭呈……還在我的包包裡。）', [['face', 'kui', 'left']]),
+    E('jie', 'smug', '今年尾牙……有人有話要說吧？', [['emote', 'jie', '😏'], ['face', 'kui', 'cam']]),
+    E('vivi', 'happy', '要致詞嗎？好啊！先上台領獎！')]],
+  10: [['kui', 'mi', 'vivi', 'jie'], [
+    E('mi', 'cry', '客訴週終於結束了……我要請假三天。'),
+    E('jie', 'smug', '第十年了……有人有話要說吧？', [['emote', 'jie', '😏']]),
+    E('vivi', 'smug', '我先說！明年我想輕鬆一點，有沒有人想當當看老闆？', [['emote', 'vivi', '👑']]),
+    E('kui', 'shock', '欸？', [['emote', 'kui', '❗']]),
+    E('vivi', 'happy', '尾牙吃完再說！走！上台領獎！')]],
+};
+const END_THEME = {
+  typhoon: [['kui', 'qiang', 'vivi', 'jie'], [
+    E('qiang', 'cry', '我的帽子今年被吹走三次……', [['emote', 'qiang', '🌀']]),
+    E('kui', 'tired', '我被吹走幾次，我已經不想算了。'),
+    E('jie', 'tired', '哎，那個，我們公司到底是做什麼啊？怎麼這麼多店這樣？', [['emote', 'jie', '🤔']]),
+    E('vivi', 'smug', '什麼都做，所以才賺錢啊！走！上台領獎！')]],
+  winter: [['kui', 'mi', 'vivi', 'heilun'], [
+    E('heilun', 'tired', '客戶都說「明年再說」，我的車也還沒換……'),
+    E('mi', 'happy', '可是客訴變少了耶！大家都懶得打電話了。'),
+    E('kui', 'happy', '尾牙有吃就好！'),
+    E('vivi', 'happy', '有！照樣吃！走！上台領獎！')]],
+  anniv: [['kui', 'yan', 'vivi', 'kevin'], [
+    E('yan', 'tired', '週年慶這個月，我開了四十七個會。', [['emote', 'yan', '😵']]),
+    E('kevin', 'smug', '明年週年慶，我建議全部交給 AI。'),
+    E('kui', 'angry', '你去年也這樣說。', [['emote', 'kui', '💢']]),
+    E('vivi', 'happy', '業績破紀錄啦！走！上台領獎！')]],
+  robot: [['kui', 'senpai', 'vivi', 'kevin'], [
+    E('kevin', 'smug', '看吧，AI 機器人今年表現很好。', [['emote', 'kevin', '🤖']]),
+    E('senpai', 'tired', '它把便當送到印表機十二次。'),
+    E('kevin', 'shock', '……那是在學習。', [['emote', 'kevin', '💦']]),
+    E('kui', 'smug', '我學得比它快吧。'),
+    E('vivi', 'happy', '機器人也辛苦了！走！上台領獎！')]],
+  complain: [['kui', 'mi', 'vivi', 'jie'], [
+    E('mi', 'cry', '客訴週終於結束了……我要請假三天。'),
+    E('jie', 'tired', '哎，那個，我們公司到底是做什麼啊？怎麼這麼多店這樣？', [['emote', 'jie', '🤔']]),
+    E('vivi', 'smug', '什麼都做，所以客訴也什麼都有！走！上台領獎！')]],
+  trip: [['kui', 'cha', 'vivi', 'qiang'], [
+    E('cha', 'happy', '頂樓海灘拍的照片，人家修了三百張💕', [['emote', 'cha', '📸']]),
+    E('qiang', 'cry', '我曬到只有帽子那一圈是白的。'),
+    E('kui', 'tired', '所以我們到底有沒有出去玩？'),
+    E('vivi', 'smug', '頂樓也算！走！上台領獎！')]],
+  night: [['kui', 'yan', 'vivi', 'jie'], [
+    E('yan', 'tired', '我今年最早一次下班是十點。'),
+    E('jie', 'tired', '我上次看到太陽，是什麼時候？'),
+    E('kui', 'cry', '尾牙……可以在白天辦嗎？'),
+    E('vivi', 'happy', '好！明年一定！走！上台領獎！')]],
+};
 export function yearEndScript(year) {
+  const [who, lines] = END_LINES[year] || END_THEME[themeOf(year)?.id] || END_LINES[1];
+  const xs = who.length >= 5 ? [-1.6, -0.8, 0, 0.8, 1.6] : who.length === 4 ? [-1.5, -0.5, 0.5, 1.5] : [-1.6, 0, 1.6];   // 手機直式框只看得到 ±1.8 左右
   return {
     title: `第 ${year} 年　結算`,
     wall: 0xfff0d6,
-    cast: { kui: { x: -1.6 }, vivi: { x: 0 }, jie: { x: 1.6 } },
+    cast: Object.fromEntries(who.map((id, i) => [id, { x: xs[i] }])),
     steps: [
       { who: 'vivi', face: 'smug', text: `第 ${year} 年結束了！大家辛苦了～`, act: [['emote', 'vivi', '🎉']] },
-      { who: 'kui', face: 'happy', text: '耶——！終於可以吃尾牙了！', act: [['jump', 'kui'], ['jump', 'jie']] },
-      { who: 'jie', face: 'smug', text: year >= 5 ? '今年尾牙……有人有話要說吧？' : '今年的年終應該會多一點吧？', act: [['emote', 'jie', '😏']] },
-      { who: 'vivi', face: 'happy', text: '走！上台領獎！', auto: 1.6 },
+      { who: 'kui', face: 'happy', text: '耶——！終於可以吃尾牙了！', act: who.map(id => ['jump', id]) },
+      ...lines.slice(0, -1),
+      { ...lines[lines.length - 1], auto: Math.max(1.6, lines[lines.length - 1].text.length * 0.13) },   // 最後一句自己跳到頒獎
     ],
   };
 }
