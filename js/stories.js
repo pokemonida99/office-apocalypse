@@ -1,11 +1,11 @@
 // 小劇場劇本（theater.js 演）：每年開場一段＋「今年哪裡不一樣」字卡、每年結尾一段
 // 角色個性照《不想上班／我想離職》：小葵＝菜鳥設計師、阿傑＝老鳥設計師、小米＝客服、Vivi＝老闆、Kevin＝說「用 AI 就好」的特助
 // 第 6 年起的年度主題放在 THEMES（v0.13），開場也走這裡
-export const THEMES = [
-  { id: 'typhoon', name: '颱風季', icon: '🌀', desc: '一股白色強風會橫掃辦公室，被掃到的人會被吹飛、手上的貨掉幾個（地上會先亮一條，閃開就好）；颱風假那天收入 ×1.5' },
+export const THEMES = [   // 第 6 年起照順序輪：機器人第 6 年（使用者要早一點出現）、颱風第 9 年
+  { id: 'robot', name: 'AI 機器人導入', icon: '🤖', desc: 'Kevin 帶來兩台 AI 機器人，會幫忙搬貨，也會把貨送錯店' },
   { id: 'winter', name: '景氣寒冬', icon: '❄️', desc: '景氣不好，所有收入減半；年度目標也降成 7 成' },
   { id: 'anniv', name: '週年慶', icon: '🎉', desc: '客人一直湧進來，售價 ×1.5，但進貨要跑更快' },
-  { id: 'robot', name: 'AI 機器人導入', icon: '🤖', desc: 'Kevin 帶來兩台 AI 機器人，會幫忙搬貨，也會把貨送錯店' },
+  { id: 'typhoon', name: '颱風季', icon: '🌀', desc: '一股白色強風會橫掃辦公室，被掃到的人會被吹飛、手上的貨掉幾個（地上會先亮一條，閃開就好）；颱風假那天收入 ×1.5' },
   { id: 'complain', name: '小米客訴週', icon: '😡', desc: '常有客人回來客訴：走過去選「退款」或「重做」，放著不管小米會幫你加倍賠錢' },
   { id: 'trip', name: '員工旅遊年', icon: '🏖️', desc: '頂樓變海灘，遊樂設施門票 ×2' },
   { id: 'night', name: '加班地獄', icon: '🌙', desc: '辦公室變夜景，咖啡和便當大賣（售價 ×1.3），走路慢一點' },
@@ -38,7 +38,7 @@ export function yearScript(year, ctx = {}) {
       { who: 'heilun', face: 'smug', text: '我帶了幾個大客戶來喔～業績算我的。', act: [['enter', 'heilun', 'right', 1.8]] },
       { who: 'kui', face: 'cry', text: '工讀生今天直接報到了，可是我好像更忙了……', act: [['emote', 'kui', '💧']] },
     ],
-    card: { title: '第 3 年哪裡不一樣', items: ['🧋 後牆打通：早餐街三攤', '📋 PM 小燕的限時急件、🤝 業務黑輪帶 VIP（會抽成）', '👟 兩個工讀生直接報到', '🚪 後門：早餐街要去搬原料、垃圾車來了要丟垃圾、外送員來拿單'] },
+    card: { title: '第 3 年哪裡不一樣', items: ['🧋 後牆打通：早餐街三攤', '📋 PM 小燕的限時急件、🤝 業務黑輪帶 VIP（會抽成）', '☕ 咖啡機、影印機、販賣機、電話總機一開始就裝好了（初階），👟 兩個工讀生直接報到', '🚪 後門：早餐街要去搬原料、垃圾車來了要丟垃圾、外送員來拿單'] },
   };
   if (year === 4) return {
     title: '第 4 年　總務部報到',
@@ -129,8 +129,8 @@ const END_THEME = {
   typhoon: [['kui', 'qiang', 'vivi', 'jie'], [
     E('qiang', 'cry', '我的帽子今年被吹走三次……', [['emote', 'qiang', '🌀']]),
     E('kui', 'tired', '我被吹走幾次，我已經不想算了。'),
-    E('jie', 'tired', '哎，那個，我們公司到底是做什麼啊？怎麼這麼多店這樣？', [['emote', 'jie', '🤔']]),
-    E('vivi', 'smug', '什麼都做，所以才賺錢啊！走！上台領獎！')]],
+    E('jie', 'tired', '我的設計稿也被吹走兩張。'),
+    E('vivi', 'smug', '颱風假有放到就好！走！上台領獎！')]],
   winter: [['kui', 'mi', 'vivi', 'heilun'], [
     E('heilun', 'tired', '客戶都說「明年再說」，我的車也還沒換……'),
     E('mi', 'happy', '可是客訴變少了耶！大家都懶得打電話了。'),
@@ -141,12 +141,12 @@ const END_THEME = {
     E('kevin', 'smug', '明年週年慶，我建議全部交給 AI。'),
     E('kui', 'angry', '你去年也這樣說。', [['emote', 'kui', '💢']]),
     E('vivi', 'happy', '業績破紀錄啦！走！上台領獎！')]],
-  robot: [['kui', 'senpai', 'vivi', 'kevin'], [
+  robot: [['kui', 'senpai', 'vivi', 'kevin', 'jie'], [
     E('kevin', 'smug', '看吧，AI 機器人今年表現很好。', [['emote', 'kevin', '🤖']]),
     E('senpai', 'tired', '它把便當送到印表機十二次。'),
     E('kevin', 'shock', '……那是在學習。', [['emote', 'kevin', '💦']]),
-    E('kui', 'smug', '我學得比它快吧。'),
-    E('vivi', 'happy', '機器人也辛苦了！走！上台領獎！')]],
+    E('jie', 'tired', '哎，那個，我們公司到底是做什麼啊？怎麼這麼多店這樣？', [['emote', 'jie', '🤔']]),
+    E('vivi', 'smug', '什麼都做，所以才需要機器人啊！走！上台領獎！')]],
   complain: [['kui', 'mi', 'vivi', 'jie'], [
     E('mi', 'cry', '客訴週終於結束了……我要請假三天。'),
     E('jie', 'tired', '哎，那個，我們公司到底是做什麼啊？怎麼這麼多店這樣？', [['emote', 'jie', '🤔']]),

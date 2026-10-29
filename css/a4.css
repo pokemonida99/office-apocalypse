@@ -1,8 +1,8 @@
 /* 上班啟示錄 UI（v0.7）：A＝員工證／打卡鐘（骨架、數據、面板）、B＝綜藝字卡（事件瞬間）、C＝手帳（故事收藏）
    跟 GPT 討論後的定案：米白紙＋藏青墨＋警示紅，字用 Noto Sans TC（子集，tools/build_font.py）＋Bungee 數字
    這支檔案蓋在 index.html 原本的樣式上面：版面位置沿用，外觀換掉 */
-@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.19.0) format('woff2'); font-weight: 500 900; font-display: swap; }
-@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.19.0) format('woff2'); font-display: swap; }
+@font-face { font-family: 'A4Sans'; src: url(../fonts/noto-tc-sub.woff2?v=0.19.1) format('woff2'); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: 'A4Num'; src: url(../fonts/bungee-sub.woff2?v=0.19.1) format('woff2'); font-display: swap; }
 :root {
   --paper: #f5e7c8; --paper2: #fffdf8; --kraft: #e9c98f; --ink: #142b45; --ink2: #2c4566;
   --gold: #ffc343; --red: #ef443c; --green: #32b95a; --pink: #ff3d6e; --line: #e3d2b2;

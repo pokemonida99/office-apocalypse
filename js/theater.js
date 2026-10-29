@@ -69,7 +69,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
     if (!who) { img.style.visibility = 'hidden'; return; }
     img.style.visibility = 'visible';
     img.onerror = () => { img.onerror = null; img.src = HAS_ICON[who] ? `icons/${who}-180.png` : 'icons/kui-180.png'; };
-    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.19.0`;
+    img.src = `icons/expr/${who}_${FACES.includes(face) ? face : 'happy'}.webp?v=0.19.1`;
   }
   // ---------- 打字機對話 ----------
   let typing = null;
@@ -117,6 +117,7 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
   function play(script) {
     return new Promise((done) => {
       if (window.G?.autoTheater) return done();
+      if (active) close();   // 前一張卡（獲得卡）先收掉，不然它的 done 不會跑、後面的流程（尾牙）會卡住
       const cast = {};
       for (const [id, o] of Object.entries(script.cast || {})) { const ch = spawn(id, o.kind, o.x ?? 0); if (ch) { cast[id] = ch; if (o.hidden) ch.a.root.visible = false; } }
       const c = { ...script, cast, i: -1, done, shake: 0 };
@@ -128,6 +129,8 @@ export function makeTheater({ THREE, renderer, kinds, makeActor, updateActor, ad
   function gain({ name, desc, model, who, go, scale = 1 }) {
     return new Promise((done) => {
       if (window.G?.autoTheater) return done();
+      if (active && !active.gain) return done();   // 正在演劇（年度開場、尾牙）就不蓋掉它
+      if (active) close();
       const c = { gain: true, cast: {}, done, title: '獲得', wall: 0xfdf3e1, floor: 0xe9c98f };
       open(c);
       if (who) { const ch = spawn('p', who, -2.6); if (ch) { ch.tx = 0; c.cast.p = ch; c.person = true; c.hello = 2.0; } }

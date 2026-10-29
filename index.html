@@ -39,6 +39,7 @@
   // 開不起來時說清楚原因（不支援 3D、App 內建瀏覽器、檔案下載失敗、載入太久），不要一直停在「載入中…」
   (() => {
     const inApp = /Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|; wv\)/i.test(navigator.userAgent);
+    if (/Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger/i.test(navigator.userAgent)) addEventListener('DOMContentLoaded', () => document.getElementById('inAppTip')?.classList.add('on'));   // 封面提醒：IG／FB／LINE 內建瀏覽器容易被重新整理
     const tip = inApp ? '你現在是用 App 內建的瀏覽器開的，請點右上角「⋯」選「用瀏覽器開啟」，或按「複製網址」貼到 Chrome／Safari。'
       : '請用最新版的 Chrome 或 Safari 開啟。Android 可以到 Play 商店更新「Chrome」和「Android System WebView」。';
     let level = 0;   // 0 沒顯示、1 可以再等等、2 開不起來
@@ -176,6 +177,9 @@
   #stick { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: #ffffff55; border: 3px solid #ffffffaa; display: none; pointer-events: none; z-index: 3; }
   #knob { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: #ffffffe6; box-shadow: 0 2px 6px #0003; }
   #cover { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 35%, #ffe9c9, #f2b98a 70%, #e28f63); color: #5a2e14; z-index: 5; text-align: center; padding: 24px; }
+  #inAppTip { display: none; position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 2; padding: 7px 11px; background: #fff7e0; border: 2px solid #2c3e57; border-radius: 8px; color: #2c3e57; font-size: 12px; line-height: 1.45; font-weight: 700; text-align: left; }   /* 貼在掛繩那塊，不推擠下面的按鈕 */
+  #inAppTip small { display: block; font-size: 11px; color: #6b5a48; }
+  #inAppTip.on { display: block; }
   #cover h1 { margin: 0; font-size: 46px; letter-spacing: 4px; color: #fff; text-shadow: 0 4px 0 #c4501f, 0 0 30px #ff9a5a; }
   #cover p { margin: 0; font-size: 15px; line-height: 1.7; font-weight: 700; }
   #cover button { font: inherit; font-size: 21px; font-weight: 900; padding: 13px 44px; border: 0; border-radius: 30px; background: #ff5d3a; color: #fff; box-shadow: 0 6px 0 #b8381c; cursor: pointer; }
@@ -305,7 +309,7 @@
   #bootMsg button.sec { background: #fff; color: #2c3e57; box-shadow: 0 4px 0 #0002, 0 0 0 2px #e4d6c2 inset; }
   #bootMsg .wait { font-size: 12px; margin-top: 10px; color: #8a7a66; }
 </style>
-<link rel="stylesheet" href="css/a4.css?v=0.19.0">
+<link rel="stylesheet" href="css/a4.css?v=0.19.1">
 </head>
 <body>
 <div id="bootMsg"><div class="card">
@@ -392,6 +396,7 @@
     <div class="stamp" id="idStamp">今日<br>未打卡</div>
   </div></div>
   <p id="coverTxt"></p>
+  <div id="inAppTip">在 App 裡面開的，玩久容易被重新整理。建議點右上角「⋯」→「用瀏覽器開啟」<small>進度存在各自的瀏覽器，換瀏覽器會從第 1 年開始</small></div>
   <button id="start" disabled><span class="clk">08:59</span><span class="tx"><b id="startTxt">載入中…</b><small id="startSub">新人小葵報到第一天</small></span></button>
   <div class="tabs">
     <button id="swap">😎 換阿傑老鳥</button>
@@ -450,6 +455,6 @@
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
-<script type="module" src="js/main.js?v=0.19.0"></script>
+<script type="module" src="js/main.js?v=0.19.1"></script>
 </body>
 </html>

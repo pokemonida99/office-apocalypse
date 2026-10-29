@@ -3,22 +3,22 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref, preRender } from './world.js?v=0.19.0';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref, preRender } from './world.js?v=0.19.1';
 preRender.push(keepOnScreen);
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music, onScreen, keepOnScreen } from './fx.js?v=0.19.0';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.19.0';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.19.0';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.19.0';
-import { CHANGES } from './changelog.js?v=0.19.0';
-import { makeTheater } from './theater.js?v=0.19.0';
-import { makeDeco } from './deco.js?v=0.19.0';
-import { makeEnding, seenEndings } from './ending.js?v=0.19.0';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.19.0';
-import { makeIntro } from './intro.js?v=0.19.0';
-import { openCallGame } from './callgame.js?v=0.19.0';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.19.0';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music, onScreen, keepOnScreen } from './fx.js?v=0.19.1';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.19.1';
+import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.19.1';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.19.1';
+import { CHANGES } from './changelog.js?v=0.19.1';
+import { makeTheater } from './theater.js?v=0.19.1';
+import { makeDeco } from './deco.js?v=0.19.1';
+import { makeEnding, seenEndings } from './ending.js?v=0.19.1';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.19.1';
+import { makeIntro } from './intro.js?v=0.19.1';
+import { openCallGame } from './callgame.js?v=0.19.1';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.19.1';
 
-const VERSION = 'v0.19.0';
+const VERSION = 'v0.19.1';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -1564,11 +1564,16 @@ yearQs.forEach((b, i) => { b.textContent = 'Q' + (i + 1); });   // 打卡卡的�
 // 新辦公室：每一年目標放大一點（景氣寒冬收入減半，目標降成 7 成）
 const qTarget = (i) => Math.round(QUARTERS[i].target * (1 + (state.year - 1) * 0.6) * (THEME?.id === 'winter' ? 0.7 : 1));
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+let finaleRetry = 0;
 function updateYear(dt = 0) {
   yearEl.style.display = 'block';
   yearQs.forEach((b, i) => { b.classList.toggle('on', i < state.q); b.classList.toggle('cur', i === state.q); b.classList.toggle('miss', i < state.q && state.qHit[i] === false); });
   const done = state.q >= 4 && state.finaleDone && !design.finale;   // 尾牙辦完、選了繼續上班：隨時可以搬家
   if (done !== yearEl.classList.contains('done')) { yearEl.classList.toggle('done', done); chipsEl.classList.toggle('low', done); moveBtn.textContent = `🚚 搬到新辦公室（第 ${state.year + 1} 年）`; }
+  // 第 4 季結束、尾牙還沒辦完就被重新整理（IG／FB 內建瀏覽器記憶體不夠會自己重載），或尾牙劇場被別的卡片蓋掉：等幾秒自動重辦尾牙，不然會一直卡在這年
+  if (state.q >= 4 && !state.finaleDone && !design.finale && state.started && state.floor === 'f1' && !state.talking && !theater?.active && !menuEl.classList.contains('on')) {
+    finaleRetry += dt; if (finaleRetry > 4) { finaleRetry = 0; finaleScene = false; startFinale(); }
+  } else finaleRetry = 0;
   if (state.q >= 4) { yearTitle.textContent = `第 ${state.year} 年　結束 ✓`; yearNum.textContent = '全年 $' + state.earned.toLocaleString(); yearBar.style.width = '100%'; return; }
   const qPaused = design.finale || state.talking || state.floor === 'f2';   // 季度時間（遊戲時間）：暫停、開選單、待在 2F 辦公室時不會走
   if (!qPaused) state.qT += dt;
@@ -2007,6 +2012,10 @@ function caiCatch(c, d) {
   floatText(V(p.x, 1.6, p.z), `${d.kind === 'gold' ? '金' : '銀'}元寶 +$${val.toLocaleString()}`, d.kind === 'gold' ? '#d9a63a' : '#7a8794', 0.9);
 }
 // 尾牙開始：還在場的小燕、黑輪直接下班
+// 尾牙時路過舞台（和舞台正前方）的客人先藏起來，不會擠進大合照前排
+function hideOnStage(on) {
+  for (const s of Object.values(shops)) for (const c of s.crowd) { const p = c.actor.root.position, dz = p.z - STAGE_AT[1]; c.actor.root.visible = !(on && Math.abs(p.x - STAGE_AT[0]) < 2.4 && dz > -1.0 && dz < 1.4); }
+}
 function clearVisitors() {
   if (cai) { cai.drops.forEach(d => { scene.remove(d.m); scene.remove(d.mark); }); scene.remove(cai.g); cai = null; }
   for (const o of [yan, heilun]) if (o) { o.got?.forEach(m => untrack(m)); scene.remove(o.a.root); }
@@ -2037,11 +2046,16 @@ function beginFinale() {
   stage = stageLook(state.year); stage.g.position.set(STAGE_AT[0], 0, STAGE_AT[1]); scene.add(stage.g); popIn(stage.g, 1, 1.6);
   camFocus = V(STAGE_AT[0], 0, STAGE_AT[1] + 0.6);
   banner(`🎉 第 ${state.year} 年度 尾牙 🎉`, `今年 ${state.qHit.filter(Boolean).length} / 4 季業績達標，大家辛苦了！`, 4, '#d9483b');
-  // 小葵站中間、夥伴站兩邊（直接傳送上台）
-  const crew = Object.values(hires).filter(h => h.id !== 'vivi');
-  player.actor.root.position.set(STAGE_AT[0], 0.26, STAGE_AT[1] + 0.2); player.actor.root.rotation.y = 0;
-  crew.forEach((h, i) => { h.actor.root.position.set(STAGE_AT[0] + (i % 2 ? 1 : -1) * (0.75 + Math.floor(i / 2) * 0.6), 0.26, STAGE_AT[1] + 0.1); h.actor.root.rotation.y = 0; });
-  if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.95, 0.26, STAGE_AT[1] + 0.05); hires.vivi.actor.root.rotation.y = -0.3; }   // 台上右前方，麥克風架前面，不會被擋
+  // 站兩排（直接傳送上台）：小葵前排正中間，阿傑、小米、學姊、茶茶站前排兩邊；其他人站後排、卡在前排的空隙裡，不會擋到
+  const ORDER = ['jie', 'mi', 'senpai', 'cha', 'qiang', 'worker', 'worker2'];
+  const crew = Object.values(hires).filter(h => h.id !== 'vivi').sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));
+  const FRONT = [-0.7, 0.7, -1.4, 1.4], BACK = [-0.35, 0.35, -1.05, 1.05, -1.75, 1.75];
+  player.actor.root.position.set(STAGE_AT[0], 0.26, STAGE_AT[1] + 0.35); player.actor.root.rotation.y = 0; player.actor.speed = 0;
+  crew.forEach((h, i) => {
+    const front = i < FRONT.length, x = front ? FRONT[i] : BACK[(i - FRONT.length) % BACK.length];
+    h.actor.root.position.set(STAGE_AT[0] + x, 0.26, STAGE_AT[1] + (front ? 0.3 : -0.35)); h.actor.root.rotation.y = 0;
+  });
+  if (hires.vivi) { hires.vivi.actor.root.position.set(STAGE_AT[0] + 1.95, 0.26, STAGE_AT[1] + 0.1); hires.vivi.actor.root.rotation.y = -0.3; }   // 台上右前方，麥克風架前面，不會被擋
   if (state.year >= 2 && kinds.kevin) {   // Kevin 只能在台下看
     const k = makeActor(kinds.kevin, 0.98); k.root.position.set(STAGE_AT[0] + 2.5, 0, STAGE_AT[1] + 1.5); k.root.rotation.y = Math.PI + 0.5; scene.add(k.root); design.kevinDown = k;
     const tag = labelSprite('特助 Kevin（台下）', { bg: '#2c3e57', size: 0.24 }); tag.position.y = 1.38; k.root.add(tag);
@@ -2074,7 +2088,7 @@ function showFinaleCard() {
 }
 function endFinale() {
   document.getElementById('finale').classList.remove('on');
-  design.finale = false; state.finaleDone = true; camFocus = null;
+  design.finale = false; state.finaleDone = true; camFocus = null; hideOnStage(false);
   if (stage) { scene.remove(stage.g); stage = null; }
   if (design.kevinDown) { scene.remove(design.kevinDown.root); design.kevinDown = null; }
   if (design.cup) { player.actor.root.remove(design.cup); design.cup = null; }
@@ -2106,7 +2120,7 @@ function moveToNextYear() {
 const moveBtn = document.getElementById('moveBtn'), moveAsk = document.getElementById('moveAsk');
 moveBtn.onclick = (e) => {
   e.stopPropagation(); audioInit(); sfx.pick?.();
-  document.getElementById('moveTxt').innerHTML = `第 ${state.year + 1} 年的新辦公室：店、錢、職等、員工都從頭開始，年度目標也會變大。<br>2F 買的家具會跟著搬過去。`;
+  document.getElementById('moveTxt').innerHTML = `第 ${state.year + 1} 年的新辦公室：店、錢、職等、員工都從頭開始，年度目標也會變大${state.year + 1 >= 3 ? '（咖啡機、影印機、販賣機、電話總機會先裝好）' : ''}。<br>2F 買的家具會跟著搬過去。`;
   document.getElementById('moveBonus').textContent = `所有收入永久 ×${nextBonus().toFixed(2)}（現在 ×${state.yearBonus.toFixed(2)}）`;
   moveAsk.classList.add('on');
 };
@@ -2720,7 +2734,8 @@ function update(dt) {
   state.t += dt; runLater();
   for (const s of Object.values(shops)) { produce(s, dt); updateCustomers(s, dt); }
   updatePhone(dt);
-  if (design.finale) { updateActor(player.actor, dt, state.t); Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
+  if (design.finale) { player.actor.speed = 0; vel.x = vel.y = 0; updateActor(player.actor, dt, state.t); hideOnStage(true);   // 台上站好：一直按方向鍵也不會原地跑步
+    Object.values(hires).forEach(h => { h.actor.speed = 0; updateActor(h.actor, dt, state.t); }); if (design.kevinDown) updateActor(design.kevinDown, dt, state.t); if (stage) stage.tick(dt, state.t); }   // 尾牙：大家站在台上
   else { updatePlayer(dt); updateHires(dt); updateBoss(dt); updateBreaks(dt); updatePads(dt); updateKiosk(); updateElevator(); updateDecoBtn(); updateMiBtn(); }
   updateRoof(dt); updatePet(dt); updateWater(dt); updateBack(dt);
   updateItems(dt); updateFx(dt); updateGuide(); updateHud(dt); updateKevin(dt); updateTheme(dt); if (yan && !design.finale) updateYan(dt); if (heilun && !design.finale) updateHeilun(dt); if (cai && !design.finale) updateCaishen(dt); updateEvents(); updateSave(dt);
@@ -2867,7 +2882,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.19.0'); music.load('office', 'audio/bgm_office.m4a?v=0.19.0'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.19.1'); music.load('office', 'audio/bgm_office.m4a?v=0.19.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});
@@ -2892,6 +2907,10 @@ const G = window.G = {
     if (!phone.unlocked) openPhone();
     if (!hires.jie) hire(HIRES.find(h => h.id === 'jie'), true);
     openKiosk(false);
+  }
+  if (!loaded && state.year >= 3) {   // 第三年起：咖啡機、影印機、販賣機、電話總機一開始就裝好（初階），不用每年重買
+    for (const t of ['coffee', 'printer', 'vending']) if (!shops[t].unlocked) openShop(shops[t], false);
+    if (!phone.unlocked) openPhone();
   }
   if (!loaded && state.year >= 3) for (const id of ['worker', 'worker2']) if (!hires[id]) hire(HIRES.find(h => h.id === id), true);   // 第三年起：工讀生直接來報到，咖啡和影印交給他們
   if (state.year >= 4) { for (const id of TRIO) if (!hires[id]) hire(HIRES.find(h => h.id === id), true); buildGA(); }   // 第四年起：總務部三人組
