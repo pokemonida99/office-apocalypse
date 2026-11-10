@@ -3,22 +3,22 @@
 // 電話總機：站著接電話賺錢。設施會升級（咖啡機、印表機 Lv5＝產線），小葵靠經驗升職，還能請人幫忙
 // 大目標：一年 Q1～Q4（每季固定時間）→ 尾牙 → 搬到新辦公室；採購部買裝備、裝潢；VIP、午餐尖峰、老闆生日等突發事件；自動存檔
 import * as THREE from 'three';
-import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref, preRender } from './world.js?v=0.19.1';
+import { scene, camera, renderer, post, render, updateCamera, cam, sun, V, rbox, box, cyl, sphere, mat, canvasTex, roundRect, FONT, labelSprite, quality, setQuality, setQualityPref, preRender } from './world.js?v=0.19.2';
 preRender.push(keepOnScreen);
-import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music, onScreen, keepOnScreen } from './fx.js?v=0.19.1';
-import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.19.1';
-import { loadKind, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.19.1';
-import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.19.1';
-import { CHANGES } from './changelog.js?v=0.19.1';
-import { makeTheater } from './theater.js?v=0.19.1';
-import { makeDeco } from './deco.js?v=0.19.1';
-import { makeEnding, seenEndings } from './ending.js?v=0.19.1';
-import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.19.1';
-import { makeIntro } from './intro.js?v=0.19.1';
-import { openCallGame } from './callgame.js?v=0.19.1';
-import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.19.1';
+import { updateFx, floatText, popIn, squash, confetti, pillar, shockwave, sparkle, puff, camKick, toast, banner, sfx, audioInit, isMuted, setMuted, music, onScreen, keepOnScreen } from './fx.js?v=0.19.2';
+import { STATIONS, LOOKS, ITEM_H, ICON, makeItem, makeBill, buildBelt, levelBadge, stallLook, vendingLook, sourceLook, deskLook, miOfficeLook, MI_OFFICE, gaOfficeLook, GA_OFFICE } from './stations.js?v=0.19.2';
+import { loadKind, loadRun, makeActor, updateActor, walkTo, turnTo, addJog, setBald, baldTick } from './assets.js?v=0.19.2';
+import { kioskLook, DECOR_LOOKS, cartLook, vipGear, stageLook, cakeLook, waterLook, jugPileLook, jugMesh, cloudLook, ingotLook, poopLook } from './decor.js?v=0.19.2';
+import { CHANGES } from './changelog.js?v=0.19.2';
+import { makeTheater } from './theater.js?v=0.19.2';
+import { makeDeco } from './deco.js?v=0.19.2';
+import { makeEnding, seenEndings } from './ending.js?v=0.19.2';
+import { yearScript, yearEndScript, themeOf, ENDINGS, endingOfYear } from './stories.js?v=0.19.2';
+import { makeIntro } from './intro.js?v=0.19.2';
+import { openCallGame } from './callgame.js?v=0.19.2';
+import { buildRoof, RIDES, rideLook, buildOffice, buildKiosk, roomPlate, ROOM, FURN, FURN_B_OLD, setRoomTex, roomShell, buildBossOffice, buildKevinOffice, ROOM_X } from './floors.js?v=0.19.2';
 
-const VERSION = 'v0.19.1';
+const VERSION = 'v0.19.2';
 // 遊玩角色：網址 #jie＝操控阿傑老鳥（素質全滿、店全開、小葵改去設計部畫圖），存檔跟小葵分開
 const JIE = location.hash.startsWith('#jie');   // #jie-intro：阿傑模式＋重看片頭
 const ME = JIE ? { name: '阿傑', icon: 'jie' } : { name: '小葵', icon: 'kui' };
@@ -2872,9 +2872,13 @@ const G = window.G = {
 (async () => {
   const btn = document.getElementById('start');
   try {
-    const urls = { kui: 'models/kui_walk2.glb', kuiJog: 'models/kui_jog.glb', npcM: 'models/npc_m_walk.glb', npcF: 'models/npc_f_walk.glb', jie: 'models/jie_walk.glb', jieJog: 'models/jie_jog.glb', mi: 'models/mi_walk.glb', vivi: 'models/vivi_walk.glb', kevin: 'models/kevin_walk.glb' };
-    const ks = await Promise.all(Object.entries(urls).map(async ([k, u]) => [k, await loadKind(u)]));
-    kinds = Object.fromEntries(ks);
+    // 小葵、阿傑、小米、Vivi、Kevin 用 v2 模型（下班先鬥牛重做的，面數少、有 Blender 走路／站著呼吸／小跑步），其他人還是舊模型
+    const V2 = ['kui', 'jie', 'mi', 'vivi', 'kevin'], urls = { npcM: 'models/npc_m_walk.glb', npcF: 'models/npc_f_walk.glb' };
+    const ks = await Promise.all([
+      ...V2.map(async k => { const kd = await loadKind(`models/${k}_v2.glb`, `models/moves/${k}_walk.glb`); return [[k, kd], [k + 'Jog', await loadRun(kd, `models/moves/${k}_run.glb`)]]; }),
+      ...Object.entries(urls).map(async ([k, u]) => [[k, await loadKind(u)]]),
+    ]);
+    kinds = Object.fromEntries(ks.flat());
   } catch (e) { btn.textContent = '載入失敗，請重新整理'; console.error(e); window.bootFail?.('角色模型下載失敗', '網路可能不穩，重新整理再試一次。（' + (e.message || e) + '）'); return; }
   if (/[?&]fresh/.test(location.search)) { try { for (const j of ['', '-jie']) for (const t of ['', '-s2', '-s3', '-replay']) for (const k of KEYS(j + t)) localStorage.removeItem(k); localStorage.removeItem(SLOT_KEY); sessionStorage.removeItem(REPLAY_KEY); } catch {} }   // 測試用：網址加 ?fresh 三格存檔、兩個角色都清掉
   loadYear();
@@ -2882,7 +2886,7 @@ const G = window.G = {
     onOpen: () => { state.paused = true; music.duck(0.5); document.getElementById('hud').style.visibility = 'hidden'; },   // 框框挖空的地方會透出底下的 HUD，演出時先藏起來
     onClose: () => { if (!menuEl.classList.contains('on')) state.paused = false; music.duck(1); document.getElementById('hud').style.visibility = ''; } });
   ending = makeEnding({ sfx, onOpen: () => { music.duck(0.3); }, onClose: () => { music.duck(1); } });
-  music.load('title', 'audio/bgm_title.m4a?v=0.19.1'); music.load('office', 'audio/bgm_office.m4a?v=0.19.1'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
+  music.load('title', 'audio/bgm_title.m4a?v=0.19.2'); music.load('office', 'audio/bgm_office.m4a?v=0.19.2'); music.play('title');   // 瀏覽器要先點一下才能出聲：封面點任何地方就開始
   loadKind('models/caishen_sit.glb').then(v => { kinds.caishen = v; }).catch(() => {});
   loadKind('models/mi_chair.glb').then(v => { kinds.miChair = v; }).catch(() => loadKind('models/mi_sit.glb').then(v => { kinds.miSit = v; }).catch(() => {}));
   if (state.year >= 3) for (const k of ['yan', 'heilun']) loadKind(`models/${k}_walk.glb`).then(v => { kinds[k] = v; }).catch(() => {});

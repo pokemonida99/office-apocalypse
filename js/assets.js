@@ -9,22 +9,38 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
 // 載入一個角色：縮成 1 單位高、腳踩地，順便量出不滑步的速度
 // 模型都要先轉正（臉朝 +z）再綁原地走路動作（見 tools/face_front.py）
-export async function loadKind(url) {
-  const g = await loader.loadAsync(url);
+// clipUrl：v2 模型（下班先鬥牛做的，沒有內建動作）另外載 Blender 動作檔，裡面有 walk（走路）和 idle（站著呼吸）兩段
+export async function loadKind(url, clipUrl = null) {
+  const [g, own] = await Promise.all([loader.loadAsync(url), clipUrl ? loadPack(clipUrl) : null]);
   g.scene.updateMatrixWorld(true);   // 先更新矩陣，不然骨架節點的縮放沒算進去，高度會量錯
   const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3());
   const s = 1 / size.y;
   const base = new THREE.Group(); base.add(g.scene);
   g.scene.scale.multiplyScalar(s);
   g.scene.position.set(-(box.min.x + size.x / 2) * s, -box.min.y * s, -(box.min.z + size.z / 2) * s);
-  const clip = g.animations[0] || null;
+  const clip = own ? (own.walk || Object.values(own)[0]) : g.animations[0] || null;
+  const idle = own?.idle || null;
   // 記下站姿（綁骨架時的 A 字站姿），量完步伐要還原；停下來時動畫權重降到 0 就會回到這個站姿
   const rest = [];
   base.traverse(o => { if (o.isBone) rest.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
   const natural = clip ? measureNatural(base, clip) : 0.25;
   const lean = clip ? measureLean(base, clip) : 0;
   for (const [b, p, q, sc] of rest) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(sc); }
-  return { base, clip, natural, lean };
+  return { base, clip, idle, natural, lean, rest };
+}
+
+// 動作檔：回傳 { 動作名: clip }，只留骨頭轉動和臀部位移，骨頭長度維持角色自己的（不會被動作檔拉長）
+async function loadPack(url) {
+  const g = await loader.loadAsync(url), out = {};
+  for (const c of g.animations) { c.tracks = c.tracks.filter(t => t.name.endsWith('.quaternion') || t.name === 'Hips.position'); out[c.name] = c; }
+  return out;
+}
+// v2 角色的小跑步（tools/take_clips.py 從下班先鬥牛的動作包抽出來）：用他自己的身體量不滑步的速度和前傾，給 addJog 用
+export async function loadRun(kind, url) {
+  const clip = (await loadPack(url)).run;
+  const natural = measureNatural(kind.base, clip), lean = measureLean(kind.base, clip);
+  for (const [b, p, q, sc] of kind.rest) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(sc); }
+  return { clip, natural, lean };
 }
 
 // 動畫平均往前傾幾度（臀部→頭）。成人跑步動作套在大頭 Q 版身上會像在鞠躬，要用 leanFix 扶正
@@ -77,8 +93,11 @@ export function makeActor(kind, scale = 1) {
   const mixer = new THREE.AnimationMixer(model);
   const action = kind.clip ? mixer.clipAction(kind.clip).play() : null;
   if (action) action.setEffectiveWeight(0);
+  // 等待動作（呼吸、膝蓋微彎）：停下來時取代 A 字站姿；每個人從不同時間開始，才不會一起呼吸
+  const idle = kind.idle ? mixer.clipAction(kind.idle).play() : null;
+  if (idle) { idle.time = Math.random() * kind.idle.duration; idle.timeScale = 0.9 + Math.random() * 0.2; }
   let head = null, headFront = null; model.traverse(o => { if (o.name === 'Head') head = o; if (o.name === 'headfront') headFront = o; });
-  return { root, model, mixer, action, natural: kind.natural, speed: 0, w: 0, phase: Math.random() * 6, head, headFront };
+  return { root, model, mixer, action, idle, natural: kind.natural, speed: 0, w: 0, phase: Math.random() * 6, head, headFront };
 }
 
 // 走路權重平滑切換：走＝播放走路，停＝回到站姿並輕輕呼吸
@@ -97,6 +116,7 @@ export function updateActor(a, dt, t) {
     if (moving) a.jog.timeScale = a.speed / (a.jogNatural * a.root.scale.x);
     jogW = a.w * a.jk;
   }
+  if (a.idle) a.idle.setEffectiveWeight(1 - a.w);
   a.mixer.update(dt);
   // 扶正小跑步的前傾：在世界座標繞角色的右手方向往後轉，再換回骨頭自己的座標
   if (a.spine && jogW > 0.01 && a.leanFix) {
@@ -114,7 +134,7 @@ export function updateActor(a, dt, t) {
     const pitch = Math.atan2(_fp.y - _hp.y, Math.hypot(_fp.x - _hp.x, _fp.z - _hp.z));
     if (pitch < 0) a.head.rotateX(pitch);
   }
-  a.model.scale.y = 1 + (1 - a.w) * 0.015 * Math.sin(t * 3 + a.phase);
+  a.model.scale.y = a.idle ? 1 : 1 + (1 - a.w) * 0.015 * Math.sin(t * 3 + a.phase);   // 沒有等待動作的舊模型才用縮放假裝呼吸
 }
 
 // 朝目標走一步；到了回傳 true
